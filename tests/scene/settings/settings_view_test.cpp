@@ -3,7 +3,7 @@
 #include <optional>
 
 #include "event/event_bus.hpp"
-#include "fake_canvas.hpp"
+#include "support/fake_canvas.hpp"
 #include "game/display_settings.hpp"
 #include "game/game_events.hpp"
 #include "scene/settings/settings_view.hpp"

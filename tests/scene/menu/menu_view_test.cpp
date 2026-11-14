@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "event/event_bus.hpp"
-#include "fake_canvas.hpp"
+#include "support/fake_canvas.hpp"
 #include "game/game_events.hpp"
 #include "scene/menu/menu_view.hpp"
 

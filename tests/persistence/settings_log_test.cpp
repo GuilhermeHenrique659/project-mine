@@ -8,7 +8,7 @@
 
 #include "logging/logger.hpp"
 #include "persistence/settings_store.hpp"
-#include "temp_dir.hpp"
+#include "support/temp_dir.hpp"
 
 namespace {
 

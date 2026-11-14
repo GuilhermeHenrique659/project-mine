@@ -4,7 +4,7 @@
 
 #include "game/game_events.hpp"
 #include "persistence/settings_persistence.hpp"
-#include "temp_dir.hpp"
+#include "support/temp_dir.hpp"
 
 TEST(SettingsPersistence, ChangedSettingsAreWrittenToDisk) {
     // Given

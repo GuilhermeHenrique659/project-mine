@@ -41,7 +41,7 @@ The project path contains an accent ("Área de Trabalho") and the MinGW linker d
 | `persistence/` | `persistence` | Saves user data to disk. `SettingsStore` reads/writes `settings.cfg` (`key=value`, written via a temp file + rename); `SettingsPersistence` subscribes to `DisplaySettingsChanged` on the `EventBus` and saves; `resolve_data_dir()` picks the data directory: `--data-dir <path>` > env `PROJECT_MINE_DATA_DIR` > build default (Debug: `resource/` relative to the working dir, Release: `%APPDATA%/ProjectMine`). `Game(data_dir)` loads the saved settings at startup and opens the window with them. Raylib-free. |
 | `logging/` | `logging` | `logging::info()` / `logging::warning()` write to stderr (`[INFO]` / `[WARN]`); `set_sink()` redirects messages (tests capture them). Used by `persistence/` for settings load/save. Raylib-free. |
 
-`tests/` mirrors the modules; `tests/fake_canvas.hpp` is a recording `Canvas` for widget tests.
+`tests/` mirrors the `src/` modules (`tests/ui/`, `tests/persistence/`, `tests/scene/menu/`, ...); shared helpers live in `tests/support/` and are included as `"support/..."`: `fake_canvas.hpp` is a recording `Canvas` for widget tests, `temp_dir.hpp` a temporary directory for persistence tests.
 
 ### How the components communicate
 

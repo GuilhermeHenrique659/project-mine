@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "fake_canvas.hpp"
+#include "support/fake_canvas.hpp"
 #include "ui/ui.hpp"
 
 namespace {

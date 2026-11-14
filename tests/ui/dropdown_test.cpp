@@ -2,7 +2,7 @@
 
 #include <cstddef>
 
-#include "fake_canvas.hpp"
+#include "support/fake_canvas.hpp"
 #include "ui/dropdown.hpp"
 
 namespace {

@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "fake_canvas.hpp"
+#include "support/fake_canvas.hpp"
 #include "ui/card.hpp"
 #include "ui/checkbox.hpp"
 #include "ui/dropdown.hpp"

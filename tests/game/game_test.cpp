@@ -8,7 +8,7 @@
 #include "game/game.hpp"
 #include "game/game_events.hpp"
 #include "persistence/settings_store.hpp"
-#include "temp_dir.hpp"
+#include "support/temp_dir.hpp"
 
 namespace {
 
