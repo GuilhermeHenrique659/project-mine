@@ -8,6 +8,7 @@ namespace ui {
 class RaylibCanvas : public Canvas {
 public:
     void fill_rect(Rect rect, Color color) override;
+    void fill_triangle(Point a, Point b, Point c, Color color) override;
     void stroke_rect(Rect rect, Color color, float thickness) override;
     void draw_text(const std::string& text, Point position, int font_size, Color color) override;
     using Canvas::draw_texture;

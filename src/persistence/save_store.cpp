@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <limits>
 #include <set>
 #include <system_error>
 
@@ -31,6 +32,25 @@ std::optional<std::int64_t> parse_int(const std::string& text) {
     return value;
 }
 
+// Parses a whole unsigned 64-bit integer; empty when the text has anything else or overflows.
+std::optional<std::uint64_t> parse_u64(const std::string& text) {
+    if (text.empty() || text.size() > 20) {
+        return std::nullopt;
+    }
+    std::uint64_t value = 0;
+    for (const char c : text) {
+        if (c < '0' || c > '9') {
+            return std::nullopt;
+        }
+        const auto digit = static_cast<std::uint64_t>(c - '0');
+        if (value > (std::numeric_limits<std::uint64_t>::max() - digit) / 10) {
+            return std::nullopt;
+        }
+        value = value * 10 + digit;
+    }
+    return value;
+}
+
 // Empty when the file is missing or has no valid creation time. The save takes the name
 // it was asked for (the file name), which is its identity.
 std::optional<game::SaveGame> read_save(const std::filesystem::path& file,
@@ -41,6 +61,8 @@ std::optional<game::SaveGame> read_save(const std::filesystem::path& file,
     }
 
     std::optional<std::int64_t> created_at;
+    // Saves written before worlds had seeds have none: they get seed 0.
+    std::uint64_t seed = 0;
     std::string line;
     while (std::getline(input, line)) {
         if (!line.empty() && line.back() == '\r') {
@@ -52,12 +74,14 @@ std::optional<game::SaveGame> read_save(const std::filesystem::path& file,
         }
         if (line.substr(0, separator) == "created_at") {
             created_at = parse_int(line.substr(separator + 1));
+        } else if (line.substr(0, separator) == "seed") {
+            seed = parse_u64(line.substr(separator + 1)).value_or(0);
         }
     }
     if (!created_at) {
         return std::nullopt;
     }
-    return game::SaveGame{name, *created_at};
+    return game::SaveGame{name, *created_at, seed};
 }
 
 } // namespace
@@ -73,7 +97,8 @@ bool SaveStore::save(const game::SaveGame& save) const {
     const std::filesystem::path file = file_of(save.name);
     const std::string content = "version=" + std::to_string(FormatVersion) + "\n" +
                                 "name=" + save.name + "\n" +
-                                "created_at=" + std::to_string(save.created_at) + "\n";
+                                "created_at=" + std::to_string(save.created_at) + "\n" +
+                                "seed=" + std::to_string(save.seed) + "\n";
     const auto failure = write_file_atomically(file, content, backup_of(save.name));
     if (failure) {
         logging::warning("Could not save game \"" + save.name + "\": " + *failure);

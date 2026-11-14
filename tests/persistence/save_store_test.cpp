@@ -32,6 +32,36 @@ TEST(SaveStore, SavedGameLoadsBackUnchanged) {
     EXPECT_EQ(*loaded, save);
 }
 
+TEST(SaveStore, WorldSeedSurvivesSavingAndLoading) {
+    // Given
+    TempDir dir("save_seed");
+    const persistence::SaveStore store(dir.path());
+    const game::SaveGame save{"My Base", 1'700'000'000, 18'446'744'073'709'551'615ull};
+
+    // When
+    store.save(save);
+    const auto loaded = store.load("My Base");
+
+    // Then
+    ASSERT_TRUE(loaded.has_value());
+    EXPECT_EQ(loaded->seed, 18'446'744'073'709'551'615ull);
+}
+
+TEST(SaveStore, SaveWrittenBeforeSeedsExistedStillLoadsWithSeedZero) {
+    // Given
+    TempDir dir("save_legacy");
+    const persistence::SaveStore store(dir.path());
+    std::filesystem::create_directories(store.directory());
+    std::ofstream(store.file_of("old")) << "version=1\nname=old\ncreated_at=100\n";
+
+    // When
+    const auto loaded = store.load("old");
+
+    // Then
+    ASSERT_TRUE(loaded.has_value());
+    EXPECT_EQ(loaded->seed, 0u);
+}
+
 TEST(SaveStore, LoadingAnUnknownNameIsEmpty) {
     // Given
     TempDir dir("save_unknown");

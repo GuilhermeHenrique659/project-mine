@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <ctime>
+#include <random>
 
 namespace game {
 
@@ -43,6 +44,11 @@ std::string format_created_at(std::int64_t created_at) {
     char buffer[32];
     const std::size_t written = std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M", local);
     return std::string(buffer, written);
+}
+
+std::uint64_t random_seed() {
+    std::random_device device;
+    return (static_cast<std::uint64_t>(device()) << 32) | device();
 }
 
 std::int64_t system_clock_seconds() {

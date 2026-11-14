@@ -94,3 +94,21 @@ TEST(WorldModel, ClearingTheDirectionStopsThePlayer) {
     EXPECT_FLOAT_EQ(player_position(model).x, stopped_at.x);
     EXPECT_FLOAT_EQ(player_position(model).y, stopped_at.y);
 }
+
+TEST(WorldModel, TerrainIsGeneratedFromTheSavedSeed) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+
+    // When
+    const scene::world::WorldModel first(bus, input.handler, game::SaveGame{"A", 0, 4242});
+    const scene::world::WorldModel loaded(bus, input.handler, game::SaveGame{"A", 0, 4242});
+
+    // Then: a loaded save recreates the same world
+    EXPECT_EQ(first.terrain().seed(), 4242u);
+    for (int y = -30; y <= 30; ++y) {
+        for (int x = -30; x <= 30; ++x) {
+            ASSERT_EQ(first.terrain().tile_at({x, y}), loaded.terrain().tile_at({x, y}));
+        }
+    }
+}

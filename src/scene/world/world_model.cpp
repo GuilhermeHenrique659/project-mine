@@ -11,6 +11,7 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
                        game::SaveGame save)
     : bus_(bus),
       save_(std::move(save)),
+      terrain_(save_.seed),
       player_(::world::spawn_character(registry_, "Player", ::world::WorldPoint{0.0f, 0.0f})) {
     registry_.add(player_, ::world::PlayerControlled{});
     // Order matters: input writes the direction that movement then reads.

@@ -2,6 +2,8 @@
 
 #include <raylib.h>
 
+#include <utility>
+
 namespace ui {
 
 namespace {
@@ -40,6 +42,15 @@ float spacing_for(int font_size) { return static_cast<float>(font_size) * Spacin
 
 void RaylibCanvas::fill_rect(Rect rect, Color color) {
     DrawRectangleRec({rect.x, rect.y, rect.width, rect.height}, to_raylib(color));
+}
+
+void RaylibCanvas::fill_triangle(Point a, Point b, Point c, Color color) {
+    // Raylib only draws triangles whose corners run counter-clockwise on screen (y down).
+    const float cross = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+    if (cross > 0.0f) {
+        std::swap(b, c);
+    }
+    DrawTriangle({a.x, a.y}, {b.x, b.y}, {c.x, c.y}, to_raylib(color));
 }
 
 void RaylibCanvas::stroke_rect(Rect rect, Color color, float thickness) {

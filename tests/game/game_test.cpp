@@ -129,12 +129,15 @@ namespace {
 
 constexpr std::int64_t FixedNow = 1'700'000'000;
 
+constexpr std::uint64_t FixedSeed = 987654321;
+
 std::int64_t fixed_clock() { return FixedNow; }
+std::uint64_t fixed_seed() { return FixedSeed; }
 
 // A game already showing a known scene, so a scene switch can be observed.
 struct RunningGame {
     explicit RunningGame(const std::string& dir_name)
-        : dir(dir_name), game(dir.path(), fixed_clock) {
+        : dir(dir_name), game(dir.path(), fixed_clock, fixed_seed) {
         game.change_scene(make_counting_scene(updates));
         game.update(0.016f);
         initial_scene = game.active_scene();
@@ -186,7 +189,7 @@ TEST(Game, CreateGameRequestedSavesTheNewGameAndStartsPlaying) {
     // Then
     const auto saved = running.game.save_store().load("My Base");
     ASSERT_TRUE(saved.has_value());
-    EXPECT_EQ(*saved, (game::SaveGame{"My Base", FixedNow}));
+    EXPECT_EQ(*saved, (game::SaveGame{"My Base", FixedNow, FixedSeed}));
     EXPECT_TRUE(running.switched_scene());
 }
 
@@ -213,7 +216,7 @@ TEST(Game, CreatingAGameWithAnExistingNameOverwritesTheOldSave) {
     // Then
     const auto saves = running.game.save_store().list();
     ASSERT_EQ(saves.size(), 1u);
-    EXPECT_EQ(saves[0], (game::SaveGame{"base", FixedNow}));
+    EXPECT_EQ(saves[0], (game::SaveGame{"base", FixedNow, FixedSeed}));
 }
 
 TEST(Game, LoadSaveRequestedForAnExistingSaveStartsPlaying) {

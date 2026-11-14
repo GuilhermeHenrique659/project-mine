@@ -10,6 +10,7 @@
 #include "input/raylib_keyboard.hpp"
 #include "input/raylib_pointer.hpp"
 #include "scene/world/render/entity_renderer.hpp"
+#include "scene/world/render/terrain_renderer.hpp"
 #include "scene/world/render/world_menu.hpp"
 #include "scene/world/world_model.hpp"
 #include "scene/world/world_view.hpp"
@@ -66,6 +67,7 @@ std::unique_ptr<scene::Scene> make_world_scene(game::Game& game, game::SaveGame 
     auto menu = std::make_unique<WorldMenu>(game.event_bus(), *model, std::move(pointer));
     WorldMenu& menu_ref = *menu; // owned by the view, which outlives the controller
     std::vector<std::unique_ptr<Renderer>> renderers;
+    renderers.push_back(std::make_unique<TerrainRenderer>(model->terrain()));
     renderers.push_back(std::make_unique<EntityRenderer>(model->registry()));
     renderers.push_back(std::move(menu));
 

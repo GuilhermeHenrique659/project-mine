@@ -10,6 +10,13 @@ struct FilledRect {
     ui::Color color;
 };
 
+struct FilledTriangle {
+    ui::Point a;
+    ui::Point b;
+    ui::Point c;
+    ui::Color color;
+};
+
 struct DrawnText {
     std::string text;
     ui::Point position;
@@ -26,6 +33,9 @@ struct DrawnTexture {
 // Records draw calls. Text is measured as font_size / 2 wide per character.
 struct FakeCanvas : ui::Canvas {
     void fill_rect(ui::Rect rect, ui::Color color) override { fills.push_back({rect, color}); }
+    void fill_triangle(ui::Point a, ui::Point b, ui::Point c, ui::Color color) override {
+        triangles.push_back({a, b, c, color});
+    }
     void stroke_rect(ui::Rect, ui::Color, float) override {}
     void draw_text(const std::string& text, ui::Point position, int font_size,
                    ui::Color color) override {
@@ -42,6 +52,7 @@ struct FakeCanvas : ui::Canvas {
     }
 
     std::vector<FilledRect> fills;
+    std::vector<FilledTriangle> triangles;
     std::vector<DrawnText> texts;
     std::vector<DrawnTexture> textures;
 };

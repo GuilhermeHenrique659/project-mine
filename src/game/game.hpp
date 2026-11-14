@@ -22,7 +22,11 @@ public:
     // Source of the current Unix time in seconds; replaced in tests.
     using Clock = std::function<std::int64_t()>;
 
-    explicit Game(const std::filesystem::path& data_dir, Clock clock = system_clock_seconds);
+    // Source of the seed a new game's world is generated from; replaced in tests.
+    using SeedSource = std::function<std::uint64_t()>;
+
+    explicit Game(const std::filesystem::path& data_dir, Clock clock = system_clock_seconds,
+                  SeedSource seed_source = random_seed);
 
     // Opens the window and loads the first scene. Call once, before the loop.
     void start_up();
@@ -69,6 +73,7 @@ private:
     persistence::SettingsPersistence settings_persistence_;
     persistence::SaveStore save_store_;
     Clock clock_;
+    SeedSource seed_source_;
     bool running_ = false;
 };
 

@@ -11,6 +11,7 @@
 #include "scene/scene.hpp"
 #include "scene/world/core/isometric.hpp"
 #include "scene/world/core/system.hpp"
+#include "scene/world/core/terrain/terrain.hpp"
 
 namespace scene::world {
 
@@ -38,9 +39,13 @@ public:
     const core::Registry& registry() const { return registry_; }
     core::EntityId player_id() const { return player_; }
 
+    // The ground of this world, generated from the save's seed.
+    const ::world::Terrain& terrain() const { return terrain_; }
+
 private:
     event::EventBus& bus_;
     game::SaveGame save_;
+    ::world::Terrain terrain_;
     core::Registry registry_;
     core::EntityId player_ = 0;
     // Declared after registry_ and bus_, which the systems refer to, so they are destroyed first.

@@ -28,11 +28,12 @@ void register_textures() {
 }
 } // namespace
 
-Game::Game(const std::filesystem::path& data_dir, Clock clock)
+Game::Game(const std::filesystem::path& data_dir, Clock clock, SeedSource seed_source)
     : display_settings_(persistence::SettingsStore(data_dir).load().value_or(DisplaySettings{})),
       settings_persistence_(bus_, persistence::SettingsStore(data_dir)),
       save_store_(data_dir),
-      clock_(std::move(clock)) {
+      clock_(std::move(clock)),
+      seed_source_(std::move(seed_source)) {
     subscriptions_.push_back(event::subscribe_scoped<QuitRequested>(
         bus_, [this](const QuitRequested&) { quit(); }));
     subscriptions_.push_back(event::subscribe_scoped<SettingsRequested>(
@@ -135,7 +136,7 @@ void Game::create_game(const std::string& name) {
         logging::warning("Cannot create a game named \"" + name + "\"");
         return;
     }
-    SaveGame save{name, clock_()};
+    SaveGame save{name, clock_(), seed_source_()};
     if (!save_store_.save(save)) {
         return;
     }
