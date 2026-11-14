@@ -19,12 +19,11 @@ namespace {
 constexpr int TargetFps = 60;
 constexpr const char* WindowTitle = "Project Mine";
 
-// Textures the game knows about. Files load lazily on first use, so a missing file only
-// makes the renderer fall back (see EntityRenderer).
+// Textures the game knows about (none yet: the player is drawn as a cube). Files load
+// lazily on first use; a missing name gives the fallback texture.
 void register_textures() {
     auto& textures = graphics::TextureManager::instance();
     textures.set_loader(std::make_unique<graphics::RaylibTextureLoader>());
-    textures.register_texture(scene::world::CharacterTexture, "resource/textures/character.png");
 }
 } // namespace
 

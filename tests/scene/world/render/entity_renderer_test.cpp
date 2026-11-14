@@ -77,49 +77,8 @@ protected:
 
 } // namespace
 
-TEST_F(EntityRendererTexture, CharacterIsDrawnWithItsTextureInsteadOfTheCubeWhenOneIsRegistered) {
-    // Given
-    graphics::TextureManager::instance().register_texture(
-        scene::world::CharacterTexture, "character.png");
-    core::Registry registry;
-    world::spawn_character(registry, "Player", {0.0f, 0.0f});
-    const world::Camera camera;
-    const scene::world::EntityRenderer renderer(registry, camera);
-    FakeCanvas canvas;
-
-    // When
-    renderer.draw(canvas, Screen);
-
-    // Then: the texture sits on the entity's position and the cube is not drawn
-    ASSERT_EQ(canvas.textures.size(), 1u);
-    EXPECT_EQ(canvas.textures.front().texture.id, 1u); // the character.png the loader made
-    const ui::Point texture_center = center_of(canvas.textures.front().dest);
-    EXPECT_FLOAT_EQ(texture_center.x, 640.0f);
-    EXPECT_FLOAT_EQ(texture_center.y, 360.0f);
-    EXPECT_TRUE(canvas.fills.empty());
-    EXPECT_EQ(canvas.texts.size(), 1u); // the label is still shown
-}
-
-TEST_F(EntityRendererTexture, CharacterWithoutARegisteredTextureIsDrawnWithTheFallbackTexture) {
-    // Given
-    core::Registry registry;
-    world::spawn_character(registry, "Player", {0.0f, 0.0f});
-    const world::Camera camera;
-    const scene::world::EntityRenderer renderer(registry, camera);
-    FakeCanvas canvas;
-
-    // When
-    renderer.draw(canvas, Screen);
-
-    // Then
-    ASSERT_EQ(canvas.textures.size(), 1u);
-    EXPECT_EQ(canvas.textures.front().texture.id, FakeTextureLoader::PlaceholderId);
-    EXPECT_TRUE(canvas.fills.empty());
-}
-
-TEST_F(EntityRendererTexture, CharacterIsDrawnAsACubeWhenThereIsNoTextureNotEvenTheFallback) {
-    // Given
-    graphics::TextureManager::instance().reset(); // no loader
+TEST_F(EntityRendererTexture, CharacterIsDrawnAsACubeEvenWhenTheTextureLoaderHasAFallback) {
+    // Given: the character has no texture, so the loader would give the checkerboard fallback
     core::Registry registry;
     world::spawn_character(registry, "Player", {0.0f, 0.0f});
     const world::Camera camera;
@@ -132,6 +91,7 @@ TEST_F(EntityRendererTexture, CharacterIsDrawnAsACubeWhenThereIsNoTextureNotEven
     // Then
     EXPECT_TRUE(canvas.textures.empty());
     EXPECT_EQ(canvas.fills.size(), 2u);
+    EXPECT_EQ(canvas.texts.size(), 1u); // the label is still shown
 }
 
 TEST(EntityRenderer, EntityUnderTheCameraIsDrawnAtTheScreenCentreWhateverItsWorldPosition) {
