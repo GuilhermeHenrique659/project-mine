@@ -73,17 +73,19 @@ TEST(Terrain, SpawnAreaIsAlwaysGrass) {
     }
 }
 
-TEST(Terrain, GrassAndWaterAreasAreLargeComparedToThePlayer) {
-    // Given: the player is about one tile wide, so areas of a few tiles make it a giant
+TEST(Terrain, GrassAndWaterAreasAreNeitherTinyNorHugeComparedToThePlayer) {
+    // Given: the player is about one tile wide, so areas of a few tiles make it a giant,
+    // while areas of hundreds of tiles make the world look empty
     constexpr int RowLength = 600;
     constexpr int Rows = 4;
-    constexpr double MinAverageRun = 120.0;
+    constexpr int Seeds = 40;
+    constexpr double MinAverageRun = 50.0;
+    constexpr double MaxAverageRun = 120.0;
 
-    for (std::uint64_t seed = 0; seed < 10; ++seed) {
+    // When: walking along rows away from the spawn clearing, counting runs of one type
+    int runs = 0;
+    for (std::uint64_t seed = 0; seed < Seeds; ++seed) {
         const world::Terrain terrain(seed);
-
-        // When: walking along rows away from the spawn clearing, counting runs of one type
-        int runs = 0;
         for (int row = 40; row < 40 + Rows * 5; row += 5) {
             world::TileType previous = terrain.tile_at({-RowLength / 2, row});
             ++runs;
@@ -93,9 +95,10 @@ TEST(Terrain, GrassAndWaterAreasAreLargeComparedToThePlayer) {
                 previous = type;
             }
         }
-
-        // Then
-        const double average_run = static_cast<double>(Rows) * RowLength / runs;
-        EXPECT_GE(average_run, MinAverageRun) << "seed " << seed;
     }
+
+    // Then: judged over many seeds, since one seed only has a few runs
+    const double average_run = static_cast<double>(Seeds) * Rows * RowLength / runs;
+    EXPECT_GE(average_run, MinAverageRun);
+    EXPECT_LE(average_run, MaxAverageRun);
 }

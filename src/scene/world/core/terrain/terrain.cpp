@@ -7,7 +7,7 @@ namespace world {
 namespace {
 
 // Size, in tiles, of one noise cell: the scale of the lakes.
-constexpr float NoiseScale = 100.0f;
+constexpr float NoiseScale = 40.0f;
 // Noise values below this are water (noise is in [0, 1)).
 constexpr float WaterLevel = 0.38f;
 
