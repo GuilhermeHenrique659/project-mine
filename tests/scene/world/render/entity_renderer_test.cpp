@@ -4,6 +4,7 @@
 
 #include "core/registry.hpp"
 #include "graphics/texture_manager.hpp"
+#include "scene/world/core/camera.hpp"
 #include "scene/world/render/entity_renderer.hpp"
 #include "support/fake_canvas.hpp"
 #include "support/fake_texture_loader.hpp"
@@ -26,7 +27,8 @@ TEST(EntityRenderer, CharacterIsDrawnAsACubeWithItsLabelAndStateAroundTheScreenC
     core::Registry registry;
     const core::EntityId id = world::spawn_character(registry, "Player", {2.0f, 0.0f});
     registry.get<world::Character>(id)->state = world::CharacterState::Moving;
-    const scene::world::EntityRenderer renderer(registry);
+    const world::Camera camera;
+    const scene::world::EntityRenderer renderer(registry, camera);
     FakeCanvas canvas;
 
     // When
@@ -49,7 +51,8 @@ TEST(EntityRenderer, EntityFurtherDownTheScreenIsDrawnAfterOneBehindIt) {
     registry.add(near_id, world::Position{{3.0f, 3.0f}});
     const core::EntityId far_id = registry.create("Far");
     registry.add(far_id, world::Position{{0.0f, 0.0f}});
-    const scene::world::EntityRenderer renderer(registry);
+    const world::Camera camera;
+    const scene::world::EntityRenderer renderer(registry, camera);
     FakeCanvas canvas;
 
     // When
@@ -80,7 +83,8 @@ TEST_F(EntityRendererTexture, CharacterIsDrawnWithItsTextureInsteadOfTheCubeWhen
         scene::world::CharacterTexture, "character.png");
     core::Registry registry;
     world::spawn_character(registry, "Player", {0.0f, 0.0f});
-    const scene::world::EntityRenderer renderer(registry);
+    const world::Camera camera;
+    const scene::world::EntityRenderer renderer(registry, camera);
     FakeCanvas canvas;
 
     // When
@@ -100,7 +104,8 @@ TEST_F(EntityRendererTexture, CharacterWithoutARegisteredTextureIsDrawnWithTheFa
     // Given
     core::Registry registry;
     world::spawn_character(registry, "Player", {0.0f, 0.0f});
-    const scene::world::EntityRenderer renderer(registry);
+    const world::Camera camera;
+    const scene::world::EntityRenderer renderer(registry, camera);
     FakeCanvas canvas;
 
     // When
@@ -117,7 +122,8 @@ TEST_F(EntityRendererTexture, CharacterIsDrawnAsACubeWhenThereIsNoTextureNotEven
     graphics::TextureManager::instance().reset(); // no loader
     core::Registry registry;
     world::spawn_character(registry, "Player", {0.0f, 0.0f});
-    const scene::world::EntityRenderer renderer(registry);
+    const world::Camera camera;
+    const scene::world::EntityRenderer renderer(registry, camera);
     FakeCanvas canvas;
 
     // When
@@ -126,4 +132,42 @@ TEST_F(EntityRendererTexture, CharacterIsDrawnAsACubeWhenThereIsNoTextureNotEven
     // Then
     EXPECT_TRUE(canvas.textures.empty());
     EXPECT_EQ(canvas.fills.size(), 2u);
+}
+
+TEST(EntityRenderer, EntityUnderTheCameraIsDrawnAtTheScreenCentreWhateverItsWorldPosition) {
+    // Given
+    core::Registry registry;
+    world::spawn_character(registry, "Player", {40.0f, -12.0f});
+    world::Camera camera;
+    camera.center = {40.0f, -12.0f};
+    const scene::world::EntityRenderer renderer(registry, camera);
+    FakeCanvas canvas;
+
+    // When
+    renderer.draw(canvas, Screen);
+
+    // Then
+    ASSERT_EQ(canvas.fills.size(), 2u);
+    const ui::Point marker_center = center_of(canvas.fills.back().rect);
+    EXPECT_FLOAT_EQ(marker_center.x, 640.0f);
+    EXPECT_FLOAT_EQ(marker_center.y, 360.0f);
+}
+
+TEST(EntityRenderer, EntitiesShiftOnScreenOppositeToTheCameraMovement) {
+    // Given: an entity at the origin while the camera is two tiles along world +x
+    core::Registry registry;
+    world::spawn_character(registry, "Rock", {0.0f, 0.0f});
+    world::Camera camera;
+    camera.center = {2.0f, 0.0f};
+    const scene::world::EntityRenderer renderer(registry, camera);
+    FakeCanvas canvas;
+
+    // When
+    renderer.draw(canvas, Screen);
+
+    // Then: it is (64, 32) pixels up-left of the screen centre
+    ASSERT_EQ(canvas.fills.size(), 2u);
+    const ui::Point marker_center = center_of(canvas.fills.back().rect);
+    EXPECT_FLOAT_EQ(marker_center.x, 640.0f - 64.0f);
+    EXPECT_FLOAT_EQ(marker_center.y, 360.0f - 32.0f);
 }

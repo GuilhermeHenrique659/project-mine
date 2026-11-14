@@ -34,8 +34,7 @@ ui::Rect texture_rect(const graphics::Texture& texture, ::world::ScreenPoint cen
 } // namespace
 
 void EntityRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
-    ::world::IsoProjection projection;
-    projection.origin = {screen.width / 2.0f, screen.height / 2.0f};
+    const ::world::IsoProjection projection = camera_.projection(screen.width, screen.height);
 
     // Back to front: entities further down the screen are drawn later.
     struct Marker {

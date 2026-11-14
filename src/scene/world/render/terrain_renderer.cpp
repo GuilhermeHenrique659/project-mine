@@ -18,8 +18,7 @@ ui::Color color_of(::world::TileType type) {
 } // namespace
 
 void TerrainRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
-    ::world::IsoProjection projection;
-    projection.origin = {screen.width / 2.0f, screen.height / 2.0f};
+    const ::world::IsoProjection projection = camera_.projection(screen.width, screen.height);
 
     // The tiles that can be on screen: the world-space bounds of the four screen corners,
     // plus one tile of margin because a diamond sticks out of its tile's centre.

@@ -50,7 +50,7 @@ struct WorldScreen {
         auto menu_renderer = std::make_unique<scene::world::WorldMenu>(bus, model, pointer);
         menu = menu_renderer.get();
         view = std::make_unique<scene::world::WorldView>(
-            renderers_of(std::make_unique<scene::world::EntityRenderer>(model.registry()),
+            renderers_of(std::make_unique<scene::world::EntityRenderer>(model.registry(), model.camera()),
                          std::move(menu_renderer)));
     }
 

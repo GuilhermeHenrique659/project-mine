@@ -2,6 +2,7 @@
 
 #include "scene/world/core/components/player_controlled.hpp"
 #include "scene/world/core/entities/character.hpp"
+#include "scene/world/core/systems/camera_follow_system.hpp"
 #include "scene/world/core/systems/character_move_system.hpp"
 #include "scene/world/core/systems/player_input_system.hpp"
 
@@ -17,6 +18,8 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
     // Order matters: input writes the direction that movement then reads.
     systems_.push_back(std::make_unique<::world::PlayerInputSystem>(registry_, input));
     systems_.push_back(std::make_unique<::world::CharacterMoveSystem>(registry_, bus_));
+    // After movement, so the camera is on the player's new position.
+    systems_.push_back(std::make_unique<::world::CameraFollowSystem>(registry_, camera_));
 }
 
 void WorldModel::update(float delta_time) {

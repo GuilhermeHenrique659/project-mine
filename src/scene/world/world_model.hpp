@@ -9,6 +9,7 @@
 #include "game/save_game.hpp"
 #include "input/input_handler.hpp"
 #include "scene/scene.hpp"
+#include "scene/world/core/camera.hpp"
 #include "scene/world/core/isometric.hpp"
 #include "scene/world/core/system.hpp"
 #include "scene/world/core/terrain/terrain.hpp"
@@ -42,12 +43,16 @@ public:
     // The ground of this world, generated from the save's seed.
     const ::world::Terrain& terrain() const { return terrain_; }
 
+    // Where the view is centred: it follows the player.
+    const ::world::Camera& camera() const { return camera_; }
+
 private:
     event::EventBus& bus_;
     game::SaveGame save_;
     ::world::Terrain terrain_;
     core::Registry registry_;
     core::EntityId player_ = 0;
+    ::world::Camera camera_;
     // Declared after registry_ and bus_, which the systems refer to, so they are destroyed first.
     std::vector<std::unique_ptr<::world::System>> systems_;
     bool paused_ = false;

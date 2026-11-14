@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "scene/world/core/isometric.hpp"
+#include "scene/world/core/camera.hpp"
 #include "scene/world/render/terrain_renderer.hpp"
 #include "support/fake_canvas.hpp"
 
@@ -28,7 +29,8 @@ bool tile_is_drawn_with(const FakeCanvas& canvas, world::ScreenPoint top, ui::Co
 TEST(TerrainRenderer, GrassTilesAreGreenAndWaterTilesAreBlue) {
     // Given
     const world::Terrain terrain(2024);
-    const scene::world::TerrainRenderer renderer(terrain);
+    const world::Camera camera;
+    const scene::world::TerrainRenderer renderer(terrain, camera);
     FakeCanvas canvas;
     world::IsoProjection projection;
     projection.origin = {Screen.width / 2.0f, Screen.height / 2.0f};
@@ -58,7 +60,8 @@ TEST(TerrainRenderer, GrassTilesAreGreenAndWaterTilesAreBlue) {
 TEST(TerrainRenderer, EveryPartOfTheScreenIsCovered) {
     // Given
     const world::Terrain terrain(5);
-    const scene::world::TerrainRenderer renderer(terrain);
+    const world::Camera camera;
+    const scene::world::TerrainRenderer renderer(terrain, camera);
     FakeCanvas canvas;
     world::IsoProjection projection;
     projection.origin = {Screen.width / 2.0f, Screen.height / 2.0f};
@@ -75,4 +78,25 @@ TEST(TerrainRenderer, EveryPartOfTheScreenIsCovered) {
                            tile_is_drawn_with(canvas, top, scene::world::WaterColor);
         EXPECT_TRUE(drawn) << corner.x << "," << corner.y;
     }
+}
+
+TEST(TerrainRenderer, TilesAroundTheCameraAreDrawnWhenItIsFarFromTheOrigin) {
+    // Given
+    const world::Terrain terrain(2024);
+    world::Camera camera;
+    camera.center = {500.0f, -300.0f};
+    const scene::world::TerrainRenderer renderer(terrain, camera);
+    FakeCanvas canvas;
+    const world::IsoProjection projection = camera.projection(Screen.width, Screen.height);
+
+    // When
+    renderer.draw(canvas, Screen);
+
+    // Then: the tile under the middle of the screen is the one the camera looks at
+    const world::TileCoord middle = projection.tile_at({Screen.width / 2.0f, Screen.height / 2.0f});
+    ASSERT_EQ(middle, (world::TileCoord{500, -300}));
+    const ui::Color color = terrain.tile_at(middle) == world::TileType::Water
+                                ? scene::world::WaterColor
+                                : scene::world::GrassColor;
+    EXPECT_TRUE(tile_is_drawn_with(canvas, projection.tile_corners(middle).top, color));
 }

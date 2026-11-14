@@ -43,6 +43,22 @@ TEST(WorldModel, UpdatingWithADirectionMovesThePlayer) {
     EXPECT_FLOAT_EQ(player_position(model).y, 0.0f);
 }
 
+TEST(WorldModel, CameraFollowsThePlayerAsItMoves) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    input.keyboard.down = {input::Key::S, input::Key::D}; // screen down-right = world +x
+
+    // When
+    model.update(0.5f);
+
+    // Then: the camera is on where the player is after this frame's movement
+    ASSERT_GT(player_position(model).x, 0.0f);
+    EXPECT_FLOAT_EQ(model.camera().center.x, player_position(model).x);
+    EXPECT_FLOAT_EQ(model.camera().center.y, player_position(model).y);
+}
+
 TEST(WorldModel, TogglingPauseOpensAndClosesThePause) {
     // Given
     event::EventBus bus;
