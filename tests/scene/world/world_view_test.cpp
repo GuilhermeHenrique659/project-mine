@@ -101,3 +101,24 @@ TEST(WorldView, CharacterIsDrawnAsACubeWithItsLabelAndStateAroundTheScreenCentre
     EXPECT_EQ(canvas.texts.front().text, "Player (Moving)");
     EXPECT_LT(canvas.texts.front().position.y, canvas.fills.front().rect.y);
 }
+
+TEST(WorldView, PanelDoesNotCoverTheCharacterAtTheScreenCentre) {
+    // Given
+    event::EventBus bus;
+    FakeCanvas canvas;
+    const scene::world::WorldModel model(bus, game::SaveGame{"Alpha", 0});
+    scene::world::WorldView view(bus, model);
+
+    // When
+    view.layout(canvas, ScreenWidth);
+    view.draw_entities(canvas, {ScreenWidth, 720.0f});
+
+    // Then
+    const ui::Rect cube = canvas.fills.back().rect;
+    for (const ui::Rect& panel : {view.save_button().bounds(), view.menu_button().bounds(),
+                                  view.name_label().bounds()}) {
+        const bool overlaps = cube.x < panel.x + panel.width && panel.x < cube.x + cube.width &&
+                              cube.y < panel.y + panel.height && panel.y < cube.y + cube.height;
+        EXPECT_FALSE(overlaps);
+    }
+}

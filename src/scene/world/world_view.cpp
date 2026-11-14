@@ -16,7 +16,8 @@ namespace scene::world {
 
 namespace {
 constexpr float CardWidth = 560.0f;
-constexpr float CardTop = 80.0f;
+constexpr float CardTop = 16.0f;
+constexpr float PanelMargin = 16.0f;
 constexpr int TitleFontSize = 40;
 constexpr float MarkerSize = 24.0f;
 constexpr float CubeTopHeight = 10.0f;
@@ -59,9 +60,9 @@ WorldView::WorldView(event::EventBus& bus, const WorldModel& model) : model_(mod
     root_ = builder.build();
 }
 
-void WorldView::layout(const ui::Canvas& canvas, float screen_width) const {
+void WorldView::layout(const ui::Canvas& canvas, float) const {
     const ui::Size size = root_->preferred_size(canvas);
-    root_->layout({(screen_width - size.width) / 2.0f, CardTop, size.width, size.height}, canvas);
+    root_->layout({PanelMargin, CardTop, size.width, size.height}, canvas);
 }
 
 void WorldView::draw_entities(ui::Canvas& canvas, ui::Size screen) const {

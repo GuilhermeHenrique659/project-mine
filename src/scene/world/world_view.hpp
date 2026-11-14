@@ -16,7 +16,8 @@ class WorldView : public scene::View {
 public:
     WorldView(event::EventBus& bus, const WorldModel& model);
 
-    // Centers the panel horizontally on a screen of the given width.
+    // Puts the panel in the top-left corner so it never covers the world at the screen
+    // centre. The screen width is kept for when the panel moves to another corner.
     void layout(const ui::Canvas& canvas, float screen_width) const;
     void draw() const override;
 
