@@ -1,7 +1,7 @@
 #include "scene/world/world_model.hpp"
 
 #include "scene/world/core/components/player_controlled.hpp"
-#include "scene/world/core/entities/character.hpp"
+#include "scene/world/core/components/position.hpp"
 #include "scene/world/core/systems/camera_follow_system.hpp"
 #include "scene/world/core/systems/character_move_system.hpp"
 #include "scene/world/core/systems/player_input_system.hpp"
@@ -13,13 +13,39 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
     : bus_(bus),
       save_(std::move(save)),
       terrain_(save_.seed),
-      player_(::world::spawn_character(registry_, "Player", ::world::WorldPoint{0.0f, 0.0f})) {
-    registry_.add(player_, ::world::PlayerControlled{});
+      factory_(::world::make_entity_factory()),
+      serializer_(::world::make_world_serializer(factory_)) {
+    serializer_.restore(registry_, save_.entities);
+    save_.entities.clear();
+    player_ = find_player();
+    if (player_ == 0) {
+        player_ = *factory_.spawn(registry_, "character", "Player");
+        registry_.add(player_, ::world::PlayerControlled{});
+    }
     // Order matters: input writes the direction that movement then reads.
     systems_.push_back(std::make_unique<::world::PlayerInputSystem>(registry_, input));
     systems_.push_back(std::make_unique<::world::CharacterMoveSystem>(registry_, bus_));
     // After movement, so the camera is on the player's new position.
     systems_.push_back(std::make_unique<::world::CameraFollowSystem>(registry_, camera_));
+    // The first frame is already centred on the player.
+    if (const auto* position = registry_.get<::world::Position>(player_)) {
+        camera_.center = position->point;
+    }
+}
+
+core::EntityId WorldModel::find_player() const {
+    for (const core::Entity& entity : registry_.entities()) {
+        if (registry_.has<::world::PlayerControlled>(entity.id)) {
+            return entity.id;
+        }
+    }
+    return 0;
+}
+
+game::SaveGame WorldModel::save_game() const {
+    game::SaveGame save = save_;
+    save.entities = serializer_.snapshot(registry_);
+    return save;
 }
 
 void WorldModel::update(float delta_time) {

@@ -128,3 +128,82 @@ TEST(WorldModel, TerrainIsGeneratedFromTheSavedSeed) {
         }
     }
 }
+
+namespace {
+
+game::SaveGame save_with_player_at(float x, float y) {
+    game::SaveGame save{"Alpha", 0, 1};
+    save.entities = {{"character",
+                      "Player",
+                      {{"position.x", std::to_string(x)},
+                       {"position.y", std::to_string(y)},
+                       {"state", "Idle"},
+                       {"player", "1"}}}};
+    return save;
+}
+
+} // namespace
+
+TEST(WorldModel, PlayerStartsWhereTheSaveLeftItWithTheCameraThere) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    const game::SaveGame save = save_with_player_at(7.0f, -3.0f);
+
+    // When
+    const scene::world::WorldModel model(bus, input.handler, save);
+
+    // Then
+    EXPECT_FLOAT_EQ(player_position(model).x, 7.0f);
+    EXPECT_FLOAT_EQ(player_position(model).y, -3.0f);
+    EXPECT_FLOAT_EQ(model.camera().center.x, 7.0f);
+    EXPECT_FLOAT_EQ(model.camera().center.y, -3.0f);
+}
+
+TEST(WorldModel, SaveGameHoldsThePlayerCurrentPositionAndIdle) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, save_with_player_at(1.0f, 1.0f));
+    input.keyboard.down = {input::Key::S, input::Key::D}; // world +x
+    model.update(0.5f);
+
+    // When
+    const game::SaveGame saved = model.save_game();
+
+    // Then: moved, yet saved as standing
+    ASSERT_EQ(saved.entities.size(), 1u);
+    EXPECT_GT(std::stof(saved.entities[0].fields.at("position.x")), 1.0f);
+    EXPECT_EQ(saved.entities[0].fields.at("state"), "Idle");
+    EXPECT_EQ(saved.name, "Alpha");
+}
+
+TEST(WorldModel, SaveWithoutEntitiesStillSpawnsThePlayerAtTheOrigin) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    const game::SaveGame save{"Alpha", 0, 1};
+
+    // When
+    const scene::world::WorldModel model(bus, input.handler, save);
+
+    // Then
+    EXPECT_EQ(model.registry().find(model.player_id())->label, "Player");
+    EXPECT_FLOAT_EQ(player_position(model).x, 0.0f);
+    EXPECT_EQ(model.save_game().entities.size(), 1u);
+}
+
+TEST(WorldModel, SaveWithoutAPlayerRecordGetsADefaultPlayer) {
+    // Given
+    game::SaveGame save{"Alpha", 0, 1};
+    save.entities = {{"character", "Guard", {{"position.x", "5"}, {"position.y", "5"}}}};
+    event::EventBus bus;
+    FakeInput input;
+
+    // When
+    const scene::world::WorldModel model(bus, input.handler, save);
+
+    // Then
+    EXPECT_EQ(model.registry().find(model.player_id())->label, "Player");
+    EXPECT_FLOAT_EQ(player_position(model).x, 0.0f);
+}

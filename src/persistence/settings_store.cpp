@@ -5,27 +5,13 @@
 
 #include "logging/logger.hpp"
 #include "persistence/atomic_file.hpp"
+#include "text/parse.hpp"
 
 namespace persistence {
 
 namespace {
 
 constexpr int FormatVersion = 1;
-
-// Parses a whole non-negative integer; empty when the text has anything else.
-std::optional<int> parse_int(const std::string& text) {
-    if (text.empty() || text.size() > 9) {
-        return std::nullopt;
-    }
-    int value = 0;
-    for (const char c : text) {
-        if (c < '0' || c > '9') {
-            return std::nullopt;
-        }
-        value = value * 10 + (c - '0');
-    }
-    return value;
-}
 
 } // namespace
 
@@ -47,7 +33,7 @@ std::optional<game::DisplaySettings> SettingsStore::load() const {
             continue;
         }
         const std::string key = line.substr(0, separator);
-        const auto value = parse_int(line.substr(separator + 1));
+        const auto value = text::parse<int>(std::string_view(line).substr(separator + 1));
         if (!value) {
             continue;
         }

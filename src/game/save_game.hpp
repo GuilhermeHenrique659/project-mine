@@ -2,11 +2,24 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <map>
 #include <string>
+#include <vector>
 
 namespace game {
 
 constexpr std::size_t MaxSaveNameLength = 32;
+
+// One saved entity as plain text, so game/ and persistence/ know nothing of the ECS.
+struct EntityRecord {
+    // How to respawn it (e.g. "character").
+    std::string archetype;
+    std::string label;
+    // Component data by key (e.g. "position.x" -> "1.5", "state" -> "Idle").
+    std::map<std::string, std::string> fields;
+
+    bool operator==(const EntityRecord&) const = default;
+};
 
 // The state of one saved game. Its identity and the seed of its world; the rest of the world state is added later.
 struct SaveGame {
@@ -15,6 +28,8 @@ struct SaveGame {
     std::int64_t created_at = 0;
     // Seed the world is generated from; the same seed recreates the same world.
     std::uint64_t seed = 0;
+    // The entities of the world (the player, ...).
+    std::vector<EntityRecord> entities = {};
 
     bool operator==(const SaveGame&) const = default;
 };

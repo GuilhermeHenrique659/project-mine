@@ -13,7 +13,7 @@ constexpr int TitleFontSize = 40;
 WorldMenu::WorldMenu(event::EventBus& bus, const WorldModel& model,
                      std::shared_ptr<const input::Pointer> pointer)
     : model_(model), pointer_(std::move(pointer)) {
-    const game::SaveGame& save = model.save_game();
+    const game::SaveGame& save = model.save_header();
     auto name = ui::label(save.name)
                     .style(ui::theme::label_style()
                                .with_font_size(TitleFontSize)
@@ -27,7 +27,7 @@ WorldMenu::WorldMenu(event::EventBus& bus, const WorldModel& model,
 
     const ui::ButtonFactory button_factory(focus_group_);
     auto save_button = button_factory.create(
-        "Save", [&bus, save] { bus.publish(game::SaveGameRequested{save}); },
+        "Save", [&bus, &model] { bus.publish(game::SaveGameRequested{model.save_game()}); },
         ui::theme::start_button_style());
     auto menu = button_factory.create(
         "Main Menu", [&bus] { bus.publish(game::BackToMenuRequested{}); });

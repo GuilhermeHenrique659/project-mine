@@ -2,57 +2,27 @@
 
 #include <algorithm>
 #include <fstream>
-#include <limits>
 #include <set>
 #include <system_error>
 
 #include "logging/logger.hpp"
 #include "persistence/atomic_file.hpp"
+#include "text/parse.hpp"
 
 namespace persistence {
 
 namespace {
 
-constexpr int FormatVersion = 1;
+constexpr int FormatVersion = 2;
+constexpr const char* EntitySection = "[entity]";
 constexpr const char* SaveExtension = ".sav";
 constexpr const char* BackupExtension = ".sav_old";
 
-// Parses a whole non-negative integer; empty when the text has anything else.
-std::optional<std::int64_t> parse_int(const std::string& text) {
-    if (text.empty() || text.size() > 18) {
-        return std::nullopt;
-    }
-    std::int64_t value = 0;
-    for (const char c : text) {
-        if (c < '0' || c > '9') {
-            return std::nullopt;
-        }
-        value = value * 10 + (c - '0');
-    }
-    return value;
-}
-
-// Parses a whole unsigned 64-bit integer; empty when the text has anything else or overflows.
-std::optional<std::uint64_t> parse_u64(const std::string& text) {
-    if (text.empty() || text.size() > 20) {
-        return std::nullopt;
-    }
-    std::uint64_t value = 0;
-    for (const char c : text) {
-        if (c < '0' || c > '9') {
-            return std::nullopt;
-        }
-        const auto digit = static_cast<std::uint64_t>(c - '0');
-        if (value > (std::numeric_limits<std::uint64_t>::max() - digit) / 10) {
-            return std::nullopt;
-        }
-        value = value * 10 + digit;
-    }
-    return value;
-}
-
-// Empty when the file is missing or has no valid creation time. The save takes the name
-// it was asked for (the file name), which is its identity.
+// Empty when the file is missing, has no valid creation time or comes from a newer format
+// (loading it would drop what this build does not know, and the next save would lose it).
+// The save takes the name it was asked for (the file name), which is its identity.
+// Layout: the header keys first, then one "[entity]" section per entity; every key after
+// an "[entity]" line belongs to that entity.
 std::optional<game::SaveGame> read_save(const std::filesystem::path& file,
                                         const std::string& name) {
     std::ifstream input(file);
@@ -61,27 +31,82 @@ std::optional<game::SaveGame> read_save(const std::filesystem::path& file,
     }
 
     std::optional<std::int64_t> created_at;
+    bool newer_version = false;
     // Saves written before worlds had seeds have none: they get seed 0.
     std::uint64_t seed = 0;
+    std::vector<game::EntityRecord> entities;
+    bool in_entity = false;
     std::string line;
     while (std::getline(input, line)) {
         if (!line.empty() && line.back() == '\r') {
             line.pop_back();
         }
+        if (line == EntitySection) {
+            in_entity = true;
+            entities.emplace_back();
+            continue;
+        }
         const auto separator = line.find('=');
         if (separator == std::string::npos) {
             continue;
         }
-        if (line.substr(0, separator) == "created_at") {
-            created_at = parse_int(line.substr(separator + 1));
-        } else if (line.substr(0, separator) == "seed") {
-            seed = parse_u64(line.substr(separator + 1)).value_or(0);
+        const std::string key = line.substr(0, separator);
+        const std::string value = line.substr(separator + 1);
+        if (in_entity) {
+            game::EntityRecord& record = entities.back();
+            if (key == "archetype") {
+                record.archetype = value;
+            } else if (key == "label") {
+                record.label = value;
+            } else {
+                record.fields[key] = value;
+            }
+        } else if (key == "version") {
+            // Unreadable versions count as newer: better refuse than lose data.
+            newer_version = text::parse<int>(value).value_or(FormatVersion + 1) > FormatVersion;
+        } else if (key == "created_at") {
+            created_at = text::parse<std::int64_t>(value);
+        } else if (key == "seed") {
+            seed = text::parse<std::uint64_t>(value).value_or(0);
         }
+    }
+    if (newer_version) {
+        logging::warning("Save " + file.string() + " was written by a newer version of the game");
+        return std::nullopt;
     }
     if (!created_at) {
         return std::nullopt;
     }
-    return game::SaveGame{name, *created_at, seed};
+    // A record that does not say what it is cannot be respawned.
+    std::erase_if(entities,
+                  [](const game::EntityRecord& record) { return record.archetype.empty(); });
+    return game::SaveGame{name, *created_at, seed, std::move(entities)};
+}
+
+// True when the text fits on one line of the file.
+bool is_single_line(const std::string& text) {
+    return text.find_first_of("\r\n") == std::string::npos;
+}
+
+// One "[entity]" section. Keys and values that would break the line format are skipped.
+std::string entity_section(const game::EntityRecord& record) {
+    if (record.archetype.empty() || !is_single_line(record.archetype) ||
+        !is_single_line(record.label)) {
+        logging::warning("Skipping an entity that cannot be written to the save");
+        return {};
+    }
+    std::string section = std::string(EntitySection) + "\narchetype=" + record.archetype +
+                          "\nlabel=" + record.label + "\n";
+    for (const auto& [key, value] : record.fields) {
+        // "archetype" and "label" would be read back as the record's own header.
+        if (key.empty() || key == "archetype" || key == "label" ||
+            key.find('=') != std::string::npos || !is_single_line(key) || !is_single_line(value)) {
+            logging::warning("Skipping unwritable entity field \"" + key + "\"");
+            continue;
+        }
+        section += key + "=" + value + "\n";
+    }
+    return section;
 }
 
 } // namespace
@@ -95,10 +120,13 @@ bool SaveStore::save(const game::SaveGame& save) const {
     }
 
     const std::filesystem::path file = file_of(save.name);
-    const std::string content = "version=" + std::to_string(FormatVersion) + "\n" +
-                                "name=" + save.name + "\n" +
-                                "created_at=" + std::to_string(save.created_at) + "\n" +
-                                "seed=" + std::to_string(save.seed) + "\n";
+    std::string content = "version=" + std::to_string(FormatVersion) + "\n" +
+                          "name=" + save.name + "\n" +
+                          "created_at=" + std::to_string(save.created_at) + "\n" +
+                          "seed=" + std::to_string(save.seed) + "\n";
+    for (const game::EntityRecord& record : save.entities) {
+        content += entity_section(record);
+    }
     const auto failure = write_file_atomically(file, content, backup_of(save.name));
     if (failure) {
         logging::warning("Could not save game \"" + save.name + "\": " + *failure);

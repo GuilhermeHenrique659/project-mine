@@ -84,8 +84,28 @@ TEST(WorldMenu, ClickingSavePublishesTheStateOfTheGameBeingPlayed) {
 
     // Then
     ASSERT_TRUE(recorder.saved.has_value());
-    EXPECT_EQ(*recorder.saved, (game::SaveGame{"My Base", 1'700'000'000}));
+    EXPECT_EQ(*recorder.saved, paused.model.save_game());
+    EXPECT_EQ(recorder.saved->name, "My Base");
+    EXPECT_EQ(recorder.saved->created_at, 1'700'000'000);
     EXPECT_EQ(recorder.back_requests, 0);
+}
+
+TEST(WorldMenu, SaveCapturesThePlayerPositionAtClickTime) {
+    // Given
+    PausedMenu paused;
+    EventRecorder recorder(paused.bus);
+    paused.model.toggle_pause();
+    paused.input.keyboard.down = {input::Key::S, input::Key::D}; // world +x
+    paused.model.update(0.5f);
+    paused.model.toggle_pause();
+
+    // When
+    paused.point_at(paused.menu->save_button().bounds(), true);
+
+    // Then
+    ASSERT_TRUE(recorder.saved.has_value());
+    ASSERT_EQ(recorder.saved->entities.size(), 1u);
+    EXPECT_GT(std::stof(recorder.saved->entities[0].fields.at("position.x")), 0.0f);
 }
 
 TEST(WorldMenu, ClickingMainMenuGoesBackWithoutSaving) {

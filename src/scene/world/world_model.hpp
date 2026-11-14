@@ -10,7 +10,9 @@
 #include "input/input_handler.hpp"
 #include "scene/scene.hpp"
 #include "scene/world/core/camera.hpp"
+#include "scene/world/core/entities/entity_factory.hpp"
 #include "scene/world/core/isometric.hpp"
+#include "scene/world/core/save/world_serializer.hpp"
 #include "scene/world/core/system.hpp"
 #include "scene/world/core/terrain/terrain.hpp"
 
@@ -26,6 +28,10 @@ public:
     // input is read by the systems each update; both must outlive the model.
     WorldModel(event::EventBus& bus, const input::InputHandler& input, game::SaveGame save);
 
+    // The serializer and the systems refer to sibling members, so the model never moves.
+    WorldModel(const WorldModel&) = delete;
+    WorldModel& operator=(const WorldModel&) = delete;
+
     // Runs the systems for one frame.
     void update(float delta_time) override;
 
@@ -33,8 +39,12 @@ public:
     void toggle_pause();
     bool is_paused() const { return paused_; }
 
-    // Everything that has to be written to disk to continue this game later.
-    const game::SaveGame& save_game() const { return save_; }
+    // Everything that has to be written to disk to continue this game later: the save's
+    // header plus a snapshot of the persistent entities as they are now.
+    game::SaveGame save_game() const;
+
+    // Name, creation time and seed only, without snapshotting the entities.
+    const game::SaveGame& save_header() const { return save_; }
 
     // Read-only access to the simulation for the view.
     const core::Registry& registry() const { return registry_; }
@@ -47,9 +57,16 @@ public:
     const ::world::Camera& camera() const { return camera_; }
 
 private:
+    // The first PlayerControlled entity, or 0 when there is none (ids start at 1).
+    core::EntityId find_player() const;
+
     event::EventBus& bus_;
+    // Header data only (name, creation time, seed); the entities live in registry_.
     game::SaveGame save_;
     ::world::Terrain terrain_;
+    // Declared before registry_ and used by the constructor to fill it.
+    ::world::EntityFactory factory_;
+    ::world::WorldSerializer serializer_;
     core::Registry registry_;
     core::EntityId player_ = 0;
     ::world::Camera camera_;
