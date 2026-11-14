@@ -3,11 +3,14 @@
 #include <raylib.h>
 
 #include "game/game_events.hpp"
+#include "graphics/raylib_texture_loader.hpp"
+#include "graphics/texture_manager.hpp"
 #include "logging/logger.hpp"
 #include "scene/load_game/load_game_scene.hpp"
 #include "scene/menu/title_scene.hpp"
 #include "scene/new_game/new_game_scene.hpp"
 #include "scene/settings/settings_scene.hpp"
+#include "scene/world/render/entity_renderer.hpp"
 #include "scene/world/world_scene.hpp"
 
 namespace game {
@@ -15,6 +18,14 @@ namespace game {
 namespace {
 constexpr int TargetFps = 60;
 constexpr const char* WindowTitle = "Project Mine";
+
+// Textures the game knows about. Files load lazily on first use, so a missing file only
+// makes the renderer fall back (see EntityRenderer).
+void register_textures() {
+    auto& textures = graphics::TextureManager::instance();
+    textures.set_loader(std::make_unique<graphics::RaylibTextureLoader>());
+    textures.register_texture(scene::world::CharacterTexture, "resource/textures/character.png");
+}
 } // namespace
 
 Game::Game(const std::filesystem::path& data_dir, Clock clock)
@@ -60,6 +71,7 @@ void Game::start_up() {
     // Raylib closes the window on Esc by default; Esc is the Pause/Cancel action here.
     SetExitKey(KEY_NULL);
     SetTargetFPS(TargetFps);
+    register_textures();
     running_ = true;
     change_scene(scene::menu::make_title_scene(*this));
 }
@@ -69,6 +81,8 @@ void Game::run() {
         update(GetFrameTime());
         draw();
     }
+    // Textures live on the GPU, so they go before the window.
+    graphics::TextureManager::instance().reset();
     CloseWindow();
 }
 

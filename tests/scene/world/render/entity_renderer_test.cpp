@@ -1,8 +1,12 @@
 #include <gtest/gtest.h>
 
+#include <memory>
+
 #include "core/registry.hpp"
+#include "graphics/texture_manager.hpp"
 #include "scene/world/render/entity_renderer.hpp"
 #include "support/fake_canvas.hpp"
+#include "support/fake_texture_loader.hpp"
 #include "scene/world/core/components/character.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/entities/character.hpp"
@@ -55,4 +59,71 @@ TEST(EntityRenderer, EntityFurtherDownTheScreenIsDrawnAfterOneBehindIt) {
     ASSERT_EQ(canvas.texts.size(), 2u);
     EXPECT_EQ(canvas.texts[0].text, "Far");
     EXPECT_EQ(canvas.texts[1].text, "Near");
+}
+
+namespace {
+
+class EntityRendererTexture : public testing::Test {
+protected:
+    void SetUp() override {
+        graphics::TextureManager::instance().reset();
+        graphics::TextureManager::instance().set_loader(std::make_unique<FakeTextureLoader>());
+    }
+    void TearDown() override { graphics::TextureManager::instance().reset(); }
+};
+
+} // namespace
+
+TEST_F(EntityRendererTexture, CharacterIsDrawnWithItsTextureInsteadOfTheCubeWhenOneIsRegistered) {
+    // Given
+    graphics::TextureManager::instance().register_texture(
+        scene::world::CharacterTexture, "character.png");
+    core::Registry registry;
+    world::spawn_character(registry, "Player", {0.0f, 0.0f});
+    const scene::world::EntityRenderer renderer(registry);
+    FakeCanvas canvas;
+
+    // When
+    renderer.draw(canvas, Screen);
+
+    // Then: the texture sits on the entity's position and the cube is not drawn
+    ASSERT_EQ(canvas.textures.size(), 1u);
+    EXPECT_EQ(canvas.textures.front().texture.id, 1u); // the character.png the loader made
+    const ui::Point texture_center = center_of(canvas.textures.front().dest);
+    EXPECT_FLOAT_EQ(texture_center.x, 640.0f);
+    EXPECT_FLOAT_EQ(texture_center.y, 360.0f);
+    EXPECT_TRUE(canvas.fills.empty());
+    EXPECT_EQ(canvas.texts.size(), 1u); // the label is still shown
+}
+
+TEST_F(EntityRendererTexture, CharacterWithoutARegisteredTextureIsDrawnWithTheFallbackTexture) {
+    // Given
+    core::Registry registry;
+    world::spawn_character(registry, "Player", {0.0f, 0.0f});
+    const scene::world::EntityRenderer renderer(registry);
+    FakeCanvas canvas;
+
+    // When
+    renderer.draw(canvas, Screen);
+
+    // Then
+    ASSERT_EQ(canvas.textures.size(), 1u);
+    EXPECT_EQ(canvas.textures.front().texture.id, FakeTextureLoader::PlaceholderId);
+    EXPECT_TRUE(canvas.fills.empty());
+}
+
+TEST_F(EntityRendererTexture, CharacterIsDrawnAsACubeWhenThereIsNoTextureNotEvenTheFallback) {
+    // Given
+    graphics::TextureManager::instance().reset(); // no loader
+    core::Registry registry;
+    world::spawn_character(registry, "Player", {0.0f, 0.0f});
+    const scene::world::EntityRenderer renderer(registry);
+    FakeCanvas canvas;
+
+    // When
+    renderer.draw(canvas, Screen);
+
+    // Then
+    EXPECT_TRUE(canvas.textures.empty());
+    EXPECT_EQ(canvas.fills.size(), 2u);
 }

@@ -51,6 +51,23 @@ void RaylibCanvas::draw_text(const std::string& text, Point position, int font_s
                spacing_for(font_size), to_raylib(color));
 }
 
+void RaylibCanvas::draw_texture(const graphics::Texture& texture, Rect dest,
+                                const TextureDraw& options) {
+    const ::Texture2D raylib_texture{texture.id, texture.width, texture.height, texture.mipmaps,
+                                     texture.format};
+    const Rect source = options.source.value_or(
+        Rect{0.0f, 0.0f, static_cast<float>(texture.width), static_cast<float>(texture.height)});
+    // A negative source size mirrors the texture.
+    const ::Rectangle raylib_source{source.x, source.y,
+                                    options.flip_x ? -source.width : source.width,
+                                    options.flip_y ? -source.height : source.height};
+    // Rotation turns around the origin: draw at the centre and offset the origin by half.
+    const ::Vector2 origin{dest.width / 2.0f, dest.height / 2.0f};
+    const ::Rectangle raylib_dest{dest.x + origin.x, dest.y + origin.y, dest.width, dest.height};
+    DrawTexturePro(raylib_texture, raylib_source, raylib_dest, origin, options.rotation,
+                   to_raylib(options.tint));
+}
+
 Size RaylibCanvas::measure_text(const std::string& text, int font_size) const {
     const Vector2 measured = MeasureTextEx(ui_font(), text.c_str(), static_cast<float>(font_size),
                                            spacing_for(font_size));

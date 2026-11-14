@@ -5,9 +5,13 @@
 
 namespace scene::world {
 
+// Name under which the game registers the character texture (see Game::start_up()).
+inline constexpr const char* CharacterTexture = "character";
+
 // Draws every entity that has a Position as a cube with its label (plus the state for
 // characters) through the isometric projection, with world (0, 0) at the centre of the
-// screen. The registry must outlive the renderer.
+// screen. A texture registered as CharacterTexture replaces the cube. The registry must
+// outlive the renderer.
 class EntityRenderer : public Renderer {
 public:
     explicit EntityRenderer(const core::Registry& registry) : registry_(registry) {}
