@@ -5,14 +5,14 @@
 #include <raylib.h>
 
 #include "game/game_events.hpp"
+#include "ui/theme.hpp"
 
 namespace scene::settings {
 
 namespace {
-constexpr float CardWidth = 400.0f;
-constexpr float CardTop = 120.0f;
+constexpr float CardWidth = 640.0f;
+constexpr float CardTop = 80.0f;
 constexpr int TitleFontSize = 40;
-constexpr int HintFontSize = 20;
 
 std::size_t preset_index(game::Resolution resolution) {
     const auto& presets = game::resolution_presets();
@@ -87,8 +87,6 @@ void SettingsView::draw() const {
     layout(canvas, static_cast<float>(GetScreenWidth()));
     root_->draw(canvas);
 
-    DrawText("UP/DOWN to navigate, ENTER to change, ESC to go back", 20, GetScreenHeight() - 40,
-             HintFontSize, GRAY);
 }
 
 void SettingsView::handle_pointer(ui::Point position, bool released) {

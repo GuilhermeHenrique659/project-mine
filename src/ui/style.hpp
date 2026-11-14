@@ -8,6 +8,12 @@ namespace ui {
 
 enum class TextAlign { Left, Center };
 
+// Depth effect: a solid dark band along the bottom and right edges, so the widget looks raised.
+struct Bevel {
+    Color shadow;
+    float width = 4.0f;
+};
+
 // Visual description of a widget, the equivalent of a CSS rule.
 // Every with_* returns a modified copy, so styles chain and can be reused:
 //   Style{}.with_background(Panel).with_padding(Insets::all(8))
@@ -25,6 +31,7 @@ struct Style {
     std::optional<Color> hover_background;
     std::optional<Color> hover_foreground;
     std::optional<Color> focus_border_color;
+    std::optional<Bevel> bevel;
 
     [[nodiscard]] Style with_background(Color value) const { Style s = *this; s.background = value; return s; }
     [[nodiscard]] Style with_foreground(Color value) const { Style s = *this; s.foreground = value; return s; }
@@ -42,6 +49,11 @@ struct Style {
     [[nodiscard]] Style with_text_align(TextAlign value) const { Style s = *this; s.text_align = value; return s; }
     [[nodiscard]] Style with_hover_background(Color value) const { Style s = *this; s.hover_background = value; return s; }
     [[nodiscard]] Style with_hover_foreground(Color value) const { Style s = *this; s.hover_foreground = value; return s; }
+    [[nodiscard]] Style with_bevel(Color shadow, float width) const {
+        Style s = *this;
+        s.bevel = Bevel{shadow, width};
+        return s;
+    }
     [[nodiscard]] Style with_focus_border_color(Color value) const { Style s = *this; s.focus_border_color = value; return s; }
 };
 

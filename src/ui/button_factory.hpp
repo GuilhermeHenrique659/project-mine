@@ -17,7 +17,8 @@ class ButtonFactory {
 public:
     explicit ButtonFactory(FocusGroup& focus_group) : focus_group_(focus_group) {}
 
-    std::unique_ptr<Button> create(std::string label, Widget::EventHandler on_click) const;
+    std::unique_ptr<Button> create(std::string label, Widget::EventHandler on_click,
+                                   Style style = theme::button_style()) const;
 
 private:
     FocusGroup& focus_group_;

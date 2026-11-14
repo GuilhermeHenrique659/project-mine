@@ -16,19 +16,21 @@ Size Checkbox::preferred_size(const Canvas& canvas) const {
 }
 
 void Checkbox::draw(Canvas& canvas) const {
-    const Color border = focused_ || hovered()
-                             ? style_.focus_border_color.value_or(style_.border_color)
-                             : style_.border_color;
-    draw_box(canvas, style_.background, border);
+    const bool active = focused_ || hovered();
+    const Color background =
+        active ? style_.hover_background.value_or(style_.background) : style_.background;
+    draw_box(canvas, background, style_.border_color);
+    draw_bevel(canvas);
 
     const float side = static_cast<float>(style_.font_size);
     const float box_x = bounds_.x + style_.padding.left;
     const float box_y = bounds_.y + (bounds_.height - side) / 2.0f;
     canvas.fill_rect({box_x, box_y, side, side}, theme::Field);
+    canvas.stroke_rect({box_x, box_y, side, side}, theme::Outline, 2.0f);
     if (checked_) {
         canvas.fill_rect({box_x + MarkInset, box_y + MarkInset, side - 2.0f * MarkInset,
                           side - 2.0f * MarkInset},
-                         theme::Accent);
+                         theme::GreenFace);
     }
 
     const Size text = canvas.measure_text(label_, style_.font_size);

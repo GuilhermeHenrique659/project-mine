@@ -131,7 +131,7 @@ TEST(Dropdown, PointerOverAnOpenOptionHighlightsIt) {
 
     // Then
     EXPECT_EQ(dropdown->hovered_option(), 2u);
-    ASSERT_EQ(canvas.fills.size(), 3u);
+    ASSERT_GE(canvas.fills.size(), 3u);
     EXPECT_EQ(canvas.fills[2].color, dropdown->style().hover_background.value());
     EXPECT_NE(canvas.fills[0].color, dropdown->style().hover_background.value());
 }

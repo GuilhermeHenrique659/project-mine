@@ -28,10 +28,10 @@ void Dropdown::draw(Canvas& canvas) const {
         active ? style_.hover_background.value_or(style_.background) : style_.background;
     const Color foreground =
         active ? style_.hover_foreground.value_or(style_.foreground) : style_.foreground;
-    const Color border = focused_ ? style_.focus_border_color.value_or(style_.border_color)
-                                  : style_.border_color;
+    const Color border = style_.border_color;
 
     draw_box(canvas, background, border);
+    draw_bevel(canvas);
     if (selected_ < options_.size()) {
         draw_text_in_box(canvas, options_[selected_], foreground);
     }
@@ -53,9 +53,8 @@ void Dropdown::draw_overlay(Canvas& canvas) const {
         const Rect rect = option_bounds(i);
         const bool is_highlighted = i == highlighted;
         const Color background =
-            is_highlighted ? style_.hover_background.value_or(theme::Accent) : theme::Field;
-        const Color foreground =
-            is_highlighted ? style_.hover_foreground.value_or(theme::Dark) : style_.foreground;
+            is_highlighted ? style_.hover_background.value_or(style_.background) : style_.background;
+        const Color foreground = style_.foreground;
 
         canvas.fill_rect(rect, background);
         canvas.stroke_rect(rect, style_.border_color, style_.border_width);
@@ -64,6 +63,11 @@ void Dropdown::draw_overlay(Canvas& canvas) const {
                          {rect.x + style_.padding.left, rect.y + (rect.height - text.height) / 2.0f},
                          style_.font_size, foreground);
     }
+    if (options_.empty()) {
+        return;
+    }
+    const Rect first = option_bounds(0);
+    draw_bevel(canvas, {first.x, first.y, first.width, first.height * static_cast<float>(options_.size())});
 }
 
 void Dropdown::handle_pointer(Point position, bool released) {

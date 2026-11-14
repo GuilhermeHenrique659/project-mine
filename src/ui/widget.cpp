@@ -36,6 +36,19 @@ void Widget::draw_box(Canvas& canvas, Color background, Color border) const {
     }
 }
 
+// Dark band on the bottom and right edges, inside the border.
+void Widget::draw_bevel(Canvas& canvas, Rect area) const {
+    if (!style_.bevel) {
+        return;
+    }
+    const float inset = style_.border_width;
+    const float width = style_.bevel->width;
+    const Rect r{area.x + inset, area.y + inset, area.width - 2.0f * inset,
+                 area.height - 2.0f * inset};
+    canvas.fill_rect({r.x, r.y + r.height - width, r.width, width}, style_.bevel->shadow);
+    canvas.fill_rect({r.x + r.width - width, r.y, width, r.height - width}, style_.bevel->shadow);
+}
+
 void Widget::draw_text_in_box(Canvas& canvas, const std::string& text, Color color) const {
     const Size measured = canvas.measure_text(text, style_.font_size);
     float x = bounds_.x + style_.padding.left;

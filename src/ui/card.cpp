@@ -33,6 +33,7 @@ void Card::layout(Rect bounds, const Canvas& canvas) {
 
 void Card::draw(Canvas& canvas) const {
     draw_box(canvas, style_.background, style_.border_color);
+    draw_bevel(canvas);
     for (const auto& child : children_) {
         child->draw(canvas);
     }

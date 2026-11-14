@@ -127,6 +127,50 @@ TEST(UiButton, HoveredButtonDrawsHoverBackground) {
     EXPECT_EQ(canvas.fills.front().color, Red);
 }
 
+TEST(UiButton, BeveledButtonDrawsShadowOnlyOnBottomAndRightEdges) {
+    // Given
+    FakeCanvas canvas;
+    auto button = ui::button("Play")
+                      .style(ui::Style{}.with_background(Blue).with_bevel(Red, 4.0f))
+                      .build();
+    button->layout({10.0f, 20.0f, 100.0f, 40.0f}, canvas);
+
+    // When
+    button->draw(canvas);
+
+    // Then
+    ASSERT_EQ(canvas.fills.size(), 3u);
+    EXPECT_EQ(canvas.fills[0].color, Blue);
+    const FilledRect& bottom = canvas.fills[1];
+    EXPECT_EQ(bottom.color, Red);
+    EXPECT_FLOAT_EQ(bottom.rect.y, 56.0f);
+    EXPECT_FLOAT_EQ(bottom.rect.width, 100.0f);
+    EXPECT_FLOAT_EQ(bottom.rect.height, 4.0f);
+    const FilledRect& right = canvas.fills[2];
+    EXPECT_EQ(right.color, Red);
+    EXPECT_FLOAT_EQ(right.rect.x, 106.0f);
+    EXPECT_FLOAT_EQ(right.rect.width, 4.0f);
+    EXPECT_FLOAT_EQ(right.rect.height, 36.0f);
+}
+
+TEST(UiCard, BeveledCardDrawsShadowOnBottomAndRightEdges) {
+    // Given
+    FakeCanvas canvas;
+    auto card = ui::card()
+                    .style(ui::Style{}.with_background(Blue).with_bevel(Red, 6.0f).with_width(200.0f).with_height(100.0f))
+                    .build();
+    card->layout({0.0f, 0.0f, 500.0f, 500.0f}, canvas);
+
+    // When
+    card->draw(canvas);
+
+    // Then
+    ASSERT_EQ(canvas.fills.size(), 3u);
+    EXPECT_FLOAT_EQ(canvas.fills[1].rect.y, 94.0f);
+    EXPECT_FLOAT_EQ(canvas.fills[2].rect.x, 194.0f);
+    EXPECT_FLOAT_EQ(canvas.fills[2].rect.width, 6.0f);
+}
+
 TEST(UiInput, TypedCharactersAreAppendedWhenFocused) {
     // Given
     auto input = ui::input().build();

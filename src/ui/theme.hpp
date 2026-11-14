@@ -13,19 +13,39 @@ constexpr Color Text{245, 245, 245, 255};
 constexpr Color Muted{130, 130, 130, 255};
 constexpr Color Dark{0, 0, 0, 255};
 
+// Solid machine-style look: flat faces with a dark band on the bottom and left edges.
+constexpr Color ButtonFace{112, 116, 124, 255};
+constexpr Color ButtonFaceHover{82, 85, 92, 255};
+constexpr Color ButtonShadow{44, 46, 52, 255};
+constexpr Color GreenFace{58, 140, 68, 255};
+constexpr Color GreenFaceHover{42, 108, 52, 255};
+constexpr Color GreenShadow{22, 62, 30, 255};
+constexpr Color RedFace{168, 58, 54, 255};
+constexpr Color RedFaceHover{132, 42, 40, 255};
+constexpr Color RedShadow{76, 22, 22, 255};
+constexpr Color Outline{14, 15, 18, 255};
+
 inline Style label_style() { return Style{}.with_foreground(Text).with_font_size(20); }
 
 inline Style button_style() {
     return Style{}
-        .with_background(Panel)
+        .with_background(ButtonFace)
         .with_foreground(Text)
-        .with_border(Muted, 1.0f)
-        .with_padding(Insets::symmetric(12.0f, 24.0f))
-        .with_font_size(28)
+        .with_border(Outline, 2.0f)
+        .with_bevel(ButtonShadow, 5.0f)
+        .with_padding(Insets::symmetric(20.0f, 24.0f))
+        .with_font_size(32)
         .with_text_align(TextAlign::Center)
-        .with_hover_background(Accent)
-        .with_hover_foreground(Dark);
+        .with_hover_background(ButtonFaceHover);
 }
+
+// Same machine-button pattern as button_style(), in another color.
+inline Style colored_button_style(Color face, Color hover_face, Color shadow) {
+    return button_style().with_background(face).with_hover_background(hover_face).with_bevel(shadow, 5.0f);
+}
+
+inline Style start_button_style() { return colored_button_style(GreenFace, GreenFaceHover, GreenShadow); }
+inline Style quit_button_style() { return colored_button_style(RedFace, RedFaceHover, RedShadow); }
 
 inline Style input_style() {
     return Style{}
@@ -38,33 +58,30 @@ inline Style input_style() {
         .with_width(280.0f);
 }
 
-inline Style checkbox_style() {
+// Checkbox and dropdown share the gray machine-button face: flat face, darker on hover,
+// dark band on the bottom and right edges, near-black outline.
+inline Style control_style() {
     return Style{}
+        .with_background(ButtonFace)
         .with_foreground(Text)
-        .with_border(Muted, 1.0f)
-        .with_focus_border_color(Accent)
-        .with_padding(Insets::symmetric(8.0f, 12.0f))
-        .with_font_size(20);
+        .with_border(Outline, 2.0f)
+        .with_bevel(ButtonShadow, 5.0f)
+        .with_padding(Insets::symmetric(14.0f, 16.0f))
+        .with_font_size(24)
+        .with_hover_background(ButtonFaceHover);
 }
 
-inline Style dropdown_style() {
-    return Style{}
-        .with_background(Field)
-        .with_foreground(Text)
-        .with_border(Muted, 1.0f)
-        .with_focus_border_color(Accent)
-        .with_padding(Insets::symmetric(8.0f, 12.0f))
-        .with_font_size(20)
-        .with_hover_background(Accent)
-        .with_hover_foreground(Dark);
-}
+inline Style checkbox_style() { return control_style(); }
+
+inline Style dropdown_style() { return control_style(); }
 
 inline Style card_style() {
     return Style{}
         .with_background(Panel)
-        .with_border(Muted, 1.0f)
-        .with_padding(Insets::all(24.0f))
-        .with_gap(16.0f);
+        .with_border(Outline, 2.0f)
+        .with_bevel(Dark, 6.0f)
+        .with_padding(Insets::all(44.0f))
+        .with_gap(26.0f);
 }
 
 } // namespace ui::theme

@@ -14,6 +14,7 @@ void Button::draw(Canvas& canvas) const {
         active ? style_.hover_foreground.value_or(style_.foreground) : style_.foreground;
 
     draw_box(canvas, background, style_.border_color);
+    draw_bevel(canvas);
     draw_text_in_box(canvas, text_, foreground);
 }
 

@@ -49,6 +49,8 @@ public:
 protected:
     Size resolve_size(Size content) const;
     void draw_box(Canvas& canvas, Color background, Color border) const;
+    void draw_bevel(Canvas& canvas) const { draw_bevel(canvas, bounds_); }
+    void draw_bevel(Canvas& canvas, Rect area) const;
     void draw_text_in_box(Canvas& canvas, const std::string& text, Color color) const;
 
     Style style_;
