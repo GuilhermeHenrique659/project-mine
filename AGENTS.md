@@ -22,6 +22,7 @@ ctest --test-dir build --output-on-failure
 
 - Game: `build/project-mine.exe`
 - Tests: `build/project-mine-tests.exe`
+- Dev run: start the game from the project root; `.env` there (`PROJECT_MINE_DATA_DIR=resource`) is read at startup, so settings are saved in `resource/settings.cfg`. A real environment variable or `--data-dir` overrides it.
 
 The project path contains an accent ("Área de Trabalho") and the MinGW linker does not open absolute paths with accents; that is why `CMakeLists.txt` passes `lib/` as a relative path. Keep it this way when adding libraries.
 
@@ -37,6 +38,8 @@ The project path contains an accent ("Área de Trabalho") and the MinGW linker d
 | `scene/` | `scene` | `Scene` composes a `Model`, a `View` and a `Controller` (MVC). Model and view may be null. `scene/menu/` is the title/main menu scene (`MenuView`, `make_title_scene()`); `scene/settings/` is the settings screen (`SettingsView`, `make_settings_scene()`). |
 | `ui/` | `ui` | Reusable, raylib-free widget toolkit: `Style` (CSS-like), builders (HTML-like), `Widget` base, `Label`, `Button`, `Input`, `Checkbox`, `Dropdown`, `Card`, `FocusGroup`/`Focusable` (keyboard navigation), `Canvas` (drawing surface). Only `raylib_canvas.cpp` touches raylib. |
 | `input/` | `input` | Keyboard abstraction: `Key`, `Action`, `Keyboard` (interface), `InputMap` (key → action bindings, rebindable) and `InputHandler` (polls the keyboard, runs the handler of each triggered action). Only `raylib_keyboard.cpp` touches raylib. |
+| `persistence/` | `persistence` | Saves user data to disk. `SettingsStore` reads/writes `settings.cfg` (`key=value`, written via a temp file + rename); `SettingsPersistence` subscribes to `DisplaySettingsChanged` on the `EventBus` and saves; `resolve_data_dir()` picks the data directory: `--data-dir <path>` > env `PROJECT_MINE_DATA_DIR` > build default (Debug: `resource/` relative to the working dir, Release: `%APPDATA%/ProjectMine`). `Game(data_dir)` loads the saved settings at startup and opens the window with them. Raylib-free. |
+| `logging/` | `logging` | `logging::info()` / `logging::warning()` write to stderr (`[INFO]` / `[WARN]`); `set_sink()` redirects messages (tests capture them). Used by `persistence/` for settings load/save. Raylib-free. |
 
 `tests/` mirrors the modules; `tests/fake_canvas.hpp` is a recording `Canvas` for widget tests.
 

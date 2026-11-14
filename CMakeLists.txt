@@ -24,6 +24,10 @@ function(setup_target target)
     target_include_directories(${target} PRIVATE ${CMAKE_SOURCE_DIR}/src)
     target_include_directories(${target} SYSTEM PRIVATE ${CMAKE_SOURCE_DIR}/include)
     target_compile_options(${target} PRIVATE -Wall -Wextra)
+    # Build de desenvolvimento guarda os dados do usuario em resource/ (ver persistence/data_dir.cpp)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        target_compile_definitions(${target} PRIVATE PROJECT_MINE_DEV)
+    endif()
     # O caminho do projeto tem acento ("Área") e o ld do MinGW nao abre caminhos
     # absolutos com acento; por isso lib/ entra como -L relativo a pasta de build.
     target_link_options(${target} PRIVATE -L${LIB_DIR_REL})

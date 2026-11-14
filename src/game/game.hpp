@@ -1,10 +1,12 @@
 #pragma once
 
+#include <filesystem>
 #include <memory>
 #include <vector>
 
 #include "event/event_bus.hpp"
 #include "game/display_settings.hpp"
+#include "persistence/settings_persistence.hpp"
 #include "scene/scene.hpp"
 
 namespace game {
@@ -12,7 +14,7 @@ namespace game {
 // Owns the window lifecycle and manages the active scene.
 class Game {
 public:
-    Game();
+    explicit Game(const std::filesystem::path& data_dir);
 
     // Opens the window and loads the first scene. Call once, before the loop.
     void start_up();
@@ -50,6 +52,8 @@ private:
     std::unique_ptr<scene::Scene> active_scene_;
     std::unique_ptr<scene::Scene> pending_scene_;
     DisplaySettings display_settings_;
+    // Declared after bus_ so it unsubscribes before the bus is destroyed.
+    persistence::SettingsPersistence settings_persistence_;
     bool running_ = false;
 };
 

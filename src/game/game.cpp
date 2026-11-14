@@ -9,13 +9,13 @@
 namespace game {
 
 namespace {
-constexpr int WindowWidth = 1280;
-constexpr int WindowHeight = 720;
 constexpr int TargetFps = 60;
 constexpr const char* WindowTitle = "Project Mine";
 } // namespace
 
-Game::Game() {
+Game::Game(const std::filesystem::path& data_dir)
+    : display_settings_(persistence::SettingsStore(data_dir).load().value_or(DisplaySettings{})),
+      settings_persistence_(bus_, persistence::SettingsStore(data_dir)) {
     subscriptions_.push_back(event::subscribe_scoped<QuitRequested>(
         bus_, [this](const QuitRequested&) { quit(); }));
     subscriptions_.push_back(event::subscribe_scoped<SettingsRequested>(
@@ -34,7 +34,9 @@ Game::Game() {
 }
 
 void Game::start_up() {
-    InitWindow(WindowWidth, WindowHeight, WindowTitle);
+    InitWindow(display_settings_.resolution.width, display_settings_.resolution.height,
+               WindowTitle);
+    apply_display_settings();
     SetTargetFPS(TargetFps);
     running_ = true;
     change_scene(scene::menu::make_title_scene(*this));
