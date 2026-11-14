@@ -2,6 +2,7 @@
 
 // Umbrella header for the reusable UI module.
 #include "ui/button.hpp"
+#include "ui/button_factory.hpp"
 #include "ui/card.hpp"
 #include "ui/focus_group.hpp"
 #include "ui/input.hpp"

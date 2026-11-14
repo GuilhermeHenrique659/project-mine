@@ -20,16 +20,15 @@ MenuView::MenuView(event::EventBus& bus) {
                                 .with_text_align(ui::TextAlign::Center))
                      .build();
 
-    auto start_new_game_button =
-        make_button("New Game", [&bus] { bus.publish(game::NewGameRequested{}); });
-    auto load_game_button =
-        make_button("Load Game", [&bus] { bus.publish(game::LoadGameRequested{}); });
-    auto quit_button = make_button("Quit", [&bus] { bus.publish(game::QuitRequested{}); });
+    const ui::ButtonFactory button_factory(focus_group_);
+    auto start_new_game_button = button_factory.create(
+        "New Game", [&bus] { bus.publish(game::NewGameRequested{}); });
+    auto load_game_button = button_factory.create(
+        "Load Game", [&bus] { bus.publish(game::LoadGameRequested{}); });
+    auto quit_button =
+        button_factory.create("Quit", [&bus] { bus.publish(game::QuitRequested{}); });
 
     buttons_ = {start_new_game_button.get(), load_game_button.get(), quit_button.get()};
-    for (ui::Button* button : buttons_) {
-        focus_group_.add(*button);
-    }
 
     ui::CardBuilder builder = ui::card();
     builder.style(ui::theme::card_style().with_width(CardWidth));
@@ -38,14 +37,6 @@ MenuView::MenuView(event::EventBus& bus) {
     builder.child(std::move(load_game_button));
     builder.child(std::move(quit_button));
     root_ = builder.build();
-}
-
-std::unique_ptr<ui::Button> MenuView::make_button(std::string label,
-                                                  ui::Widget::EventHandler on_click) {
-    auto button = ui::button(std::move(label)).on_click(std::move(on_click)).build();
-    ui::Button* raw = button.get();
-    button->set_on_hover([this, raw] { focus_group_.focus(*raw); });
-    return button;
 }
 
 void MenuView::layout(const ui::Canvas& canvas, float screen_width) const {

@@ -31,8 +31,6 @@ public:
     const std::vector<ui::Button*>& buttons() const { return buttons_; }
 
 private:
-    std::unique_ptr<ui::Button> make_button(std::string label, ui::Widget::EventHandler on_click);
-
     std::unique_ptr<ui::Card> root_;
     std::vector<ui::Button*> buttons_; // non-owning, owned by root_
     ui::FocusGroup focus_group_;
