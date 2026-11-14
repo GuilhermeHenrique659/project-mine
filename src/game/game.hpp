@@ -1,11 +1,16 @@
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "event/event_bus.hpp"
 #include "game/display_settings.hpp"
+#include "game/save_game.hpp"
+#include "persistence/save_store.hpp"
 #include "persistence/settings_persistence.hpp"
 #include "scene/scene.hpp"
 
@@ -14,7 +19,10 @@ namespace game {
 // Owns the window lifecycle and manages the active scene.
 class Game {
 public:
-    explicit Game(const std::filesystem::path& data_dir);
+    // Source of the current Unix time in seconds; replaced in tests.
+    using Clock = std::function<std::int64_t()>;
+
+    explicit Game(const std::filesystem::path& data_dir, Clock clock = system_clock_seconds);
 
     // Opens the window and loads the first scene. Call once, before the loop.
     void start_up();
@@ -38,6 +46,9 @@ public:
     // What the player last chose in the settings screen (applied to the window).
     const DisplaySettings& display_settings() const { return display_settings_; }
 
+    // Saved games on disk (read by the Load Game screen).
+    const persistence::SaveStore& save_store() const { return save_store_; }
+
     void quit();
     bool is_running() const;
     const scene::Scene* active_scene() const;
@@ -45,6 +56,8 @@ public:
 private:
     void apply_pending_scene();
     void apply_display_settings() const;
+    void create_game(const std::string& name);
+    void load_game(const std::string& name);
 
     // Declared first so it outlives the scenes that subscribe to it.
     event::EventBus bus_;
@@ -54,6 +67,8 @@ private:
     DisplaySettings display_settings_;
     // Declared after bus_ so it unsubscribes before the bus is destroyed.
     persistence::SettingsPersistence settings_persistence_;
+    persistence::SaveStore save_store_;
+    Clock clock_;
     bool running_ = false;
 };
 

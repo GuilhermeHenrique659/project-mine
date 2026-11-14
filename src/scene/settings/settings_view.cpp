@@ -19,13 +19,6 @@ std::size_t preset_index(game::Resolution resolution) {
     const auto found = std::find(presets.begin(), presets.end(), resolution);
     return found == presets.end() ? 0 : static_cast<std::size_t>(found - presets.begin());
 }
-
-// Same mouse/keyboard sync ui::ButtonFactory gives buttons: hovering moves the focus.
-template <typename Control>
-void join_focus_group(ui::FocusGroup& group, Control& control) {
-    control.set_on_hover([&group, &control] { group.focus(control); });
-    group.add(control);
-}
 } // namespace
 
 SettingsView::SettingsView(event::EventBus& bus, game::DisplaySettings current)
@@ -57,8 +50,8 @@ SettingsView::SettingsView(event::EventBus& bus, game::DisplaySettings current)
                         })
                         .build();
 
-    join_focus_group(focus_group_, *dropdown);
-    join_focus_group(focus_group_, *checkbox);
+    ui::join_focus_group(focus_group_, *dropdown);
+    ui::join_focus_group(focus_group_, *checkbox);
     const ui::ButtonFactory button_factory(focus_group_);
     auto back = button_factory.create(
         "Back", [&bus] { bus.publish(game::BackToMenuRequested{}); });

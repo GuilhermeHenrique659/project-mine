@@ -41,6 +41,10 @@ void Input::handle_pointer(Point position, bool released) {
     focused_ = bounds_.contains(position);
 }
 
+void Input::activate() {
+    if (on_submit_) on_submit_();
+}
+
 void Input::type_char(char character) {
     if (!focused_ || value_.size() >= max_length_) {
         return;

@@ -1,23 +1,13 @@
 #include <gtest/gtest.h>
 
-#include <set>
-
 #include "input/input_handler.hpp"
+#include "support/fake_keyboard.hpp"
 
 using input::Action;
 using input::InputHandler;
 using input::InputMap;
 using input::Key;
 
-namespace {
-
-struct FakeKeyboard : input::Keyboard {
-    bool is_pressed(Key key) const override { return pressed.contains(key); }
-
-    std::set<Key> pressed;
-};
-
-} // namespace
 
 TEST(InputHandler, PressedKeyRunsTheHandlerOfItsAction) {
     // Given
@@ -151,4 +141,52 @@ TEST(InputHandler, MenuDefaultsMapArrowsWasdEnterSpaceAndEscape) {
     EXPECT_EQ(down, 2);
     EXPECT_EQ(confirm, 2);
     EXPECT_EQ(cancel, 1);
+}
+
+TEST(InputHandler, TextEntryDefaultsLeaveLettersAndSpaceFreeForTyping) {
+    // Given
+    FakeKeyboard keyboard;
+    InputHandler handler(keyboard, InputMap::text_entry_defaults());
+    int triggered = 0;
+    for (const Action action : {Action::NavigateUp, Action::NavigateDown, Action::NavigateLeft,
+                                Action::NavigateRight, Action::Confirm, Action::Cancel,
+                                Action::Erase}) {
+        handler.on(action, [&] { ++triggered; });
+    }
+
+    // When
+    keyboard.pressed = {Key::W, Key::A, Key::S, Key::D, Key::Space};
+    handler.update();
+
+    // Then
+    EXPECT_EQ(triggered, 0);
+}
+
+TEST(InputHandler, TextEntryDefaultsMapArrowsEnterEscapeAndBackspace) {
+    // Given
+    FakeKeyboard keyboard;
+    InputHandler handler(keyboard, InputMap::text_entry_defaults());
+    int up = 0;
+    int down = 0;
+    int confirm = 0;
+    int cancel = 0;
+    int erase = 0;
+    handler.on(Action::NavigateUp, [&] { ++up; });
+    handler.on(Action::NavigateDown, [&] { ++down; });
+    handler.on(Action::Confirm, [&] { ++confirm; });
+    handler.on(Action::Cancel, [&] { ++cancel; });
+    handler.on(Action::Erase, [&] { ++erase; });
+
+    // When
+    for (const Key key : {Key::Up, Key::Down, Key::Enter, Key::Escape, Key::Backspace}) {
+        keyboard.pressed = {key};
+        handler.update();
+    }
+
+    // Then
+    EXPECT_EQ(up, 1);
+    EXPECT_EQ(down, 1);
+    EXPECT_EQ(confirm, 1);
+    EXPECT_EQ(cancel, 1);
+    EXPECT_EQ(erase, 1);
 }

@@ -30,6 +30,9 @@ public:
     // Jumps to an item (e.g. the one under the mouse). Items outside the group are ignored.
     void focus(const Focusable& item);
     void activate_focused();
+    // Re-applies the focus to the current item, for widgets that can drop it on their own
+    // (a text field blurs when the player clicks elsewhere).
+    void refresh();
 
 private:
     void focus_index(std::size_t index);
@@ -37,5 +40,13 @@ private:
     std::vector<Focusable*> items_;
     std::size_t focused_ = 0;
 };
+
+// Adds a control to the group and makes hovering it move the focus there, the same
+// mouse/keyboard sync ui::ButtonFactory gives buttons. Both must outlive each other's use.
+template <typename Control>
+void join_focus_group(FocusGroup& group, Control& control) {
+    control.set_on_hover([&group, &control] { group.focus(control); });
+    group.add(control);
+}
 
 } // namespace ui

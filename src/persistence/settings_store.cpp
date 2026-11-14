@@ -2,9 +2,9 @@
 
 #include <fstream>
 #include <string>
-#include <system_error>
 
 #include "logging/logger.hpp"
+#include "persistence/atomic_file.hpp"
 
 namespace persistence {
 
@@ -69,35 +69,14 @@ std::optional<game::DisplaySettings> SettingsStore::load() const {
 }
 
 bool SettingsStore::save(const game::DisplaySettings& settings) const {
-    std::error_code error;
-    std::filesystem::create_directories(file_.parent_path(), error);
-    if (error) {
-        logging::warning("Could not save settings, cannot create " +
-                         file_.parent_path().string() + ": " + error.message());
-        return false;
-    }
-
-    const std::filesystem::path temporary = file_.string() + ".tmp";
-    {
-        std::ofstream output(temporary, std::ios::trunc);
-        if (!output) {
-            logging::warning("Could not save settings, cannot write " + temporary.string());
-            return false;
-        }
-        output << "version=" << FormatVersion << '\n'
-               << "resolution_width=" << settings.resolution.width << '\n'
-               << "resolution_height=" << settings.resolution.height << '\n'
-               << "fullscreen=" << (settings.fullscreen ? 1 : 0) << '\n';
-        if (!output) {
-            logging::warning("Could not save settings, write failed for " + temporary.string());
-            return false;
-        }
-    }
-
-    std::filesystem::rename(temporary, file_, error);
-    if (error) {
-        logging::warning("Could not save settings to " + file_.string() + ": " + error.message());
-        std::filesystem::remove(temporary, error);
+    const std::string content =
+        "version=" + std::to_string(FormatVersion) + "\n" +
+        "resolution_width=" + std::to_string(settings.resolution.width) + "\n" +
+        "resolution_height=" + std::to_string(settings.resolution.height) + "\n" +
+        "fullscreen=" + (settings.fullscreen ? "1" : "0") + "\n";
+    const auto failure = write_file_atomically(file_, content);
+    if (failure) {
+        logging::warning("Could not save settings: " + *failure);
         return false;
     }
     logging::info("Saved settings to " + file_.string());

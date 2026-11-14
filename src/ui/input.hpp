@@ -32,8 +32,9 @@ public:
     void erase_last();
 
     void set_focused(bool focused) override { focused_ = focused; }
-    // Confirming a text field has no action of its own.
-    void activate() override {}
+    // Confirming the field (e.g. Enter) submits it.
+    void activate() override;
+    void set_on_submit(EventHandler handler) { on_submit_ = std::move(handler); }
     bool focused() const { return focused_; }
     const std::string& value() const { return value_; }
 
@@ -42,6 +43,7 @@ private:
     std::string placeholder_;
     std::size_t max_length_;
     ChangeHandler on_change_;
+    EventHandler on_submit_;
     bool focused_ = false;
 };
 
@@ -54,10 +56,12 @@ public:
     InputBuilder& value(std::string text) { value_ = std::move(text); return *this; }
     InputBuilder& max_length(std::size_t length) { max_length_ = length; return *this; }
     InputBuilder& on_change(Input::ChangeHandler handler) { on_change_ = std::move(handler); return *this; }
+    InputBuilder& on_submit(Widget::EventHandler handler) { on_submit_ = std::move(handler); return *this; }
     std::unique_ptr<Input> build() {
         auto input = std::make_unique<Input>(std::move(value_), std::move(placeholder_),
                                              max_length_, style_, std::move(on_change_));
         apply_handlers(*input);
+        input->set_on_submit(std::move(on_submit_));
         return input;
     }
 
@@ -67,6 +71,7 @@ private:
     std::string value_;
     std::size_t max_length_ = 32;
     Input::ChangeHandler on_change_;
+    Widget::EventHandler on_submit_;
 };
 
 inline InputBuilder input() { return InputBuilder(); }

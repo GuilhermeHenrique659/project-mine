@@ -221,6 +221,18 @@ TEST(UiInput, ErasingRemovesLastCharacterAndNotifiesListener) {
     EXPECT_EQ(notified, "ab");
 }
 
+TEST(UiInput, ConfirmingTheFieldSubmitsIt) {
+    // Given
+    int submissions = 0;
+    auto input = ui::input().on_submit([&] { ++submissions; }).build();
+
+    // When
+    input->activate();
+
+    // Then
+    EXPECT_EQ(submissions, 1);
+}
+
 TEST(UiInput, ClickingFocusesAndClickingElsewhereBlurs) {
     // Given
     FakeCanvas canvas;

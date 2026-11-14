@@ -42,6 +42,13 @@ void FocusGroup::activate_focused() {
     items_[focused_]->activate();
 }
 
+void FocusGroup::refresh() {
+    if (items_.empty()) {
+        return;
+    }
+    focus_index(focused_);
+}
+
 void FocusGroup::focus_index(std::size_t index) {
     focused_ = index;
     for (std::size_t i = 0; i < items_.size(); ++i) {

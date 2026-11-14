@@ -15,6 +15,7 @@ int to_raylib(Key key) {
         case Key::Enter: return KEY_ENTER;
         case Key::Escape: return KEY_ESCAPE;
         case Key::Space: return KEY_SPACE;
+        case Key::Backspace: return KEY_BACKSPACE;
         case Key::W: return KEY_W;
         case Key::A: return KEY_A;
         case Key::S: return KEY_S;
@@ -25,6 +26,23 @@ int to_raylib(Key key) {
 
 } // namespace
 
-bool RaylibKeyboard::is_pressed(Key key) const { return IsKeyPressed(to_raylib(key)); }
+bool RaylibKeyboard::is_pressed(Key key) const {
+    const int code = to_raylib(key);
+    if (IsKeyPressed(code)) {
+        return true;
+    }
+    // Holding Backspace keeps erasing, like any text field.
+    return key == Key::Backspace && IsKeyPressedRepeat(code);
+}
+
+std::optional<char> RaylibKeyboard::next_char() {
+    // Only printable ASCII is supported by ui::Input; other code points are dropped.
+    for (int code = GetCharPressed(); code != 0; code = GetCharPressed()) {
+        if (code >= 32 && code < 127) {
+            return static_cast<char>(code);
+        }
+    }
+    return std::nullopt;
+}
 
 } // namespace input

@@ -40,4 +40,14 @@ InputMap InputMap::menu_defaults() {
     return map;
 }
 
+InputMap InputMap::text_entry_defaults() {
+    InputMap map;
+    map.bind(Key::Up, Action::NavigateUp)
+        .bind(Key::Down, Action::NavigateDown)
+        .bind(Key::Enter, Action::Confirm)
+        .bind(Key::Escape, Action::Cancel)
+        .bind(Key::Backspace, Action::Erase);
+    return map;
+}
+
 } // namespace input

@@ -3,8 +3,12 @@
 #include <raylib.h>
 
 #include "game/game_events.hpp"
+#include "logging/logger.hpp"
+#include "scene/load_game/load_game_scene.hpp"
 #include "scene/menu/title_scene.hpp"
+#include "scene/new_game/new_game_scene.hpp"
 #include "scene/settings/settings_scene.hpp"
+#include "scene/world/world_scene.hpp"
 
 namespace game {
 
@@ -13,9 +17,11 @@ constexpr int TargetFps = 60;
 constexpr const char* WindowTitle = "Project Mine";
 } // namespace
 
-Game::Game(const std::filesystem::path& data_dir)
+Game::Game(const std::filesystem::path& data_dir, Clock clock)
     : display_settings_(persistence::SettingsStore(data_dir).load().value_or(DisplaySettings{})),
-      settings_persistence_(bus_, persistence::SettingsStore(data_dir)) {
+      settings_persistence_(bus_, persistence::SettingsStore(data_dir)),
+      save_store_(data_dir),
+      clock_(std::move(clock)) {
     subscriptions_.push_back(event::subscribe_scoped<QuitRequested>(
         bus_, [this](const QuitRequested&) { quit(); }));
     subscriptions_.push_back(event::subscribe_scoped<SettingsRequested>(
@@ -26,6 +32,20 @@ Game::Game(const std::filesystem::path& data_dir)
         bus_, [this](const BackToMenuRequested&) {
             change_scene(scene::menu::make_title_scene(*this));
         }));
+    subscriptions_.push_back(event::subscribe_scoped<NewGameRequested>(
+        bus_, [this](const NewGameRequested&) {
+            change_scene(scene::new_game::make_new_game_scene(*this));
+        }));
+    subscriptions_.push_back(event::subscribe_scoped<LoadGameRequested>(
+        bus_, [this](const LoadGameRequested&) {
+            change_scene(scene::load_game::make_load_game_scene(*this));
+        }));
+    subscriptions_.push_back(event::subscribe_scoped<CreateGameRequested>(
+        bus_, [this](const CreateGameRequested& event) { create_game(event.name); }));
+    subscriptions_.push_back(event::subscribe_scoped<LoadSaveRequested>(
+        bus_, [this](const LoadSaveRequested& event) { load_game(event.name); }));
+    subscriptions_.push_back(event::subscribe_scoped<SaveGameRequested>(
+        bus_, [this](const SaveGameRequested& event) { save_store_.save(event.save); }));
     subscriptions_.push_back(event::subscribe_scoped<DisplaySettingsChanged>(
         bus_, [this](const DisplaySettingsChanged& event) {
             display_settings_ = event.settings;
@@ -90,6 +110,28 @@ void Game::apply_display_settings() const {
         return;
     }
     SetWindowSize(display_settings_.resolution.width, display_settings_.resolution.height);
+}
+
+// A new game exists on disk before it is played. An existing save with the same name is
+// overwritten (the store keeps it as the backup).
+void Game::create_game(const std::string& name) {
+    if (!is_valid_save_name(name)) {
+        logging::warning("Cannot create a game named \"" + name + "\"");
+        return;
+    }
+    SaveGame save{name, clock_()};
+    if (!save_store_.save(save)) {
+        return;
+    }
+    change_scene(scene::world::make_world_scene(*this, std::move(save)));
+}
+
+void Game::load_game(const std::string& name) {
+    auto save = save_store_.load(name);
+    if (!save) {
+        return;
+    }
+    change_scene(scene::world::make_world_scene(*this, std::move(*save)));
 }
 
 void Game::apply_pending_scene() {
