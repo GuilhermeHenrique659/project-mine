@@ -8,9 +8,11 @@
 #include "input/keyboard.hpp"
 
 // Keyboard whose state is set by the test: `pressed` holds the keys that went down this
-// frame, `typed` the characters still to be read.
+// frame, `down` the keys held, `typed` the characters still to be read.
 struct FakeKeyboard : input::Keyboard {
     bool is_pressed(input::Key key) const override { return pressed.contains(key); }
+
+    bool is_down(input::Key key) const override { return down.contains(key); }
 
     std::optional<char> next_char() override {
         if (typed.empty()) {
@@ -24,5 +26,6 @@ struct FakeKeyboard : input::Keyboard {
     void type(const std::string& text) { typed.insert(typed.end(), text.begin(), text.end()); }
 
     std::set<input::Key> pressed;
+    std::set<input::Key> down; // keys currently held
     std::deque<char> typed;
 };

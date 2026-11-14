@@ -190,3 +190,52 @@ TEST(InputHandler, TextEntryDefaultsMapArrowsEnterEscapeAndBackspace) {
     EXPECT_EQ(cancel, 1);
     EXPECT_EQ(erase, 1);
 }
+
+TEST(InputHandler, ActionIsHeldWhileABoundKeyIsDownAndNotAfterRelease) {
+    // Given
+    FakeKeyboard keyboard;
+    InputMap map;
+    map.bind(Key::W, Action::MoveUp).bind(Key::Up, Action::MoveUp);
+    InputHandler handler(keyboard, map);
+
+    // When
+    keyboard.down = {Key::Up};
+    const bool held_while_down = handler.is_held(Action::MoveUp);
+    keyboard.down.clear();
+    const bool held_after_release = handler.is_held(Action::MoveUp);
+
+    // Then
+    EXPECT_TRUE(held_while_down);
+    EXPECT_FALSE(held_after_release);
+}
+
+TEST(InputHandler, ActionIsNotHeldWhenOnlyAnUnboundKeyIsDown) {
+    // Given
+    FakeKeyboard keyboard;
+    InputMap map;
+    map.bind(Key::W, Action::MoveUp);
+    InputHandler handler(keyboard, map);
+    keyboard.down = {Key::S};
+
+    // When
+    const bool held = handler.is_held(Action::MoveUp);
+
+    // Then
+    EXPECT_FALSE(held);
+}
+
+TEST(InputHandler, WorldDefaultsMoveWithWasdAndKeepArrowsForTheMenuPanel) {
+    // Given
+    const InputMap map = InputMap::world_defaults();
+
+    // When / Then
+    EXPECT_EQ(map.action_for(Key::W), Action::MoveUp);
+    EXPECT_EQ(map.action_for(Key::S), Action::MoveDown);
+    EXPECT_EQ(map.action_for(Key::A), Action::MoveLeft);
+    EXPECT_EQ(map.action_for(Key::D), Action::MoveRight);
+    EXPECT_EQ(map.action_for(Key::Up), Action::NavigateUp);
+    EXPECT_EQ(map.action_for(Key::Down), Action::NavigateDown);
+    EXPECT_EQ(map.action_for(Key::Enter), Action::Confirm);
+    EXPECT_EQ(map.action_for(Key::Space), Action::Confirm);
+    EXPECT_EQ(map.action_for(Key::Escape), Action::Cancel);
+}

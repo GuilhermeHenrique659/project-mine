@@ -28,6 +28,10 @@ public:
     // (once per action, even if several of its keys were pressed).
     void update();
 
+    // True while any key bound to the action is held down (for continuous input such as
+    // walking, as opposed to the once-per-press handlers).
+    bool is_held(Action action) const;
+
     InputMap& map() { return map_; }
 
 private:

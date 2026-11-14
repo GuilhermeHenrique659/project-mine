@@ -40,6 +40,22 @@ InputMap InputMap::menu_defaults() {
     return map;
 }
 
+InputMap InputMap::world_defaults() {
+    InputMap map;
+    map.bind(Key::W, Action::MoveUp)
+        .bind(Key::S, Action::MoveDown)
+        .bind(Key::A, Action::MoveLeft)
+        .bind(Key::D, Action::MoveRight)
+        .bind(Key::Up, Action::NavigateUp)
+        .bind(Key::Down, Action::NavigateDown)
+        .bind(Key::Left, Action::NavigateLeft)
+        .bind(Key::Right, Action::NavigateRight)
+        .bind(Key::Enter, Action::Confirm)
+        .bind(Key::Space, Action::Confirm)
+        .bind(Key::Escape, Action::Cancel);
+    return map;
+}
+
 InputMap InputMap::text_entry_defaults() {
     InputMap map;
     map.bind(Key::Up, Action::NavigateUp)

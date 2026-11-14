@@ -20,6 +20,10 @@ public:
     void layout(const ui::Canvas& canvas, float screen_width) const;
     void draw() const override;
 
+    // Draws every entity that has a Position (a cube with its label, plus the state for
+    // characters) through the isometric projection, with world (0, 0) at the centre of a screen of the given size.
+    void draw_entities(ui::Canvas& canvas, ui::Size screen) const;
+
     // Pointer position in screen space; positions come from the last layout.
     void handle_pointer(ui::Point position, bool released);
 
@@ -34,6 +38,7 @@ private:
     WorldView(const WorldView&) = delete;
     WorldView& operator=(const WorldView&) = delete;
 
+    const WorldModel& model_;
     std::unique_ptr<ui::Card> root_;
     // Non-owning, owned by root_.
     ui::Label* name_label_ = nullptr;

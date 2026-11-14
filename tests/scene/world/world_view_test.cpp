@@ -38,7 +38,7 @@ TEST(WorldView, SaveButtonPublishesTheStateOfTheGameBeingPlayed) {
     event::EventBus bus;
     EventRecorder recorder(bus);
     FakeCanvas canvas;
-    const scene::world::WorldModel model(game::SaveGame{"My Base", 1'700'000'000});
+    const scene::world::WorldModel model(bus, game::SaveGame{"My Base", 1'700'000'000});
     scene::world::WorldView view(bus, model);
     view.layout(canvas, ScreenWidth);
 
@@ -56,7 +56,7 @@ TEST(WorldView, MainMenuButtonGoesBackWithoutSaving) {
     event::EventBus bus;
     EventRecorder recorder(bus);
     FakeCanvas canvas;
-    const scene::world::WorldModel model(game::SaveGame{"My Base", 1'700'000'000});
+    const scene::world::WorldModel model(bus, game::SaveGame{"My Base", 1'700'000'000});
     scene::world::WorldView view(bus, model);
     view.layout(canvas, ScreenWidth);
 
@@ -71,11 +71,33 @@ TEST(WorldView, MainMenuButtonGoesBackWithoutSaving) {
 TEST(WorldView, ShowsTheNameOfTheLoadedSave) {
     // Given
     event::EventBus bus;
-    const scene::world::WorldModel model(game::SaveGame{"My Base", 1'700'000'000});
+    const scene::world::WorldModel model(bus, game::SaveGame{"My Base", 1'700'000'000});
 
     // When
     scene::world::WorldView view(bus, model);
 
     // Then
     EXPECT_EQ(view.name_label().text(), "My Base");
+}
+
+TEST(WorldView, CharacterIsDrawnAsACubeWithItsLabelAndStateAroundTheScreenCentre) {
+    // Given
+    event::EventBus bus;
+    scene::world::WorldModel model(bus, game::SaveGame{"Alpha", 0});
+    model.set_player_direction({1.0f, 0.0f});
+    model.update(0.5f); // the player walks 2 tiles along world x
+    const scene::world::WorldView view(bus, model);
+    FakeCanvas canvas;
+
+    // When
+    view.draw_entities(canvas, {1280.0f, 720.0f});
+
+    // Then: world (2, 0) with 64x32 tiles is (64, 32) pixels from the screen centre
+    ASSERT_EQ(canvas.fills.size(), 2u); // top face, then front face
+    const ui::Point marker_center = center_of(canvas.fills.back().rect);
+    EXPECT_FLOAT_EQ(marker_center.x, 640.0f + 64.0f);
+    EXPECT_FLOAT_EQ(marker_center.y, 360.0f + 32.0f);
+    ASSERT_EQ(canvas.texts.size(), 1u);
+    EXPECT_EQ(canvas.texts.front().text, "Player (Moving)");
+    EXPECT_LT(canvas.texts.front().position.y, canvas.fills.front().rect.y);
 }

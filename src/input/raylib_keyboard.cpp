@@ -35,6 +35,8 @@ bool RaylibKeyboard::is_pressed(Key key) const {
     return key == Key::Backspace && IsKeyPressedRepeat(code);
 }
 
+bool RaylibKeyboard::is_down(Key key) const { return IsKeyDown(to_raylib(key)); }
+
 std::optional<char> RaylibKeyboard::next_char() {
     // Only printable ASCII is supported by ui::Input; other code points are dropped.
     for (int code = GetCharPressed(); code != 0; code = GetCharPressed()) {

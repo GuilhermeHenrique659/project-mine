@@ -39,6 +39,11 @@ TileCorners IsoProjection::tile_corners(TileCoord tile) const {
     };
 }
 
+WorldPoint screen_direction_to_world(ScreenPoint direction) {
+    // Screen right is world (+1, -1) and screen down is world (+1, +1).
+    return {direction.x + direction.y, direction.y - direction.x};
+}
+
 float depth_of(WorldPoint point) { return point.x + point.y; }
 
 int depth_of(TileCoord tile) { return tile.x + tile.y; }

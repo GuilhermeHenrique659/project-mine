@@ -26,4 +26,11 @@ void InputHandler::update() {
     }
 }
 
+bool InputHandler::is_held(Action action) const {
+    return std::any_of(map_.bindings().begin(), map_.bindings().end(),
+                       [&](const Binding& binding) {
+                           return binding.action == action && keyboard_.is_down(binding.key);
+                       });
+}
+
 } // namespace input

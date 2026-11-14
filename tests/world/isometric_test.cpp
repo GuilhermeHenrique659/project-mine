@@ -167,3 +167,35 @@ TEST(IsoDepth, SortingByDrawOrderPaintsBackTilesFirst) {
     const std::vector<world::TileCoord> expected{{0, 0}, {0, 1}, {1, 0}, {1, 1}, {2, 2}};
     EXPECT_EQ(tiles, expected);
 }
+
+TEST(ScreenDirectionToWorld, ScreenUpGoesStraightUpOnScreen) {
+    // Given
+    const world::IsoProjection projection;
+
+    // When
+    const world::WorldPoint direction = world::screen_direction_to_world({0.0f, -1.0f});
+    const world::ScreenPoint moved = projection.world_to_screen(direction);
+    const world::ScreenPoint start = projection.world_to_screen({0.0f, 0.0f});
+
+    // Then
+    EXPECT_FLOAT_EQ(direction.x, -1.0f);
+    EXPECT_FLOAT_EQ(direction.y, -1.0f);
+    EXPECT_FLOAT_EQ(moved.x, start.x);
+    EXPECT_LT(moved.y, start.y);
+}
+
+TEST(ScreenDirectionToWorld, ScreenRightGoesStraightRightOnScreen) {
+    // Given
+    const world::IsoProjection projection;
+
+    // When
+    const world::WorldPoint direction = world::screen_direction_to_world({1.0f, 0.0f});
+    const world::ScreenPoint moved = projection.world_to_screen(direction);
+    const world::ScreenPoint start = projection.world_to_screen({0.0f, 0.0f});
+
+    // Then
+    EXPECT_FLOAT_EQ(direction.x, 1.0f);
+    EXPECT_FLOAT_EQ(direction.y, -1.0f);
+    EXPECT_FLOAT_EQ(moved.y, start.y);
+    EXPECT_GT(moved.x, start.x);
+}

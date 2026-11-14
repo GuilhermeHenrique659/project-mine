@@ -23,6 +23,8 @@ public:
 
     // Arrows/WASD navigate, Enter/Space confirm, Esc cancels.
     static InputMap menu_defaults();
+    // In-game: WASD moves, arrows navigate the panel, Enter/Space confirm, Esc cancels.
+    static InputMap world_defaults();
     // For screens with a text field: arrows navigate, Enter confirms, Esc cancels and
     // Backspace erases. Letters and Space stay unbound so they can be typed.
     static InputMap text_entry_defaults();

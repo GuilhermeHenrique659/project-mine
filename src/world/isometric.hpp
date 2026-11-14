@@ -58,6 +58,10 @@ struct IsoProjection {
     TileCorners tile_corners(TileCoord tile) const;
 };
 
+// Converts a movement direction on screen (y grows downwards: up is (0, -1)) to a world
+// direction, so that pressing up moves up on screen in the isometric view.
+WorldPoint screen_direction_to_world(ScreenPoint direction);
+
 // Painter's order: larger depth is closer to the viewer and is drawn later.
 float depth_of(WorldPoint point);
 int depth_of(TileCoord tile);
