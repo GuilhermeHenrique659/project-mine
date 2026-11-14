@@ -6,7 +6,7 @@
 
 #include "event/event_bus.hpp"
 #include "game/game_events.hpp"
-#include "scene/world/world_menu.hpp"
+#include "scene/world/render/world_menu.hpp"
 #include "support/fake_canvas.hpp"
 #include "support/fake_input.hpp"
 #include "support/fake_pointer.hpp"

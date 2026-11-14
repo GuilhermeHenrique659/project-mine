@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "scene/scene.hpp"
-#include "scene/world/renderer.hpp"
+#include "scene/world/render/renderer.hpp"
 #include "ui/ui.hpp"
 
 namespace scene::world {

@@ -4,9 +4,9 @@
 #include "input/input_handler.hpp"
 #include "input/input_map.hpp"
 #include "support/fake_keyboard.hpp"
-#include "world/components/mover.hpp"
-#include "world/components/player_controlled.hpp"
-#include "world/systems/player_input_system.hpp"
+#include "scene/world/core/components/mover.hpp"
+#include "scene/world/core/components/player_controlled.hpp"
+#include "scene/world/core/systems/player_input_system.hpp"
 
 namespace {
 

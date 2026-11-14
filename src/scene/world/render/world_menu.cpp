@@ -1,4 +1,4 @@
-#include "scene/world/world_menu.hpp"
+#include "scene/world/render/world_menu.hpp"
 
 #include "game/game_events.hpp"
 #include "ui/theme.hpp"

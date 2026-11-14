@@ -1,9 +1,9 @@
-#include "world/systems/player_input_system.hpp"
+#include "scene/world/core/systems/player_input_system.hpp"
 
 #include "input/action.hpp"
-#include "world/components/mover.hpp"
-#include "world/components/player_controlled.hpp"
-#include "world/isometric.hpp"
+#include "scene/world/core/components/mover.hpp"
+#include "scene/world/core/components/player_controlled.hpp"
+#include "scene/world/core/isometric.hpp"
 
 namespace world {
 

@@ -1,12 +1,12 @@
-#include "world/systems/character_move_system.hpp"
+#include "scene/world/core/systems/character_move_system.hpp"
 
 #include <cmath>
 #include <vector>
 
-#include "world/components/character.hpp"
-#include "world/components/mover.hpp"
-#include "world/components/position.hpp"
-#include "world/events/character_state_changed.hpp"
+#include "scene/world/core/components/character.hpp"
+#include "scene/world/core/components/mover.hpp"
+#include "scene/world/core/components/position.hpp"
+#include "scene/world/core/events/character_state_changed.hpp"
 
 namespace world {
 

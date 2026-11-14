@@ -3,7 +3,7 @@
 #include "game/save_game.hpp"
 #include "scene/world/world_model.hpp"
 #include "support/fake_input.hpp"
-#include "world/components/position.hpp"
+#include "scene/world/core/components/position.hpp"
 
 namespace {
 

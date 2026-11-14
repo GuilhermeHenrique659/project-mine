@@ -7,8 +7,8 @@
 
 #include "event/event_bus.hpp"
 #include "game/game_events.hpp"
-#include "scene/world/entity_renderer.hpp"
-#include "scene/world/world_menu.hpp"
+#include "scene/world/render/entity_renderer.hpp"
+#include "scene/world/render/world_menu.hpp"
 #include "scene/world/world_view.hpp"
 #include "support/fake_canvas.hpp"
 #include "support/fake_input.hpp"

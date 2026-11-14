@@ -1,13 +1,13 @@
-#include "scene/world/entity_renderer.hpp"
+#include "scene/world/render/entity_renderer.hpp"
 
 #include <algorithm>
 #include <string>
 #include <vector>
 
 #include "ui/theme.hpp"
-#include "world/components/character.hpp"
-#include "world/components/position.hpp"
-#include "world/isometric.hpp"
+#include "scene/world/core/components/character.hpp"
+#include "scene/world/core/components/position.hpp"
+#include "scene/world/core/isometric.hpp"
 
 namespace scene::world {
 

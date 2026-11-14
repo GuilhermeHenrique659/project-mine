@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <vector>
 
-#include "world/isometric.hpp"
+#include "scene/world/core/isometric.hpp"
 
 namespace {
 

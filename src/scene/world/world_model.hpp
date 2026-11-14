@@ -9,8 +9,8 @@
 #include "game/save_game.hpp"
 #include "input/input_handler.hpp"
 #include "scene/scene.hpp"
-#include "world/isometric.hpp"
-#include "world/system.hpp"
+#include "scene/world/core/isometric.hpp"
+#include "scene/world/core/system.hpp"
 
 namespace scene::world {
 

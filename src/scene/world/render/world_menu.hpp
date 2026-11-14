@@ -4,7 +4,7 @@
 
 #include "event/event_bus.hpp"
 #include "input/pointer.hpp"
-#include "scene/world/renderer.hpp"
+#include "scene/world/render/renderer.hpp"
 #include "scene/world/world_model.hpp"
 #include "ui/ui.hpp"
 

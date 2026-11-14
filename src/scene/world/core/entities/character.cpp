@@ -1,8 +1,8 @@
-#include "world/entities/character.hpp"
+#include "scene/world/core/entities/character.hpp"
 
-#include "world/components/character.hpp"
-#include "world/components/mover.hpp"
-#include "world/components/position.hpp"
+#include "scene/world/core/components/character.hpp"
+#include "scene/world/core/components/mover.hpp"
+#include "scene/world/core/components/position.hpp"
 
 namespace world {
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/registry.hpp"
-#include "scene/world/renderer.hpp"
+#include "scene/world/render/renderer.hpp"
 
 namespace scene::world {
 

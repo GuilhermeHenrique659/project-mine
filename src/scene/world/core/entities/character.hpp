@@ -3,7 +3,7 @@
 #include <string>
 
 #include "core/registry.hpp"
-#include "world/isometric.hpp"
+#include "scene/world/core/isometric.hpp"
 
 namespace world {
 

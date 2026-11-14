@@ -1,9 +1,9 @@
 #include "scene/world/world_model.hpp"
 
-#include "world/components/player_controlled.hpp"
-#include "world/entities/character.hpp"
-#include "world/systems/character_move_system.hpp"
-#include "world/systems/player_input_system.hpp"
+#include "scene/world/core/components/player_controlled.hpp"
+#include "scene/world/core/entities/character.hpp"
+#include "scene/world/core/systems/character_move_system.hpp"
+#include "scene/world/core/systems/player_input_system.hpp"
 
 namespace scene::world {
 

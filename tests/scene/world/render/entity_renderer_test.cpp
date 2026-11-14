@@ -1,11 +1,11 @@
 #include <gtest/gtest.h>
 
 #include "core/registry.hpp"
-#include "scene/world/entity_renderer.hpp"
+#include "scene/world/render/entity_renderer.hpp"
 #include "support/fake_canvas.hpp"
-#include "world/components/character.hpp"
-#include "world/components/position.hpp"
-#include "world/entities/character.hpp"
+#include "scene/world/core/components/character.hpp"
+#include "scene/world/core/components/position.hpp"
+#include "scene/world/core/entities/character.hpp"
 
 namespace {
 

@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
 
 #include "core/registry.hpp"
-#include "world/entities/character.hpp"
-#include "world/components/mover.hpp"
-#include "world/components/position.hpp"
-#include "world/systems/character_move_system.hpp"
+#include "scene/world/core/entities/character.hpp"
+#include "scene/world/core/components/mover.hpp"
+#include "scene/world/core/components/position.hpp"
+#include "scene/world/core/systems/character_move_system.hpp"
 
 TEST(Character, SpawnedCharacterWalksAtCharacterSpeedWhenGivenADirection) {
     // Given

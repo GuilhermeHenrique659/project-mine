@@ -1,6 +1,6 @@
 #pragma once
 
-#include "world/isometric.hpp"
+#include "scene/world/core/isometric.hpp"
 
 namespace world {
 

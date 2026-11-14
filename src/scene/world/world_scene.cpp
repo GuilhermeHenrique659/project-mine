@@ -9,8 +9,8 @@
 #include "input/input_handler.hpp"
 #include "input/raylib_keyboard.hpp"
 #include "input/raylib_pointer.hpp"
-#include "scene/world/entity_renderer.hpp"
-#include "scene/world/world_menu.hpp"
+#include "scene/world/render/entity_renderer.hpp"
+#include "scene/world/render/world_menu.hpp"
 #include "scene/world/world_model.hpp"
 #include "scene/world/world_view.hpp"
 

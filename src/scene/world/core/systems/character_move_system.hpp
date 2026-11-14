@@ -2,7 +2,7 @@
 
 #include "core/registry.hpp"
 #include "event/event_bus.hpp"
-#include "world/system.hpp"
+#include "scene/world/core/system.hpp"
 
 namespace world {
 
