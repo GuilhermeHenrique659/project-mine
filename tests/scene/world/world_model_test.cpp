@@ -2,6 +2,7 @@
 
 #include "game/save_game.hpp"
 #include "scene/world/world_model.hpp"
+#include "support/fake_input.hpp"
 #include "world/components/position.hpp"
 
 namespace {
@@ -16,7 +17,8 @@ namespace {
 TEST(WorldModel, PlayerStartsAtTheWorldOriginAndCanBeFound) {
     // Given / When
     event::EventBus bus;
-    const scene::world::WorldModel model(bus, game::SaveGame{"Alpha", {}});
+    FakeInput input;
+    const scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
 
     // Then
     const core::Entity* player = model.registry().find(model.player_id());
@@ -29,8 +31,9 @@ TEST(WorldModel, PlayerStartsAtTheWorldOriginAndCanBeFound) {
 TEST(WorldModel, UpdatingWithADirectionMovesThePlayer) {
     // Given
     event::EventBus bus;
-    scene::world::WorldModel model(bus, game::SaveGame{"Alpha", {}});
-    model.set_player_direction({1.0f, 0.0f});
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    input.keyboard.down = {input::Key::S, input::Key::D}; // screen down-right = world +x
 
     // When
     model.update(0.5f);
@@ -43,7 +46,8 @@ TEST(WorldModel, UpdatingWithADirectionMovesThePlayer) {
 TEST(WorldModel, TogglingPauseOpensAndClosesThePause) {
     // Given
     event::EventBus bus;
-    scene::world::WorldModel model(bus, game::SaveGame{"Alpha", {}});
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
     const bool paused_at_start = model.is_paused();
 
     // When
@@ -60,8 +64,9 @@ TEST(WorldModel, TogglingPauseOpensAndClosesThePause) {
 TEST(WorldModel, ThePlayerDoesNotMoveWhilePaused) {
     // Given
     event::EventBus bus;
-    scene::world::WorldModel model(bus, game::SaveGame{"Alpha", {}});
-    model.set_player_direction({1.0f, 0.0f});
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    input.keyboard.down = {input::Key::S, input::Key::D}; // screen down-right = world +x
     model.toggle_pause();
 
     // When
@@ -74,13 +79,14 @@ TEST(WorldModel, ThePlayerDoesNotMoveWhilePaused) {
 TEST(WorldModel, ClearingTheDirectionStopsThePlayer) {
     // Given
     event::EventBus bus;
-    scene::world::WorldModel model(bus, game::SaveGame{"Alpha", {}});
-    model.set_player_direction({0.0f, 1.0f});
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    input.keyboard.down = {input::Key::A, input::Key::S}; // screen down-left = world +y
     model.update(0.5f);
     const ::world::WorldPoint stopped_at = player_position(model);
 
     // When
-    model.set_player_direction({0.0f, 0.0f});
+    input.keyboard.down.clear();
     model.update(0.5f);
 
     // Then

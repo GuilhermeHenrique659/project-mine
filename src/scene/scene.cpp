@@ -13,6 +13,9 @@ void Scene::update(float delta_time) {
     if (model_) {
         model_->update(delta_time);
     }
+    if (view_) {
+        view_->update();
+    }
 }
 
 void Scene::draw() const {

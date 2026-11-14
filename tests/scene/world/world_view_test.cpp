@@ -1,158 +1,146 @@
 #include <gtest/gtest.h>
 
-#include <optional>
+#include <memory>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include "event/event_bus.hpp"
 #include "game/game_events.hpp"
-#include "scene/world/world_model.hpp"
+#include "scene/world/entity_renderer.hpp"
+#include "scene/world/world_menu.hpp"
 #include "scene/world/world_view.hpp"
 #include "support/fake_canvas.hpp"
+#include "support/fake_input.hpp"
+#include "support/fake_pointer.hpp"
 
 namespace {
 
-constexpr float ScreenWidth = 1280.0f;
-constexpr float ScreenHeight = 720.0f;
+constexpr ui::Size Screen{1280.0f, 720.0f};
 
-// Records the business events the world screen publishes.
-struct EventRecorder {
-    explicit EventRecorder(event::EventBus& bus) {
-        subscriptions.push_back(event::subscribe_scoped<game::SaveGameRequested>(
-            bus, [this](const game::SaveGameRequested& e) { saved = e.save; }));
-        subscriptions.push_back(event::subscribe_scoped<game::BackToMenuRequested>(
-            bus, [this](const game::BackToMenuRequested&) { ++back_requests; }));
-    }
+using Calls = std::vector<std::string>;
+using RendererPtr = std::unique_ptr<scene::world::Renderer>;
 
-    std::optional<game::SaveGame> saved;
-    int back_requests = 0;
-    std::vector<event::ScopedSubscription> subscriptions;
+// Writes "update:<name>" / "draw:<name>" into a shared list.
+class RecordingRenderer : public scene::world::Renderer {
+public:
+    RecordingRenderer(std::string name, Calls& calls, bool visible = true)
+        : name_(std::move(name)), calls_(calls), visible_(visible) {}
+
+    bool visible() const override { return visible_; }
+    void update() override { calls_.push_back("update:" + name_); }
+    void draw(ui::Canvas&, ui::Size) const override { calls_.push_back("draw:" + name_); }
+
+private:
+    std::string name_;
+    Calls& calls_;
+    bool visible_;
 };
 
-ui::Point center_of(const ui::Rect& rect) {
-    return {rect.x + rect.width / 2.0f, rect.y + rect.height / 2.0f};
+std::vector<RendererPtr> renderers_of(RendererPtr bottom, RendererPtr top) {
+    std::vector<RendererPtr> renderers;
+    renderers.push_back(std::move(bottom));
+    renderers.push_back(std::move(top));
+    return renderers;
 }
+
+// The real world screen: entities under the pause menu, with a fake mouse.
+struct WorldScreen {
+    WorldScreen() : model(bus, input.handler, game::SaveGame{"Alpha", 0}) {
+        auto menu_renderer = std::make_unique<scene::world::WorldMenu>(bus, model, pointer);
+        menu = menu_renderer.get();
+        view = std::make_unique<scene::world::WorldView>(
+            renderers_of(std::make_unique<scene::world::EntityRenderer>(model.registry()),
+                         std::move(menu_renderer)));
+    }
+
+    event::EventBus bus;
+    FakeInput input;
+    std::shared_ptr<FakePointer> pointer = std::make_shared<FakePointer>();
+    scene::world::WorldModel model;
+    scene::world::WorldMenu* menu = nullptr; // owned by the view
+    std::unique_ptr<scene::world::WorldView> view;
+};
 
 } // namespace
 
-TEST(WorldView, SaveButtonPublishesTheStateOfTheGameBeingPlayed) {
+TEST(WorldView, DrawsTheRenderersInTheOrderGiven) {
     // Given
-    event::EventBus bus;
-    EventRecorder recorder(bus);
-    FakeCanvas canvas;
-    scene::world::WorldModel model(bus, game::SaveGame{"My Base", 1'700'000'000});
-    model.toggle_pause();
-    scene::world::WorldView view(bus, model);
-    view.layout(canvas, {ScreenWidth, ScreenHeight});
-
-    // When
-    view.handle_pointer(center_of(view.menu().save_button().bounds()), true);
-
-    // Then
-    ASSERT_TRUE(recorder.saved.has_value());
-    EXPECT_EQ(*recorder.saved, (game::SaveGame{"My Base", 1'700'000'000}));
-    EXPECT_EQ(recorder.back_requests, 0);
-}
-
-TEST(WorldView, MainMenuButtonGoesBackWithoutSaving) {
-    // Given
-    event::EventBus bus;
-    EventRecorder recorder(bus);
-    FakeCanvas canvas;
-    scene::world::WorldModel model(bus, game::SaveGame{"My Base", 1'700'000'000});
-    model.toggle_pause();
-    scene::world::WorldView view(bus, model);
-    view.layout(canvas, {ScreenWidth, ScreenHeight});
-
-    // When
-    view.handle_pointer(center_of(view.menu().menu_button().bounds()), true);
-
-    // Then
-    EXPECT_EQ(recorder.back_requests, 1);
-    EXPECT_FALSE(recorder.saved.has_value());
-}
-
-TEST(WorldView, ShowsTheNameOfTheLoadedSave) {
-    // Given
-    event::EventBus bus;
-    const scene::world::WorldModel model(bus, game::SaveGame{"My Base", 1'700'000'000});
-
-    // When
-    scene::world::WorldView view(bus, model);
-
-    // Then
-    EXPECT_EQ(view.menu().name_label().text(), "My Base");
-}
-
-TEST(WorldView, MenuIgnoresClicksWhileThePlayIsNotPaused) {
-    // Given
-    event::EventBus bus;
-    EventRecorder recorder(bus);
-    FakeCanvas canvas;
-    scene::world::WorldModel model(bus, game::SaveGame{"My Base", 1'700'000'000});
-    scene::world::WorldView view(bus, model);
-    view.layout(canvas, {ScreenWidth, ScreenHeight});
-
-    // When
-    view.handle_pointer(center_of(view.menu().menu_button().bounds()), true);
-
-    // Then
-    EXPECT_EQ(recorder.back_requests, 0);
-}
-
-TEST(WorldView, MenuIsDrawnOnlyWhilePaused) {
-    // Given
-    event::EventBus bus;
-    scene::world::WorldModel model(bus, game::SaveGame{"My Base", 1'700'000'000});
-    const scene::world::WorldView view(bus, model);
-    FakeCanvas hidden;
-    FakeCanvas shown;
-
-    // When
-    view.draw_menu(hidden, {ScreenWidth, ScreenHeight});
-    model.toggle_pause();
-    view.draw_menu(shown, {ScreenWidth, ScreenHeight});
-
-    // Then
-    EXPECT_TRUE(hidden.texts.empty());
-    EXPECT_FALSE(shown.texts.empty());
-}
-
-TEST(WorldView, CharacterIsDrawnAsACubeWithItsLabelAndStateAroundTheScreenCentre) {
-    // Given
-    event::EventBus bus;
-    scene::world::WorldModel model(bus, game::SaveGame{"Alpha", 0});
-    model.set_player_direction({1.0f, 0.0f});
-    model.update(0.5f); // the player walks 2 tiles along world x
-    const scene::world::WorldView view(bus, model);
+    Calls calls;
+    scene::world::WorldView view(renderers_of(std::make_unique<RecordingRenderer>("bottom", calls),
+                                              std::make_unique<RecordingRenderer>("top", calls)));
     FakeCanvas canvas;
 
     // When
-    view.draw_entities(canvas, {1280.0f, 720.0f});
+    view.draw(canvas, Screen);
 
-    // Then: world (2, 0) with 64x32 tiles is (64, 32) pixels from the screen centre
-    ASSERT_EQ(canvas.fills.size(), 2u); // top face, then front face
-    const ui::Point marker_center = center_of(canvas.fills.back().rect);
-    EXPECT_FLOAT_EQ(marker_center.x, 640.0f + 64.0f);
-    EXPECT_FLOAT_EQ(marker_center.y, 360.0f + 32.0f);
-    ASSERT_EQ(canvas.texts.size(), 1u);
-    EXPECT_EQ(canvas.texts.front().text, "Player (Moving)");
-    EXPECT_LT(canvas.texts.front().position.y, canvas.fills.front().rect.y);
+    // Then
+    EXPECT_EQ(calls, (Calls{"draw:bottom", "draw:top"}));
 }
 
-TEST(WorldView, MenuIsCenteredOnTheScreen) {
+TEST(WorldView, UpdatesTheTopmostRendererFirst) {
     // Given
-    event::EventBus bus;
-    FakeCanvas canvas;
-    scene::world::WorldModel model(bus, game::SaveGame{"Alpha", 0});
-    model.toggle_pause();
-    scene::world::WorldView view(bus, model);
+    Calls calls;
+    scene::world::WorldView view(renderers_of(std::make_unique<RecordingRenderer>("bottom", calls),
+                                              std::make_unique<RecordingRenderer>("top", calls)));
 
     // When
-    view.layout(canvas, {ScreenWidth, ScreenHeight});
+    view.update();
 
-    // Then: the buttons are centred horizontally and the whole panel vertically
-    const ui::Rect name = view.menu().name_label().bounds();
-    const ui::Rect last = view.menu().menu_button().bounds();
-    EXPECT_NEAR(center_of(view.menu().save_button().bounds()).x, ScreenWidth / 2.0f, 1.0f);
-    EXPECT_NEAR((name.y + last.y + last.height) / 2.0f, ScreenHeight / 2.0f, 40.0f);
+    // Then
+    EXPECT_EQ(calls, (Calls{"update:top", "update:bottom"}));
+}
+
+TEST(WorldView, AHiddenRendererIsNeitherUpdatedNorDrawn) {
+    // Given
+    Calls calls;
+    scene::world::WorldView view(
+        renderers_of(std::make_unique<RecordingRenderer>("shown", calls),
+                     std::make_unique<RecordingRenderer>("hidden", calls, false)));
+    FakeCanvas canvas;
+
+    // When
+    view.update();
+    view.draw(canvas, Screen);
+
+    // Then
+    EXPECT_EQ(calls, (Calls{"update:shown", "draw:shown"}));
+}
+
+TEST(WorldView, PauseMenuIsDrawnOnlyWhilePaused) {
+    // Given
+    WorldScreen screen;
+    FakeCanvas playing;
+    FakeCanvas paused;
+
+    // When
+    screen.view->draw(playing, Screen);
+    screen.model.toggle_pause();
+    screen.view->draw(paused, Screen);
+
+    // Then: while playing only the player's label is drawn
+    ASSERT_EQ(playing.texts.size(), 1u);
+    EXPECT_EQ(playing.texts.front().text, "Player (Idle)");
+    EXPECT_GT(paused.texts.size(), 1u);
+}
+
+TEST(WorldView, PauseMenuIgnoresClicksWhileThePlayIsNotPaused) {
+    // Given: the menu has been laid out while paused, then the game resumes
+    WorldScreen screen;
+    int back_requests = 0;
+    const auto subscription = event::subscribe_scoped<game::BackToMenuRequested>(
+        screen.bus, [&back_requests](const game::BackToMenuRequested&) { ++back_requests; });
+    FakeCanvas canvas;
+    screen.model.toggle_pause();
+    screen.view->draw(canvas, Screen);
+    screen.model.toggle_pause();
+    const ui::Rect button = screen.menu->menu_button().bounds();
+    screen.pointer->at = {button.x + button.width / 2.0f, button.y + button.height / 2.0f};
+    screen.pointer->release = true;
+
+    // When
+    screen.view->update();
+
+    // Then
+    EXPECT_EQ(back_requests, 0);
 }

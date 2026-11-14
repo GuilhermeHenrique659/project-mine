@@ -10,7 +10,10 @@ constexpr float CardWidth = 560.0f;
 constexpr int TitleFontSize = 40;
 } // namespace
 
-WorldMenu::WorldMenu(event::EventBus& bus, const game::SaveGame& save) {
+WorldMenu::WorldMenu(event::EventBus& bus, const WorldModel& model,
+                     std::shared_ptr<const input::Pointer> pointer)
+    : model_(model), pointer_(std::move(pointer)) {
+    const game::SaveGame& save = model.save_game();
     auto name = ui::label(save.name)
                     .style(ui::theme::label_style()
                                .with_font_size(TitleFontSize)
@@ -54,8 +57,11 @@ void WorldMenu::draw(ui::Canvas& canvas, ui::Size screen) const {
     root_->draw(canvas);
 }
 
-void WorldMenu::handle_pointer(ui::Point position, bool released) {
-    root_->handle_pointer(position, released);
+bool WorldMenu::visible() const { return model_.is_paused(); }
+
+void WorldMenu::update() {
+    const input::PointerPosition at = pointer_->position();
+    root_->handle_pointer({at.x, at.y}, pointer_->released());
 }
 
 } // namespace scene::world

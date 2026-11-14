@@ -11,10 +11,13 @@ public:
     virtual void update(float delta_time) = 0;
 };
 
-// Renders a model. Concrete views keep a reference to their concrete model.
+// Renders a model. Concrete views keep a reference to their concrete model. A view with
+// parts that poll input of their own (the mouse) does it in update(), which runs after
+// the model's, never inside draw().
 class View {
 public:
     virtual ~View() = default;
+    virtual void update() {}
     virtual void draw() const = 0;
 };
 

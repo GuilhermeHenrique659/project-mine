@@ -32,10 +32,11 @@ TEST(CharacterMoveSystem, MovesBySpeedTimesDeltaTimeAlongTheDirection) {
     // Given
     core::Registry registry;
     event::EventBus bus;
+    world::CharacterMoveSystem system(registry, bus);
     const core::EntityId id = spawn_walker(registry, 4.0f, {1.0f, 0.0f});
 
     // When
-    world::character_move_system(registry, bus, 0.5f);
+    system.update(0.5f);
 
     // Then
     const world::Position* position = registry.get<world::Position>(id);
@@ -48,11 +49,12 @@ TEST(CharacterMoveSystem, DiagonalMovementIsNotFasterThanStraightMovement) {
     // Given
     core::Registry registry;
     event::EventBus bus;
+    world::CharacterMoveSystem system(registry, bus);
     const core::EntityId diagonal = spawn_walker(registry, 4.0f, {1.0f, 1.0f});
     const core::EntityId straight = spawn_walker(registry, 4.0f, {1.0f, 0.0f});
 
     // When
-    world::character_move_system(registry, bus, 1.0f);
+    system.update(1.0f);
 
     // Then
     EXPECT_NEAR(distance_from_origin(*registry.get<world::Position>(straight)), 4.0f, 1e-4f);
@@ -64,10 +66,11 @@ TEST(CharacterMoveSystem, ZeroDirectionKeepsThePosition) {
     // Given
     core::Registry registry;
     event::EventBus bus;
+    world::CharacterMoveSystem system(registry, bus);
     const core::EntityId id = spawn_walker(registry, 4.0f, {0.0f, 0.0f});
 
     // When
-    world::character_move_system(registry, bus, 1.0f);
+    system.update(1.0f);
 
     // Then
     const world::Position* position = registry.get<world::Position>(id);
@@ -80,11 +83,12 @@ TEST(CharacterMoveSystem, EntityWithoutMoverDoesNotMove) {
     // Given
     core::Registry registry;
     event::EventBus bus;
+    world::CharacterMoveSystem system(registry, bus);
     const core::EntityId id = registry.create("statue");
     registry.add(id, world::Position{{3.0f, 5.0f}});
 
     // When
-    world::character_move_system(registry, bus, 1.0f);
+    system.update(1.0f);
 
     // Then
     const world::Position* position = registry.get<world::Position>(id);
@@ -97,12 +101,13 @@ TEST(CharacterMoveSystem, EntityThatIsNotACharacterDoesNotMove) {
     // Given
     core::Registry registry;
     event::EventBus bus;
+    world::CharacterMoveSystem system(registry, bus);
     const core::EntityId id = registry.create("cart");
     registry.add(id, world::Position{{3.0f, 5.0f}});
     registry.add(id, world::Mover{4.0f, {1.0f, 0.0f}});
 
     // When
-    world::character_move_system(registry, bus, 1.0f);
+    system.update(1.0f);
 
     // Then
     const world::Position* position = registry.get<world::Position>(id);
@@ -133,11 +138,12 @@ TEST(CharacterMoveSystem, IdleCharacterThatStartsWalkingBecomesMovingAndAnnounce
     // Given
     core::Registry registry;
     event::EventBus bus;
+    world::CharacterMoveSystem system(registry, bus);
     StateChangeRecorder recorder(bus);
     const core::EntityId id = spawn_walker(registry, 4.0f, {1.0f, 0.0f});
 
     // When
-    world::character_move_system(registry, bus, 0.5f);
+    system.update(0.5f);
 
     // Then
     EXPECT_EQ(state_of(registry, id), world::CharacterState::Moving);
@@ -148,12 +154,13 @@ TEST(CharacterMoveSystem, CharacterThatKeepsWalkingDoesNotAnnounceAgain) {
     // Given
     core::Registry registry;
     event::EventBus bus;
+    world::CharacterMoveSystem system(registry, bus);
     const core::EntityId id = spawn_walker(registry, 4.0f, {1.0f, 0.0f});
-    world::character_move_system(registry, bus, 0.5f);
+    system.update(0.5f);
     StateChangeRecorder recorder(bus);
 
     // When
-    world::character_move_system(registry, bus, 0.5f);
+    system.update(0.5f);
 
     // Then
     EXPECT_EQ(state_of(registry, id), world::CharacterState::Moving);
@@ -164,13 +171,14 @@ TEST(CharacterMoveSystem, MovingCharacterThatStopsBecomesIdleAndAnnouncesIt) {
     // Given
     core::Registry registry;
     event::EventBus bus;
+    world::CharacterMoveSystem system(registry, bus);
     const core::EntityId id = spawn_walker(registry, 4.0f, {1.0f, 0.0f});
-    world::character_move_system(registry, bus, 0.5f);
+    system.update(0.5f);
     StateChangeRecorder recorder(bus);
 
     // When
     registry.get<world::Mover>(id)->direction = {0.0f, 0.0f};
-    world::character_move_system(registry, bus, 0.5f);
+    system.update(0.5f);
 
     // Then
     EXPECT_EQ(state_of(registry, id), world::CharacterState::Idle);
@@ -181,11 +189,12 @@ TEST(CharacterMoveSystem, CharacterStandingStillStaysIdleWithoutAnnouncing) {
     // Given
     core::Registry registry;
     event::EventBus bus;
+    world::CharacterMoveSystem system(registry, bus);
     StateChangeRecorder recorder(bus);
     const core::EntityId id = spawn_walker(registry, 4.0f, {0.0f, 0.0f});
 
     // When
-    world::character_move_system(registry, bus, 0.5f);
+    system.update(0.5f);
 
     // Then
     EXPECT_EQ(state_of(registry, id), world::CharacterState::Idle);

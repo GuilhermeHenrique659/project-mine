@@ -3,24 +3,30 @@
 #include <memory>
 
 #include "event/event_bus.hpp"
-#include "game/save_game.hpp"
+#include "input/pointer.hpp"
+#include "scene/world/renderer.hpp"
+#include "scene/world/world_model.hpp"
 #include "ui/ui.hpp"
 
 namespace scene::world {
 
 // The pause menu of the world: the save's name and creation date, a Save button
 // (publishes SaveGameRequested with the given save) and a Main Menu button (publishes
-// BackToMenuRequested). It knows nothing about when it is shown; WorldView decides.
-class WorldMenu {
+// BackToMenuRequested). It is a Renderer that is visible only while the model is paused,
+// and it reads the mouse itself in update() through the injected pointer, using the
+// bounds of the last draw(). The bus, the model and the pointer's owner (shared) are
+// injected; the bus and the model must outlive the menu.
+class WorldMenu : public Renderer {
 public:
-    WorldMenu(event::EventBus& bus, const game::SaveGame& save);
+    WorldMenu(event::EventBus& bus, const WorldModel& model,
+              std::shared_ptr<const input::Pointer> pointer);
 
-    // Centres the panel on a screen of the given size.
+    bool visible() const override;
+    void update() override;
+    void draw(ui::Canvas& canvas, ui::Size screen) const override;
+
+    // Centres the panel on a screen of the given size (draw() does it before painting).
     void layout(const ui::Canvas& canvas, ui::Size screen) const;
-    void draw(ui::Canvas& canvas, ui::Size screen) const;
-
-    // Pointer position in screen space; positions come from the last layout.
-    void handle_pointer(ui::Point position, bool released);
 
     // Keyboard navigation: Save, Main Menu.
     ui::FocusGroup& focus_group() { return focus_group_; }
@@ -33,6 +39,8 @@ private:
     WorldMenu(const WorldMenu&) = delete;
     WorldMenu& operator=(const WorldMenu&) = delete;
 
+    const WorldModel& model_;
+    std::shared_ptr<const input::Pointer> pointer_;
     std::unique_ptr<ui::Card> root_;
     // Non-owning, owned by root_.
     ui::Label* name_label_ = nullptr;

@@ -1,30 +1,31 @@
 #pragma once
 
+#include <memory>
 #include <utility>
+#include <vector>
 
 #include "core/registry.hpp"
 #include "event/event_bus.hpp"
 #include "game/save_game.hpp"
+#include "input/input_handler.hpp"
 #include "scene/scene.hpp"
 #include "world/isometric.hpp"
+#include "world/system.hpp"
 
 namespace scene::world {
 
 // State of the game being played: the save it came from and the simulation (an ECS
 // registry with the player character). The simulation lives in core:: and ::world::
-// and knows nothing about input or rendering; this model only drives it.
+// and knows nothing about rendering; this model only drives it. Input reaches it through
+// the handler injected in the constructor, read by the input system.
 class WorldModel : public scene::Model {
 public:
-    // The bus receives the simulation events (::world::CharacterMoved) and must outlive
-    // the model.
-    WorldModel(event::EventBus& bus, game::SaveGame save);
+    // The bus receives the simulation events (::world::CharacterStateChanged) and the
+    // input is read by the systems each update; both must outlive the model.
+    WorldModel(event::EventBus& bus, const input::InputHandler& input, game::SaveGame save);
 
     // Runs the systems for one frame.
     void update(float delta_time) override;
-
-    // Sets where the player wants to walk, in world space ((0, 0) = stand still). The
-    // only entry point for input.
-    void set_player_direction(::world::WorldPoint direction);
 
     // Opens or closes the pause. While paused update() does not run the simulation.
     void toggle_pause();
@@ -42,6 +43,8 @@ private:
     game::SaveGame save_;
     core::Registry registry_;
     core::EntityId player_ = 0;
+    // Declared after registry_ and bus_, which the systems refer to, so they are destroyed first.
+    std::vector<std::unique_ptr<::world::System>> systems_;
     bool paused_ = false;
 };
 

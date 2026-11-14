@@ -10,9 +10,9 @@
 
 namespace world {
 
-void character_move_system(core::Registry& registry, event::EventBus& bus, float delta_time) {
+void CharacterMoveSystem::update(float delta_time) {
     std::vector<core::EntityId> changed;
-    registry.each<Character, Position, Mover>(
+    registry_.each<Character, Position, Mover>(
         [delta_time, &changed](core::EntityId id, Character& character, Position& position,
                                Mover& mover) {
             const float length = std::hypot(mover.direction.x, mover.direction.y);
@@ -33,7 +33,7 @@ void character_move_system(core::Registry& registry, event::EventBus& bus, float
 
     // Published after the loop so subscribers are free to change the registry.
     for (const core::EntityId id : changed) {
-        bus.publish(CharacterStateChanged{id});
+        bus_.publish(CharacterStateChanged{id});
     }
 }
 

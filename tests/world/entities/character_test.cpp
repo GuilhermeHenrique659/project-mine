@@ -10,11 +10,12 @@ TEST(Character, SpawnedCharacterWalksAtCharacterSpeedWhenGivenADirection) {
     // Given
     core::Registry registry;
     event::EventBus bus;
+    world::CharacterMoveSystem system(registry, bus);
     const core::EntityId id = world::spawn_character(registry, "Hero", {2.0f, 1.0f});
     registry.get<world::Mover>(id)->direction = {0.0f, 1.0f};
 
     // When
-    world::character_move_system(registry, bus, 0.5f);
+    system.update(0.5f);
 
     // Then
     ASSERT_NE(registry.find(id), nullptr);
