@@ -1,0 +1,15 @@
+#pragma once
+
+#include "input/key.hpp"
+
+namespace input {
+
+// Source of keyboard state. Implemented on top of raylib for the game and faked in tests.
+class Keyboard {
+public:
+    virtual ~Keyboard() = default;
+    // True only on the frame the key went down.
+    virtual bool is_pressed(Key key) const = 0;
+};
+
+} // namespace input
