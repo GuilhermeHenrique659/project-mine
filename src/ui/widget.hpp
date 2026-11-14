@@ -25,6 +25,12 @@ public:
     virtual Size preferred_size(const Canvas& canvas) const = 0;
     virtual void layout(Rect bounds, const Canvas& canvas);
     virtual void draw(Canvas& canvas) const = 0;
+    // Drawn by the parent after all siblings, so popups (e.g. an open dropdown list)
+    // appear on top of them.
+    virtual void draw_overlay(Canvas&) const {}
+    // True while the widget has a popup open: the parent then forwards pointer events
+    // only to it, so clicks on the popup never reach the widgets underneath.
+    virtual bool blocks_pointer() const { return false; }
     // Pointer position in screen space; `released` is true on the frame the button is released.
     // Fires on_hover when the pointer enters, on_leave when it exits, on_click on release inside.
     virtual void handle_pointer(Point position, bool released);

@@ -36,10 +36,19 @@ void Card::draw(Canvas& canvas) const {
     for (const auto& child : children_) {
         child->draw(canvas);
     }
+    for (const auto& child : children_) {
+        child->draw_overlay(canvas);
+    }
 }
 
 void Card::handle_pointer(Point position, bool released) {
     Widget::handle_pointer(position, released);
+    for (const auto& child : children_) {
+        if (child->blocks_pointer()) {
+            child->handle_pointer(position, released);
+            return;
+        }
+    }
     for (const auto& child : children_) {
         child->handle_pointer(position, released);
     }

@@ -4,6 +4,7 @@
 
 #include "game/game_events.hpp"
 #include "scene/menu/title_scene.hpp"
+#include "scene/settings/settings_scene.hpp"
 
 namespace game {
 
@@ -17,6 +18,19 @@ constexpr const char* WindowTitle = "Project Mine";
 Game::Game() {
     subscriptions_.push_back(event::subscribe_scoped<QuitRequested>(
         bus_, [this](const QuitRequested&) { quit(); }));
+    subscriptions_.push_back(event::subscribe_scoped<SettingsRequested>(
+        bus_, [this](const SettingsRequested&) {
+            change_scene(scene::settings::make_settings_scene(*this));
+        }));
+    subscriptions_.push_back(event::subscribe_scoped<BackToMenuRequested>(
+        bus_, [this](const BackToMenuRequested&) {
+            change_scene(scene::menu::make_title_scene(*this));
+        }));
+    subscriptions_.push_back(event::subscribe_scoped<DisplaySettingsChanged>(
+        bus_, [this](const DisplaySettingsChanged& event) {
+            display_settings_ = event.settings;
+            apply_display_settings();
+        }));
 }
 
 void Game::start_up() {
@@ -60,6 +74,21 @@ void Game::quit() { running_ = false; }
 bool Game::is_running() const { return running_; }
 
 const scene::Scene* Game::active_scene() const { return active_scene_.get(); }
+
+// Thin raylib shell: the decision (what the player chose) lives in display_settings_.
+// Without a window (tests) there is nothing to apply.
+void Game::apply_display_settings() const {
+    if (!IsWindowReady()) {
+        return;
+    }
+    if (display_settings_.fullscreen != IsWindowFullscreen()) {
+        ToggleFullscreen();
+    }
+    if (display_settings_.fullscreen) {
+        return;
+    }
+    SetWindowSize(display_settings_.resolution.width, display_settings_.resolution.height);
+}
 
 void Game::apply_pending_scene() {
     if (!pending_scene_) {

@@ -25,16 +25,20 @@ MenuView::MenuView(event::EventBus& bus) {
         "New Game", [&bus] { bus.publish(game::NewGameRequested{}); });
     auto load_game_button = button_factory.create(
         "Load Game", [&bus] { bus.publish(game::LoadGameRequested{}); });
+    auto settings_button = button_factory.create(
+        "Settings", [&bus] { bus.publish(game::SettingsRequested{}); });
     auto quit_button =
         button_factory.create("Quit", [&bus] { bus.publish(game::QuitRequested{}); });
 
-    buttons_ = {start_new_game_button.get(), load_game_button.get(), quit_button.get()};
+    buttons_ = {start_new_game_button.get(), load_game_button.get(), settings_button.get(),
+                quit_button.get()};
 
     ui::CardBuilder builder = ui::card();
     builder.style(ui::theme::card_style().with_width(CardWidth));
     builder.child(std::move(title));
     builder.child(std::move(start_new_game_button));
     builder.child(std::move(load_game_button));
+    builder.child(std::move(settings_button));
     builder.child(std::move(quit_button));
     root_ = builder.build();
 }

@@ -32,10 +32,10 @@ The project path contains an accent ("Área de Trabalho") and the MinGW linker d
 | Module | Namespace | Role |
 |---|---|---|
 | `main.cpp` | — | Only creates `Game`, calls `start_up()` and `run()`. Tests exclude it. |
-| `game/` | `game` | `Game` owns the window, the main loop, the active scene and the `EventBus`. `game_events.hpp` holds the business events (`NewGameRequested`, `LoadGameRequested`, `QuitRequested`). |
+| `game/` | `game` | `Game` owns the window, the main loop, the active scene and the `EventBus`. `game_events.hpp` holds the business events (`NewGameRequested`, `LoadGameRequested`, `SettingsRequested`, `BackToMenuRequested`, `DisplaySettingsChanged`, `QuitRequested`); `display_settings.hpp` has `DisplaySettings` and the resolution presets. `Game` applies display settings to the window and switches between the menu and settings scenes. |
 | `event/` | `event` | `EventBus` (synchronous, type-safe publish/subscribe), `ScopedSubscription` (RAII unsubscribe) and `subscribe_scoped<E>()`. Header only. |
-| `scene/` | `scene` | `Scene` composes a `Model`, a `View` and a `Controller` (MVC). Model and view may be null. `scene/menu/` is the title/main menu scene (`MenuView`, `make_title_scene()`). |
-| `ui/` | `ui` | Reusable, raylib-free widget toolkit: `Style` (CSS-like), builders (HTML-like), `Widget` base, `Label`, `Button`, `Input`, `Card`, `FocusGroup`/`Focusable` (keyboard navigation), `Canvas` (drawing surface). Only `raylib_canvas.cpp` touches raylib. |
+| `scene/` | `scene` | `Scene` composes a `Model`, a `View` and a `Controller` (MVC). Model and view may be null. `scene/menu/` is the title/main menu scene (`MenuView`, `make_title_scene()`); `scene/settings/` is the settings screen (`SettingsView`, `make_settings_scene()`). |
+| `ui/` | `ui` | Reusable, raylib-free widget toolkit: `Style` (CSS-like), builders (HTML-like), `Widget` base, `Label`, `Button`, `Input`, `Checkbox`, `Dropdown`, `Card`, `FocusGroup`/`Focusable` (keyboard navigation), `Canvas` (drawing surface). Only `raylib_canvas.cpp` touches raylib. |
 | `input/` | `input` | Keyboard abstraction: `Key`, `Action`, `Keyboard` (interface), `InputMap` (key → action bindings, rebindable) and `InputHandler` (polls the keyboard, runs the handler of each triggered action). Only `raylib_keyboard.cpp` touches raylib. |
 
 `tests/` mirrors the modules; `tests/fake_canvas.hpp` is a recording `Canvas` for widget tests.
@@ -61,7 +61,8 @@ raylib mouse ──────────────────────�
 - **The `EventBus` lives in `Game`** (`game.event_bus()`), is shared by every scene, and is declared first in `Game` so it outlives scenes. Subscribers that can be destroyed before the bus must hold a `ScopedSubscription` (never a bare `subscribe` id).
 - **Input is mapped in two steps.** Raw keys → `Action` through `InputMap`/`InputHandler`; the controller registers a handler per `Action` and never names a physical key. The mouse is read directly by the controller and forwarded with `view.handle_pointer(position, released)`.
 - **UI events live on the widget.** Every widget accepts `on_click`, `on_hover` and `on_leave` (builder methods or `set_on_*`). `Card` forwards pointer events to its children. A disabled `Button` ignores clicks.
-- **Keyboard focus** is a `ui::FocusGroup`: add `Focusable` widgets (`Button`, `Input`), call `focus_next()/focus_previous()/activate_focused()`, and call `focus(widget)` on hover to sync mouse and keyboard.
+- **Popups.** A widget with a popup (`Dropdown`) draws it in `draw_overlay()` (the parent draws overlays after all siblings) and returns `blocks_pointer()` while open, so `Card` sends it all pointer events and clicks never reach widgets underneath.
+- **Keyboard focus** is a `ui::FocusGroup`: add `Focusable` widgets (`Button`, `Input`, `Checkbox`, `Dropdown`), call `focus_next()/focus_previous()/activate_focused()`, and call `focus(widget)` on hover to sync mouse and keyboard.
 - **Layout and drawing are separate from raylib.** Widgets measure and draw through `ui::Canvas`; `layout()` runs before `draw()` and hit-testing uses the bounds of the last layout.
 - **Scene lifecycle.** `Game::change_scene()` applies at the start of the next `update()`. Per frame: `Scene::update()` runs `Controller::handle_input()` then `Model::update()`; `Scene::draw()` runs `View::draw()`.
 

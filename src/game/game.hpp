@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "event/event_bus.hpp"
+#include "game/display_settings.hpp"
 #include "scene/scene.hpp"
 
 namespace game {
@@ -32,18 +33,23 @@ public:
     // Channel shared by the layers of every scene.
     event::EventBus& event_bus() { return bus_; }
 
+    // What the player last chose in the settings screen (applied to the window).
+    const DisplaySettings& display_settings() const { return display_settings_; }
+
     void quit();
     bool is_running() const;
     const scene::Scene* active_scene() const;
 
 private:
     void apply_pending_scene();
+    void apply_display_settings() const;
 
     // Declared first so it outlives the scenes that subscribe to it.
     event::EventBus bus_;
     std::vector<event::ScopedSubscription> subscriptions_;
     std::unique_ptr<scene::Scene> active_scene_;
     std::unique_ptr<scene::Scene> pending_scene_;
+    DisplaySettings display_settings_;
     bool running_ = false;
 };
 

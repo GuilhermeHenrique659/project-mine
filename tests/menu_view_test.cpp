@@ -12,7 +12,8 @@ namespace {
 constexpr float ScreenWidth = 1280.0f;
 constexpr std::size_t NewGameIndex = 0;
 constexpr std::size_t LoadGameIndex = 1;
-constexpr std::size_t QuitIndex = 2;
+constexpr std::size_t SettingsIndex = 2;
+constexpr std::size_t QuitIndex = 3;
 
 // Counts the business events the menu publishes.
 struct EventCounter {
@@ -21,12 +22,15 @@ struct EventCounter {
             bus, [this](const game::NewGameRequested&) { ++new_games; }));
         subscriptions.push_back(event::subscribe_scoped<game::LoadGameRequested>(
             bus, [this](const game::LoadGameRequested&) { ++loads; }));
+        subscriptions.push_back(event::subscribe_scoped<game::SettingsRequested>(
+            bus, [this](const game::SettingsRequested&) { ++settings; }));
         subscriptions.push_back(event::subscribe_scoped<game::QuitRequested>(
             bus, [this](const game::QuitRequested&) { ++quits; }));
     }
 
     int new_games = 0;
     int loads = 0;
+    int settings = 0;
     int quits = 0;
     std::vector<event::ScopedSubscription> subscriptions;
 };
@@ -70,6 +74,22 @@ TEST(MenuView, ClickingLoadGameButtonPublishesLoadGameRequested) {
     EXPECT_EQ(counter.loads, 1);
     EXPECT_EQ(counter.new_games, 0);
     EXPECT_EQ(counter.quits, 0);
+}
+
+TEST(MenuView, ClickingSettingsButtonPublishesSettingsRequested) {
+    // Given
+    event::EventBus bus;
+    EventCounter counter(bus);
+    FakeCanvas canvas;
+    scene::menu::MenuView view(bus);
+    view.layout(canvas, ScreenWidth);
+
+    // When
+    view.handle_pointer(center_of(view, SettingsIndex), true);
+
+    // Then
+    EXPECT_EQ(counter.settings, 1);
+    EXPECT_EQ(counter.new_games + counter.loads + counter.quits, 0);
 }
 
 TEST(MenuView, ClickingQuitButtonPublishesQuitRequested) {

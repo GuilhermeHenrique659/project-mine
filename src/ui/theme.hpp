@@ -38,6 +38,27 @@ inline Style input_style() {
         .with_width(280.0f);
 }
 
+inline Style checkbox_style() {
+    return Style{}
+        .with_foreground(Text)
+        .with_border(Muted, 1.0f)
+        .with_focus_border_color(Accent)
+        .with_padding(Insets::symmetric(8.0f, 12.0f))
+        .with_font_size(20);
+}
+
+inline Style dropdown_style() {
+    return Style{}
+        .with_background(Field)
+        .with_foreground(Text)
+        .with_border(Muted, 1.0f)
+        .with_focus_border_color(Accent)
+        .with_padding(Insets::symmetric(8.0f, 12.0f))
+        .with_font_size(20)
+        .with_hover_background(Accent)
+        .with_hover_foreground(Dark);
+}
+
 inline Style card_style() {
     return Style{}
         .with_background(Panel)

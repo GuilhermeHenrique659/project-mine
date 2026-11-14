@@ -30,6 +30,6 @@ Add `-DCMAKE_BUILD_TYPE=Debug` when configuring for a debug build. No linter is 
 
 ## Current state
 
-The game opens a window with the main menu (New Game, Load Game, Quit). Quit works; New Game and Load Game only publish `NewGameRequested` / `LoadGameRequested`, nothing consumes them yet because there is no gameplay scene or save system.
+The game opens a window with the main menu (New Game, Load Game, Settings, Quit). Quit works and Settings opens a screen with a resolution dropdown and a fullscreen checkbox, applied to the window by `Game`. New Game and Load Game only publish `NewGameRequested` / `LoadGameRequested`, nothing consumes them yet because there is no gameplay scene or save system.
 
 Module layout and how the layers communicate (event bus, input actions, widget events, focus) are documented in AGENTS.md under "Architecture". After adding or removing source files, rerun the configure step.
