@@ -46,6 +46,8 @@ InputMap InputMap::world_defaults() {
         .bind(Key::S, Action::MoveDown)
         .bind(Key::A, Action::MoveLeft)
         .bind(Key::D, Action::MoveRight)
+        .bind(Key::LeftShift, Action::Run)
+        .bind(Key::RightShift, Action::Run)
         .bind(Key::Up, Action::NavigateUp)
         .bind(Key::Down, Action::NavigateDown)
         .bind(Key::Left, Action::NavigateLeft)

@@ -10,6 +10,10 @@ namespace world {
 struct Mover {
     float speed = 0.0f;
     WorldPoint direction{};
+    bool running = false;
 };
+
+// How much faster a running mover is than a walking one.
+constexpr float RunSpeedMultiplier = 2.0f;
 
 } // namespace world

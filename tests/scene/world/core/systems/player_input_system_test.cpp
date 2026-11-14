@@ -93,6 +93,40 @@ TEST(PlayerInputSystem, ReleasingAllKeysStopsThePlayer) {
     EXPECT_FLOAT_EQ(direction_of(registry, id).y, 0.0f);
 }
 
+TEST(PlayerInputSystem, HoldingShiftMakesThePlayerRun) {
+    // Given
+    core::Registry registry;
+    FakeKeyboard keyboard;
+    input::InputHandler input(keyboard, input::InputMap::world_defaults());
+    world::PlayerInputSystem system(registry, input);
+    const core::EntityId id = spawn_player(registry);
+    keyboard.down = {input::Key::W, input::Key::LeftShift};
+
+    // When
+    system.update(0.016f);
+
+    // Then
+    EXPECT_TRUE(registry.get<world::Mover>(id)->running);
+}
+
+TEST(PlayerInputSystem, ReleasingShiftMakesThePlayerWalkAgain) {
+    // Given
+    core::Registry registry;
+    FakeKeyboard keyboard;
+    input::InputHandler input(keyboard, input::InputMap::world_defaults());
+    world::PlayerInputSystem system(registry, input);
+    const core::EntityId id = spawn_player(registry);
+    keyboard.down = {input::Key::W, input::Key::LeftShift};
+    system.update(0.016f);
+
+    // When
+    keyboard.down = {input::Key::W};
+    system.update(0.016f);
+
+    // Then
+    EXPECT_FALSE(registry.get<world::Mover>(id)->running);
+}
+
 TEST(PlayerInputSystem, EntityThatIsNotPlayerControlledIgnoresTheInput) {
     // Given
     core::Registry registry;

@@ -18,12 +18,16 @@ void CharacterMoveSystem::update(float delta_time) {
             const float length = std::hypot(mover.direction.x, mover.direction.y);
             const bool moving = length > 0.0f;
             if (moving) {
-                const float step = mover.speed * delta_time / length;
+                const float speed = mover.running ? mover.speed * RunSpeedMultiplier : mover.speed;
+                const float step = speed * delta_time / length;
                 position.point.x += mover.direction.x * step;
                 position.point.y += mover.direction.y * step;
             }
 
-            const CharacterState state = moving ? CharacterState::Moving : CharacterState::Idle;
+            CharacterState state = CharacterState::Idle;
+            if (moving) {
+                state = mover.running ? CharacterState::Running : CharacterState::Moving;
+            }
             if (character.state == state) {
                 return;
             }

@@ -23,9 +23,11 @@ ScreenPoint held_direction(const input::InputHandler& input) {
 
 void PlayerInputSystem::update(float /*delta_time*/) {
     const WorldPoint direction = screen_direction_to_world(held_direction(input_));
+    const bool running = input_.is_held(input::Action::Run);
     registry_.each<PlayerControlled, Mover>(
-        [direction](core::EntityId, PlayerControlled&, Mover& mover) {
+        [direction, running](core::EntityId, PlayerControlled&, Mover& mover) {
             mover.direction = direction;
+            mover.running = running;
         });
 }
 

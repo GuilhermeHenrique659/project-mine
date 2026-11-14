@@ -185,6 +185,73 @@ TEST(CharacterMoveSystem, MovingCharacterThatStopsBecomesIdleAndAnnouncesIt) {
     EXPECT_EQ(recorder.changed, std::vector<core::EntityId>{id});
 }
 
+TEST(CharacterMoveSystem, RunningCharacterCoversRunSpeedMultiplierTimesTheDistance) {
+    // Given
+    core::Registry registry;
+    event::EventBus bus;
+    world::CharacterMoveSystem system(registry, bus);
+    const core::EntityId id = spawn_walker(registry, 4.0f, {1.0f, 0.0f});
+    registry.get<world::Mover>(id)->running = true;
+
+    // When
+    system.update(0.5f);
+
+    // Then
+    EXPECT_FLOAT_EQ(registry.get<world::Position>(id)->point.x, 2.0f * world::RunSpeedMultiplier);
+}
+
+TEST(CharacterMoveSystem, RunningCharacterBecomesRunningAndAnnouncesIt) {
+    // Given
+    core::Registry registry;
+    event::EventBus bus;
+    world::CharacterMoveSystem system(registry, bus);
+    const core::EntityId id = spawn_walker(registry, 4.0f, {1.0f, 0.0f});
+    system.update(0.5f);
+    StateChangeRecorder recorder(bus);
+
+    // When
+    registry.get<world::Mover>(id)->running = true;
+    system.update(0.5f);
+
+    // Then
+    EXPECT_EQ(state_of(registry, id), world::CharacterState::Running);
+    EXPECT_EQ(recorder.changed, std::vector<core::EntityId>{id});
+}
+
+TEST(CharacterMoveSystem, RunningCharacterThatStopsRunningBecomesMovingAgain) {
+    // Given
+    core::Registry registry;
+    event::EventBus bus;
+    world::CharacterMoveSystem system(registry, bus);
+    const core::EntityId id = spawn_walker(registry, 4.0f, {1.0f, 0.0f});
+    registry.get<world::Mover>(id)->running = true;
+    system.update(0.5f);
+
+    // When
+    registry.get<world::Mover>(id)->running = false;
+    system.update(0.5f);
+
+    // Then
+    EXPECT_EQ(state_of(registry, id), world::CharacterState::Moving);
+}
+
+TEST(CharacterMoveSystem, RunFlagWithoutDirectionStaysIdle) {
+    // Given
+    core::Registry registry;
+    event::EventBus bus;
+    world::CharacterMoveSystem system(registry, bus);
+    StateChangeRecorder recorder(bus);
+    const core::EntityId id = spawn_walker(registry, 4.0f, {0.0f, 0.0f});
+    registry.get<world::Mover>(id)->running = true;
+
+    // When
+    system.update(0.5f);
+
+    // Then
+    EXPECT_EQ(state_of(registry, id), world::CharacterState::Idle);
+    EXPECT_TRUE(recorder.changed.empty());
+}
+
 TEST(CharacterMoveSystem, CharacterStandingStillStaysIdleWithoutAnnouncing) {
     // Given
     core::Registry registry;
