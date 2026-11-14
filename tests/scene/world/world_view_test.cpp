@@ -12,6 +12,7 @@
 namespace {
 
 constexpr float ScreenWidth = 1280.0f;
+constexpr float ScreenHeight = 720.0f;
 
 // Records the business events the world screen publishes.
 struct EventRecorder {
@@ -38,12 +39,13 @@ TEST(WorldView, SaveButtonPublishesTheStateOfTheGameBeingPlayed) {
     event::EventBus bus;
     EventRecorder recorder(bus);
     FakeCanvas canvas;
-    const scene::world::WorldModel model(bus, game::SaveGame{"My Base", 1'700'000'000});
+    scene::world::WorldModel model(bus, game::SaveGame{"My Base", 1'700'000'000});
+    model.toggle_pause();
     scene::world::WorldView view(bus, model);
-    view.layout(canvas, ScreenWidth);
+    view.layout(canvas, {ScreenWidth, ScreenHeight});
 
     // When
-    view.handle_pointer(center_of(view.save_button().bounds()), true);
+    view.handle_pointer(center_of(view.menu().save_button().bounds()), true);
 
     // Then
     ASSERT_TRUE(recorder.saved.has_value());
@@ -56,12 +58,13 @@ TEST(WorldView, MainMenuButtonGoesBackWithoutSaving) {
     event::EventBus bus;
     EventRecorder recorder(bus);
     FakeCanvas canvas;
-    const scene::world::WorldModel model(bus, game::SaveGame{"My Base", 1'700'000'000});
+    scene::world::WorldModel model(bus, game::SaveGame{"My Base", 1'700'000'000});
+    model.toggle_pause();
     scene::world::WorldView view(bus, model);
-    view.layout(canvas, ScreenWidth);
+    view.layout(canvas, {ScreenWidth, ScreenHeight});
 
     // When
-    view.handle_pointer(center_of(view.menu_button().bounds()), true);
+    view.handle_pointer(center_of(view.menu().menu_button().bounds()), true);
 
     // Then
     EXPECT_EQ(recorder.back_requests, 1);
@@ -77,7 +80,41 @@ TEST(WorldView, ShowsTheNameOfTheLoadedSave) {
     scene::world::WorldView view(bus, model);
 
     // Then
-    EXPECT_EQ(view.name_label().text(), "My Base");
+    EXPECT_EQ(view.menu().name_label().text(), "My Base");
+}
+
+TEST(WorldView, MenuIgnoresClicksWhileThePlayIsNotPaused) {
+    // Given
+    event::EventBus bus;
+    EventRecorder recorder(bus);
+    FakeCanvas canvas;
+    scene::world::WorldModel model(bus, game::SaveGame{"My Base", 1'700'000'000});
+    scene::world::WorldView view(bus, model);
+    view.layout(canvas, {ScreenWidth, ScreenHeight});
+
+    // When
+    view.handle_pointer(center_of(view.menu().menu_button().bounds()), true);
+
+    // Then
+    EXPECT_EQ(recorder.back_requests, 0);
+}
+
+TEST(WorldView, MenuIsDrawnOnlyWhilePaused) {
+    // Given
+    event::EventBus bus;
+    scene::world::WorldModel model(bus, game::SaveGame{"My Base", 1'700'000'000});
+    const scene::world::WorldView view(bus, model);
+    FakeCanvas hidden;
+    FakeCanvas shown;
+
+    // When
+    view.draw_menu(hidden, {ScreenWidth, ScreenHeight});
+    model.toggle_pause();
+    view.draw_menu(shown, {ScreenWidth, ScreenHeight});
+
+    // Then
+    EXPECT_TRUE(hidden.texts.empty());
+    EXPECT_FALSE(shown.texts.empty());
 }
 
 TEST(WorldView, CharacterIsDrawnAsACubeWithItsLabelAndStateAroundTheScreenCentre) {
@@ -102,23 +139,20 @@ TEST(WorldView, CharacterIsDrawnAsACubeWithItsLabelAndStateAroundTheScreenCentre
     EXPECT_LT(canvas.texts.front().position.y, canvas.fills.front().rect.y);
 }
 
-TEST(WorldView, PanelDoesNotCoverTheCharacterAtTheScreenCentre) {
+TEST(WorldView, MenuIsCenteredOnTheScreen) {
     // Given
     event::EventBus bus;
     FakeCanvas canvas;
-    const scene::world::WorldModel model(bus, game::SaveGame{"Alpha", 0});
+    scene::world::WorldModel model(bus, game::SaveGame{"Alpha", 0});
+    model.toggle_pause();
     scene::world::WorldView view(bus, model);
 
     // When
-    view.layout(canvas, ScreenWidth);
-    view.draw_entities(canvas, {ScreenWidth, 720.0f});
+    view.layout(canvas, {ScreenWidth, ScreenHeight});
 
-    // Then
-    const ui::Rect cube = canvas.fills.back().rect;
-    for (const ui::Rect& panel : {view.save_button().bounds(), view.menu_button().bounds(),
-                                  view.name_label().bounds()}) {
-        const bool overlaps = cube.x < panel.x + panel.width && panel.x < cube.x + cube.width &&
-                              cube.y < panel.y + panel.height && panel.y < cube.y + cube.height;
-        EXPECT_FALSE(overlaps);
-    }
+    // Then: the buttons are centred horizontally and the whole panel vertically
+    const ui::Rect name = view.menu().name_label().bounds();
+    const ui::Rect last = view.menu().menu_button().bounds();
+    EXPECT_NEAR(center_of(view.menu().save_button().bounds()).x, ScreenWidth / 2.0f, 1.0f);
+    EXPECT_NEAR((name.y + last.y + last.height) / 2.0f, ScreenHeight / 2.0f, 40.0f);
 }

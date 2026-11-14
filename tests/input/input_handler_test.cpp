@@ -237,5 +237,5 @@ TEST(InputHandler, WorldDefaultsMoveWithWasdAndKeepArrowsForTheMenuPanel) {
     EXPECT_EQ(map.action_for(Key::Down), Action::NavigateDown);
     EXPECT_EQ(map.action_for(Key::Enter), Action::Confirm);
     EXPECT_EQ(map.action_for(Key::Space), Action::Confirm);
-    EXPECT_EQ(map.action_for(Key::Escape), Action::Cancel);
+    EXPECT_EQ(map.action_for(Key::Escape), Action::Pause);
 }

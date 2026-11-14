@@ -57,6 +57,8 @@ void Game::start_up() {
     InitWindow(display_settings_.resolution.width, display_settings_.resolution.height,
                WindowTitle);
     apply_display_settings();
+    // Raylib closes the window on Esc by default; Esc is the Pause/Cancel action here.
+    SetExitKey(KEY_NULL);
     SetTargetFPS(TargetFps);
     running_ = true;
     change_scene(scene::menu::make_title_scene(*this));

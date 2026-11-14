@@ -18,14 +18,20 @@ namespace {
 // actions (see input::Action), never physical keys.
 class WorldController : public scene::Controller {
 public:
-    WorldController(WorldView& view, WorldModel& model, game::Game& game)
+    WorldController(WorldView& view, WorldModel& model)
         : view_(view), model_(model), input_(keyboard_, input::InputMap::world_defaults()) {
-        ui::FocusGroup& focus = view_.focus_group();
-        input_.on(input::Action::NavigateUp, [&focus] { focus.focus_previous(); });
-        input_.on(input::Action::NavigateDown, [&focus] { focus.focus_next(); });
-        input_.on(input::Action::Confirm, [&focus] { focus.activate_focused(); });
-        input_.on(input::Action::Cancel,
-                  [&game] { game.event_bus().publish(game::BackToMenuRequested{}); });
+        ui::FocusGroup& focus = view_.menu().focus_group();
+        // The menu is hidden while playing, so keyboard navigation only applies when paused.
+        input_.on(input::Action::NavigateUp, [&focus, &model] {
+            if (model.is_paused()) focus.focus_previous();
+        });
+        input_.on(input::Action::NavigateDown, [&focus, &model] {
+            if (model.is_paused()) focus.focus_next();
+        });
+        input_.on(input::Action::Confirm, [&focus, &model] {
+            if (model.is_paused()) focus.activate_focused();
+        });
+        input_.on(input::Action::Pause, [&model] { model.toggle_pause(); });
     }
 
     void handle_input() override {
@@ -57,7 +63,7 @@ private:
 std::unique_ptr<scene::Scene> make_world_scene(game::Game& game, game::SaveGame save) {
     auto model = std::make_unique<WorldModel>(game.event_bus(), std::move(save));
     auto view = std::make_unique<WorldView>(game.event_bus(), *model);
-    auto controller = std::make_unique<WorldController>(*view, *model, game);
+    auto controller = std::make_unique<WorldController>(*view, *model);
     return std::make_unique<scene::Scene>(std::move(model), std::move(view),
                                           std::move(controller));
 }

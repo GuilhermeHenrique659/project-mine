@@ -26,6 +26,10 @@ public:
     // only entry point for input.
     void set_player_direction(::world::WorldPoint direction);
 
+    // Opens or closes the pause. While paused update() does not run the simulation.
+    void toggle_pause();
+    bool is_paused() const { return paused_; }
+
     // Everything that has to be written to disk to continue this game later.
     const game::SaveGame& save_game() const { return save_; }
 
@@ -38,6 +42,7 @@ private:
     game::SaveGame save_;
     core::Registry registry_;
     core::EntityId player_ = 0;
+    bool paused_ = false;
 };
 
 } // namespace scene::world

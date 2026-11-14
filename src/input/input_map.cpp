@@ -52,7 +52,7 @@ InputMap InputMap::world_defaults() {
         .bind(Key::Right, Action::NavigateRight)
         .bind(Key::Enter, Action::Confirm)
         .bind(Key::Space, Action::Confirm)
-        .bind(Key::Escape, Action::Cancel);
+        .bind(Key::Escape, Action::Pause);
     return map;
 }
 

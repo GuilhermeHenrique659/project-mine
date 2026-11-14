@@ -40,6 +40,37 @@ TEST(WorldModel, UpdatingWithADirectionMovesThePlayer) {
     EXPECT_FLOAT_EQ(player_position(model).y, 0.0f);
 }
 
+TEST(WorldModel, TogglingPauseOpensAndClosesThePause) {
+    // Given
+    event::EventBus bus;
+    scene::world::WorldModel model(bus, game::SaveGame{"Alpha", {}});
+    const bool paused_at_start = model.is_paused();
+
+    // When
+    model.toggle_pause();
+    const bool paused_after_first = model.is_paused();
+    model.toggle_pause();
+
+    // Then
+    EXPECT_FALSE(paused_at_start);
+    EXPECT_TRUE(paused_after_first);
+    EXPECT_FALSE(model.is_paused());
+}
+
+TEST(WorldModel, ThePlayerDoesNotMoveWhilePaused) {
+    // Given
+    event::EventBus bus;
+    scene::world::WorldModel model(bus, game::SaveGame{"Alpha", {}});
+    model.set_player_direction({1.0f, 0.0f});
+    model.toggle_pause();
+
+    // When
+    model.update(0.5f);
+
+    // Then
+    EXPECT_FLOAT_EQ(player_position(model).x, 0.0f);
+}
+
 TEST(WorldModel, ClearingTheDirectionStopsThePlayer) {
     // Given
     event::EventBus bus;
