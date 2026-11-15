@@ -26,7 +26,7 @@ bool tile_is_drawn_with(const FakeCanvas& canvas, world::ScreenPoint top, ui::Co
 
 } // namespace
 
-TEST(TerrainRenderer, GrassTilesAreGreenAndWaterTilesAreBlue) {
+TEST(TerrainRenderer, EveryTileIsDrawnWithTheColourOfItsType) {
     // Given
     const world::Terrain terrain(2024);
     const world::Camera camera;
@@ -39,22 +39,41 @@ TEST(TerrainRenderer, GrassTilesAreGreenAndWaterTilesAreBlue) {
     renderer.draw(canvas, Screen);
 
     // Then: tiles around the centre are on screen and have the colour of their type
-    int grass = 0;
-    int water = 0;
     for (int y = -6; y <= 6; ++y) {
         for (int x = -6; x <= 6; ++x) {
-            const world::TileType type = terrain.tile_at({x, y});
             const world::ScreenPoint top = projection.tile_corners({x, y}).top;
-            if (type == world::TileType::Grass) {
-                EXPECT_TRUE(tile_is_drawn_with(canvas, top, scene::world::GrassColor)) << x << "," << y;
-                ++grass;
-            } else {
-                EXPECT_TRUE(tile_is_drawn_with(canvas, top, scene::world::WaterColor)) << x << "," << y;
-                ++water;
+            const ui::Color color = scene::world::tile_color(terrain.tile_at({x, y}));
+            EXPECT_TRUE(tile_is_drawn_with(canvas, top, color)) << x << "," << y;
+        }
+    }
+}
+
+TEST(TerrainRenderer, OreTilesAreDrawnWithTheirOreColour) {
+    // Given: a camera looking at a starting ore node
+    const world::Terrain terrain(2024);
+    world::Camera camera;
+    world::TileCoord ore_tile{0, 0};
+    for (int y = -40; y <= 40; ++y) {
+        for (int x = -40; x <= 40; ++x) {
+            if (world::is_ore(terrain.tile_at({x, y}))) {
+                ore_tile = {x, y};
             }
         }
     }
-    EXPECT_GT(grass, 0);
+    ASSERT_TRUE(world::is_ore(terrain.tile_at(ore_tile)));
+    camera.center = {static_cast<float>(ore_tile.x), static_cast<float>(ore_tile.y)};
+    const scene::world::TerrainRenderer renderer(terrain, camera);
+    FakeCanvas canvas;
+    const world::IsoProjection projection = camera.projection(Screen.width, Screen.height);
+
+    // When
+    renderer.draw(canvas, Screen);
+
+    // Then: the ore colour differs from grass and water
+    const ui::Color color = scene::world::tile_color(terrain.tile_at(ore_tile));
+    EXPECT_TRUE(tile_is_drawn_with(canvas, projection.tile_corners(ore_tile).top, color));
+    EXPECT_FALSE(same_color(color, scene::world::GrassColor));
+    EXPECT_FALSE(same_color(color, scene::world::WaterColor));
 }
 
 TEST(TerrainRenderer, EveryPartOfTheScreenIsCovered) {
@@ -74,8 +93,7 @@ TEST(TerrainRenderer, EveryPartOfTheScreenIsCovered) {
          {world::ScreenPoint{0.0f, 0.0f}, {Screen.width, 0.0f}, {0.0f, Screen.height},
           {Screen.width, Screen.height}}) {
         const world::ScreenPoint top = projection.tile_corners(projection.tile_at(corner)).top;
-        const bool drawn = tile_is_drawn_with(canvas, top, scene::world::GrassColor) ||
-                           tile_is_drawn_with(canvas, top, scene::world::WaterColor);
+        const bool drawn = tile_is_drawn_with(canvas, top, scene::world::tile_color(terrain.tile_at(projection.tile_at(corner))));
         EXPECT_TRUE(drawn) << corner.x << "," << corner.y;
     }
 }
@@ -95,8 +113,6 @@ TEST(TerrainRenderer, TilesAroundTheCameraAreDrawnWhenItIsFarFromTheOrigin) {
     // Then: the tile under the middle of the screen is the one the camera looks at
     const world::TileCoord middle = projection.tile_at({Screen.width / 2.0f, Screen.height / 2.0f});
     ASSERT_EQ(middle, (world::TileCoord{500, -300}));
-    const ui::Color color = terrain.tile_at(middle) == world::TileType::Water
-                                ? scene::world::WaterColor
-                                : scene::world::GrassColor;
+    const ui::Color color = scene::world::tile_color(terrain.tile_at(middle));
     EXPECT_TRUE(tile_is_drawn_with(canvas, projection.tile_corners(middle).top, color));
 }

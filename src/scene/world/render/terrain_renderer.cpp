@@ -11,11 +11,18 @@ namespace {
 
 ui::Point to_point(::world::ScreenPoint point) { return {point.x, point.y}; }
 
-ui::Color color_of(::world::TileType type) {
-    return type == ::world::TileType::Water ? WaterColor : GrassColor;
-}
-
 } // namespace
+
+ui::Color tile_color(::world::TileType type) {
+    switch (type) {
+    case ::world::TileType::Water: return WaterColor;
+    case ::world::TileType::IronOre: return IronOreColor;
+    case ::world::TileType::CopperOre: return CopperOreColor;
+    case ::world::TileType::Coal: return CoalColor;
+    case ::world::TileType::Grass: break;
+    }
+    return GrassColor;
+}
 
 void TerrainRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
     const ::world::IsoProjection projection = camera_.projection(screen.width, screen.height);
@@ -42,7 +49,7 @@ void TerrainRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
         for (int x = first_x; x <= last_x; ++x) {
             const ::world::TileCoord tile{x, y};
             const ::world::TileCorners diamond = projection.tile_corners(tile);
-            const ui::Color color = color_of(terrain_.tile_at(tile));
+            const ui::Color color = tile_color(terrain_.tile_at(tile));
             canvas.fill_triangle(to_point(diamond.top), to_point(diamond.left),
                                  to_point(diamond.bottom), color);
             canvas.fill_triangle(to_point(diamond.top), to_point(diamond.bottom),
