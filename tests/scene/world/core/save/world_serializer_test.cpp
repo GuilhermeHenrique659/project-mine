@@ -3,6 +3,7 @@
 #include "core/registry.hpp"
 #include "logging/logger.hpp"
 #include "scene/world/core/components/character.hpp"
+#include "scene/world/core/components/inventory.hpp"
 #include "scene/world/core/components/persistent.hpp"
 #include "scene/world/core/components/player_controlled.hpp"
 #include "scene/world/core/components/position.hpp"
@@ -172,4 +173,80 @@ TEST(WorldSerializer, ASavedMovingStateRestoresAsIdle) {
     for (const core::Entity& entity : f.registry.entities()) {
         EXPECT_EQ(f.registry.get<world::Character>(entity.id)->state, world::CharacterState::Idle);
     }
+}
+
+TEST(WorldSerializer, SnapshotWritesEachFilledInventorySlotWithItsIndex) {
+    // Given
+    Fixture f;
+    const core::EntityId id = f.spawn_player({0.0f, 0.0f});
+    world::Inventory& inventory = *f.registry.get<world::Inventory>(id);
+    inventory.set_slot(0, world::ItemStack{world::items::IronOre, 100});
+    inventory.set_slot(3, world::ItemStack{world::items::Coal, 7});
+
+    // When
+    const auto records = f.serializer.snapshot(f.registry);
+
+    // Then
+    ASSERT_EQ(records.size(), 1u);
+    const auto& fields = records[0].fields;
+    EXPECT_EQ(fields.at("inventory.0"), "IronOre:100");
+    EXPECT_EQ(fields.at("inventory.3"), "Coal:7");
+    EXPECT_EQ(fields.count("inventory.1"), 0u);
+}
+
+TEST(WorldSerializer, InventoryRoundTripKeepsEveryStackInItsSlot) {
+    // Given
+    Fixture saved;
+    const core::EntityId id = saved.spawn_player({0.0f, 0.0f});
+    world::Inventory& inventory = *saved.registry.get<world::Inventory>(id);
+    inventory.set_slot(2, world::ItemStack{world::items::CopperOre, 42});
+    inventory.set_slot(39, world::ItemStack{world::items::IronOre, 1});
+    const auto records = saved.serializer.snapshot(saved.registry);
+    Fixture loaded;
+
+    // When
+    loaded.serializer.restore(loaded.registry, records);
+
+    // Then
+    const auto& slots =
+        loaded.registry.get<world::Inventory>(loaded.registry.entities()[0].id)->slots();
+    ASSERT_EQ(slots.size(), 40u);
+    for (std::size_t i = 0; i < slots.size(); ++i) {
+        if (i == 2 || i == 39) {
+            continue;
+        }
+        EXPECT_FALSE(slots[i].has_value()) << "slot " << i;
+    }
+    ASSERT_TRUE(slots[2].has_value());
+    EXPECT_EQ(slots[2]->item, world::items::CopperOre);
+    EXPECT_EQ(slots[2]->count, 42);
+    ASSERT_TRUE(slots[39].has_value());
+    EXPECT_EQ(slots[39]->item, world::items::IronOre);
+    EXPECT_EQ(slots[39]->count, 1);
+}
+
+TEST(WorldSerializer, BadInventoryEntriesAreSkippedAndTheValidOnesKept) {
+    // Given
+    Fixture f;
+    const auto records = std::vector<game::EntityRecord>{player_record({
+        {"inventory.0", "Diamond:5"},   // unknown item
+        {"inventory.40", "Coal:5"},     // outside the 40 slots
+        {"inventory.-1", "Coal:5"},     // not a slot index
+        {"inventory.1", "Coal:0"},      // empty stack
+        {"inventory.2", "Coal:101"},    // above max stack
+        {"inventory.3", "Coal"},        // no count
+        {"inventory.4", "IronOre:x"},   // bad count
+        {"inventory.5", "Coal:100"},    // valid
+    })};
+
+    // When
+    f.serializer.restore(f.registry, records);
+
+    // Then
+    const world::Inventory& inventory =
+        *f.registry.get<world::Inventory>(f.registry.entities()[0].id);
+    EXPECT_EQ(inventory.count(world::items::Coal), 100);
+    EXPECT_EQ(inventory.count(world::items::IronOre), 0);
+    EXPECT_EQ(inventory.free_slots(), 39u);
+    ASSERT_TRUE(inventory.slots()[5].has_value());
 }

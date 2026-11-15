@@ -1,8 +1,12 @@
 #include "scene/world/core/save/codecs.hpp"
 
 #include <optional>
+#include <array>
+#include <cstddef>
 #include <string>
+#include <string_view>
 
+#include "scene/world/core/components/inventory.hpp"
 #include "scene/world/core/components/player_controlled.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "text/parse.hpp"
@@ -28,6 +32,52 @@ CharacterState parse_state(const std::string& text) {
         return CharacterState::Running;
     }
     return CharacterState::Idle;
+}
+
+constexpr std::string_view InventoryPrefix = "inventory.";
+
+// Save-file names of the item types: stable keys, not the names shown to the player.
+constexpr std::array<std::pair<ItemType, std::string_view>, 3> ItemKeys{{
+    {ItemType::IronOre, "IronOre"},
+    {ItemType::CopperOre, "CopperOre"},
+    {ItemType::Coal, "Coal"},
+}};
+
+std::string_view item_key(ItemType type) {
+    for (const auto& [key_type, key] : ItemKeys) {
+        if (key_type == type) {
+            return key;
+        }
+    }
+    return {};
+}
+
+std::optional<ItemType> parse_item_key(std::string_view text) {
+    for (const auto& [type, key] : ItemKeys) {
+        if (key == text) {
+            return type;
+        }
+    }
+    return std::nullopt;
+}
+
+// "<ItemType>:<count>", empty when the type is unknown or the count is not a valid
+// stack of that item.
+std::optional<ItemStack> parse_stack(std::string_view text) {
+    const auto colon = text.find(':');
+    if (colon == std::string_view::npos) {
+        return std::nullopt;
+    }
+    const auto type = parse_item_key(text.substr(0, colon));
+    const auto count = text::parse<int>(text.substr(colon + 1));
+    if (!type || !count) {
+        return std::nullopt;
+    }
+    const Item item = item_of(*type);
+    if (*count <= 0 || *count > item.max_stack) {
+        return std::nullopt;
+    }
+    return ItemStack{item, *count};
 }
 
 } // namespace
@@ -99,6 +149,41 @@ void PlayerControlledCodec::read(core::Registry& registry, core::EntityId id,
         return;
     }
     registry.add(id, PlayerControlled{});
+}
+
+void InventoryCodec::write(const core::Registry& registry, core::EntityId id,
+                           Fields& fields) const {
+    const Inventory* inventory = registry.get<Inventory>(id);
+    if (inventory == nullptr) {
+        return;
+    }
+    const auto& slots = inventory->slots();
+    for (std::size_t index = 0; index < slots.size(); ++index) {
+        if (!slots[index]) {
+            continue;
+        }
+        fields[std::string(InventoryPrefix) + text::format(index)] =
+            std::string(item_key(slots[index]->item.type)) + ":" + text::format(slots[index]->count);
+    }
+}
+
+void InventoryCodec::read(core::Registry& registry, core::EntityId id,
+                          const Fields& fields) const {
+    Inventory* inventory = registry.get<Inventory>(id);
+    if (inventory == nullptr) {
+        return;
+    }
+    for (const auto& [key, value] : fields) {
+        if (!key.starts_with(InventoryPrefix)) {
+            continue;
+        }
+        const auto index = text::parse<std::size_t>(key.substr(InventoryPrefix.size()));
+        const auto stack = parse_stack(value);
+        if (!index || *index >= inventory->capacity() || !stack) {
+            continue;
+        }
+        inventory->set_slot(*index, stack);
+    }
 }
 
 } // namespace world

@@ -96,4 +96,9 @@ private:
     Widget::EventHandler on_leave_;
 };
 
+// Paints `area` the way a button is painted: filled with `face`, outlined with the
+// style's border and with its bevel (dark band on the bottom and right edges) inside it.
+// For widgets that draw several button-like parts (tabs, inventory slots).
+void draw_raised(Canvas& canvas, Rect area, Color face, const Style& style);
+
 } // namespace ui

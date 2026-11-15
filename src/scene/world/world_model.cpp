@@ -66,4 +66,19 @@ void WorldModel::zoom_camera(float steps) {
 
 void WorldModel::toggle_pause() { paused_ = !paused_; }
 
+void WorldModel::toggle_player_menu() {
+    if (paused_) {
+        return;
+    }
+    player_menu_open_ = !player_menu_open_;
+}
+
+void WorldModel::cancel() {
+    if (player_menu_open_) {
+        close_player_menu();
+        return;
+    }
+    toggle_pause();
+}
+
 } // namespace scene::world

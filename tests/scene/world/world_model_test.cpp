@@ -234,3 +234,82 @@ TEST(WorldModel, ZoomingIsIgnoredWhilePaused) {
     // Then
     EXPECT_FLOAT_EQ(model.camera().zoom, 1.0f);
 }
+
+TEST(WorldModel, TogglingThePlayerMenuOpensAndClosesIt) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    const bool open_at_start = model.is_player_menu_open();
+
+    // When
+    model.toggle_player_menu();
+    const bool open_after_first = model.is_player_menu_open();
+    model.toggle_player_menu();
+
+    // Then
+    EXPECT_FALSE(open_at_start);
+    EXPECT_TRUE(open_after_first);
+    EXPECT_FALSE(model.is_player_menu_open());
+}
+
+TEST(WorldModel, ThePlayerKeepsWalkingWhileThePlayerMenuIsOpen) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    model.toggle_player_menu();
+    input.keyboard.down.insert(input::Key::D);
+
+    // When
+    model.update(0.5f);
+
+    // Then
+    const ::world::WorldPoint at = player_position(model);
+    EXPECT_FALSE(at.x == 0.0f && at.y == 0.0f);
+}
+
+TEST(WorldModel, ThePlayerMenuDoesNotOpenWhilePaused) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    model.toggle_pause();
+
+    // When
+    model.toggle_player_menu();
+
+    // Then
+    EXPECT_FALSE(model.is_player_menu_open());
+}
+
+TEST(WorldModel, CancelClosesTheOpenPlayerMenuInsteadOfPausing) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    model.toggle_player_menu();
+
+    // When
+    model.cancel();
+
+    // Then
+    EXPECT_FALSE(model.is_player_menu_open());
+    EXPECT_FALSE(model.is_paused());
+}
+
+TEST(WorldModel, CancelTogglesThePauseWhenThePlayerMenuIsClosed) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+
+    // When
+    model.cancel();
+    const bool paused_after_first = model.is_paused();
+    model.cancel();
+
+    // Then
+    EXPECT_TRUE(paused_after_first);
+    EXPECT_FALSE(model.is_paused());
+}

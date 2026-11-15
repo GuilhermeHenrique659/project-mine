@@ -39,6 +39,16 @@ public:
     void toggle_pause();
     bool is_paused() const { return paused_; }
 
+    // Opens or closes the player menu (inventory). Ignored while paused; the simulation
+    // keeps running while it is open.
+    void toggle_player_menu();
+    bool is_player_menu_open() const { return player_menu_open_; }
+    void close_player_menu() { player_menu_open_ = false; }
+
+    // The "back" action (Esc): closes the player menu when it is open, otherwise opens
+    // or closes the pause.
+    void cancel();
+
     // Everything that has to be written to disk to continue this game later: the save's
     // header plus a snapshot of the persistent entities as they are now.
     game::SaveGame save_game() const;
@@ -76,6 +86,7 @@ private:
     // Declared after registry_ and bus_, which the systems refer to, so they are destroyed first.
     std::vector<std::unique_ptr<::world::System>> systems_;
     bool paused_ = false;
+    bool player_menu_open_ = false;
 };
 
 } // namespace scene::world

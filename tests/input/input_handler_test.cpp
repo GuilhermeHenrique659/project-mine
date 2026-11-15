@@ -239,3 +239,14 @@ TEST(InputHandler, WorldDefaultsMoveWithWasdAndKeepArrowsForTheMenuPanel) {
     EXPECT_EQ(map.action_for(Key::Space), Action::Confirm);
     EXPECT_EQ(map.action_for(Key::Escape), Action::Pause);
 }
+
+TEST(InputHandler, WorldDefaultsToggleTheInventoryWithTab) {
+    // Given
+    const InputMap map = InputMap::world_defaults();
+
+    // When
+    const auto action = map.action_for(Key::Tab);
+
+    // Then
+    EXPECT_EQ(action, Action::ToggleInventory);
+}

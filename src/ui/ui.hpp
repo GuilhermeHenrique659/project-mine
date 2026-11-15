@@ -11,4 +11,5 @@
 #include "ui/label.hpp"
 #include "ui/raylib_canvas.hpp"
 #include "ui/style.hpp"
+#include "ui/tab_bar.hpp"
 #include "ui/theme.hpp"

@@ -1,6 +1,7 @@
 #include "scene/world/core/entities/character.hpp"
 
 #include "scene/world/core/components/character.hpp"
+#include "scene/world/core/components/inventory.hpp"
 #include "scene/world/core/components/mover.hpp"
 #include "scene/world/core/components/position.hpp"
 
@@ -11,6 +12,7 @@ core::EntityId spawn_character(core::Registry& registry, std::string label, Worl
     registry.add(id, Character{});
     registry.add(id, Position{position});
     registry.add(id, Mover{CharacterSpeed});
+    registry.add(id, Inventory{CharacterInventorySlots});
     return id;
 }
 

@@ -75,6 +75,35 @@ inline Style checkbox_style() { return control_style(); }
 
 inline Style dropdown_style() { return control_style(); }
 
+// Tabs of a ui::TabBar: the gray machine-button face (darker on hover), with the padding
+// around each title and the gap between tabs.
+inline Style tab_style() {
+    return control_style()
+        .with_padding(Insets::symmetric(10.0f, 22.0f))
+        .with_gap(6.0f)
+        .with_font_size(22);
+}
+
+// The active tab: the green face of the Start button.
+inline Style active_tab_style() {
+    return tab_style().with_background(GreenFace).with_bevel(GreenShadow, 5.0f);
+}
+
+// A disabled tab: a dark face with a muted title.
+inline Style disabled_tab_style() {
+    return tab_style().with_background(ButtonShadow).with_foreground(Muted).with_bevel(Outline, 5.0f);
+}
+
+// An inventory slot: the gray machine-button face, darker on hover.
+inline Style slot_style() {
+    return control_style().with_padding({}).with_bevel(ButtonShadow, 4.0f);
+}
+
+// The small red X that closes a panel.
+inline Style close_button_style() {
+    return quit_button_style().with_font_size(24).with_padding(Insets::symmetric(6.0f, 14.0f));
+}
+
 inline Style card_style() {
     return Style{}
         .with_background(Panel)

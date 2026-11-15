@@ -30,4 +30,14 @@ public:
     void read(core::Registry& registry, core::EntityId id, const Fields& fields) const override;
 };
 
+// "inventory.<slot>" = "<ItemType>:<count>" for each filled slot, e.g. "inventory.3" =
+// "IronOre:50", so empty slots between stacks survive a load. On read, an entry with an
+// unknown item, a slot outside the capacity or a count <= 0 or above the item's max stack
+// is skipped.
+class InventoryCodec : public ComponentCodec {
+public:
+    void write(const core::Registry& registry, core::EntityId id, Fields& fields) const override;
+    void read(core::Registry& registry, core::EntityId id, const Fields& fields) const override;
+};
+
 } // namespace world

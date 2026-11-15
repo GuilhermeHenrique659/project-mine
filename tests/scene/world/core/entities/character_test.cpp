@@ -2,6 +2,7 @@
 
 #include "core/registry.hpp"
 #include "scene/world/core/entities/character.hpp"
+#include "scene/world/core/components/inventory.hpp"
 #include "scene/world/core/components/mover.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/systems/character_move_system.hpp"
@@ -24,4 +25,18 @@ TEST(Character, SpawnedCharacterWalksAtCharacterSpeedWhenGivenADirection) {
     ASSERT_NE(position, nullptr);
     EXPECT_FLOAT_EQ(position->point.x, 2.0f);
     EXPECT_FLOAT_EQ(position->point.y, 1.0f + world::CharacterSpeed * 0.5f);
+}
+
+TEST(Character, SpawnedCharacterCarriesAnEmptyFortySlotInventory) {
+    // Given
+    core::Registry registry;
+
+    // When
+    const core::EntityId id = world::spawn_character(registry, "Hero", {0.0f, 0.0f});
+
+    // Then
+    const world::Inventory* inventory = registry.get<world::Inventory>(id);
+    ASSERT_NE(inventory, nullptr);
+    EXPECT_EQ(inventory->capacity(), 40u);
+    EXPECT_TRUE(inventory->is_empty());
 }

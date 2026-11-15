@@ -59,4 +59,20 @@ void Widget::draw_text_in_box(Canvas& canvas, const std::string& text, Color col
     canvas.draw_text(text, {x, y}, style_.font_size, color);
 }
 
+void draw_raised(Canvas& canvas, Rect area, Color face, const Style& style) {
+    canvas.fill_rect(area, face);
+    if (style.border_width > 0.0f && style.border_color.a > 0) {
+        canvas.stroke_rect(area, style.border_color, style.border_width);
+    }
+    if (!style.bevel) {
+        return;
+    }
+    const float inset = style.border_width;
+    const float width = style.bevel->width;
+    const Rect r{area.x + inset, area.y + inset, area.width - 2.0f * inset,
+                 area.height - 2.0f * inset};
+    canvas.fill_rect({r.x, r.y + r.height - width, r.width, width}, style.bevel->shadow);
+    canvas.fill_rect({r.x + r.width - width, r.y, width, r.height - width}, style.bevel->shadow);
+}
+
 } // namespace ui

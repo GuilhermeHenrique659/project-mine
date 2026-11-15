@@ -10,6 +10,7 @@
 #include "input/raylib_keyboard.hpp"
 #include "input/raylib_pointer.hpp"
 #include "scene/world/render/entity_renderer.hpp"
+#include "scene/world/render/player_menu.hpp"
 #include "scene/world/render/terrain_renderer.hpp"
 #include "scene/world/render/world_menu.hpp"
 #include "scene/world/world_model.hpp"
@@ -47,7 +48,10 @@ public:
         input_->handler.on(input::Action::Confirm, [&focus, &model] {
             if (model.is_paused()) focus.activate_focused();
         });
-        input_->handler.on(input::Action::Pause, [&model] { model.toggle_pause(); });
+        // Esc closes the player menu first, otherwise opens or closes the pause.
+        input_->handler.on(input::Action::Pause, [&model] { model.cancel(); });
+        input_->handler.on(input::Action::ToggleInventory,
+                           [&model] { model.toggle_player_menu(); });
     }
 
     // The mouse is not handled here: the menu renderer reads it itself.
@@ -75,6 +79,7 @@ std::unique_ptr<scene::Scene> make_world_scene(game::Game& game, game::SaveGame 
     std::vector<std::unique_ptr<Renderer>> renderers;
     renderers.push_back(std::make_unique<TerrainRenderer>(model->terrain(), model->camera()));
     renderers.push_back(std::make_unique<EntityRenderer>(model->registry(), model->camera()));
+    renderers.push_back(std::make_unique<PlayerMenu>(*model, pointer));
     renderers.push_back(std::move(menu));
 
     auto view = std::make_unique<WorldView>(std::move(renderers));
