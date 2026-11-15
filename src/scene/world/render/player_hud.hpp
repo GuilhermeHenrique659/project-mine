@@ -16,7 +16,12 @@ namespace scene::world {
 // ::world::construction_catalog()), shown while the model's build bar is open (B) and the
 // game is not paused. Clicking a tab opens a drop-up above it listing that category's
 // constructions (icon + name); clicking it again closes it, clicking another tab switches.
-// Clicking a construction selects it and closes the list. It reads the mouse itself in
+// Clicking a construction selects it and closes the list; constructions the model refuses
+// (WorldModel::build_status(): not implemented yet, no headquarters yet, unique and already
+// built) are drawn disabled and cannot be selected. With a selection, a click on the world
+// (outside the bar and the list) asks the model to build it on the tile under the pointer
+// and clears the selection; until then a translucent cube previews it on the tile under
+// the pointer, green where it can be built and red where it cannot. It reads the mouse itself in
 // update() through the injected pointer, using the bounds of the last layout. The model
 // must outlive the HUD.
 class PlayerHud : public Renderer {
@@ -46,15 +51,28 @@ public:
     // The panel of the open list (empty when closed).
     const ui::Rect& list_bounds() const { return list_; }
 
+    // Where the selected construction would go: the tile under the pointer and whether it
+    // can be built there. Empty without a selection or while the pointer is over the HUD.
+    struct Preview {
+        ::world::TileCoord tile;
+        bool valid = false;
+    };
+    std::optional<Preview> preview() const;
+
     // The last construction picked from a list, null until one is.
     const ::world::Construction* selected() const { return selected_; }
 
 private:
+    bool is_disabled(const ::world::Construction& construction) const;
+    // A translucent cube of the selection on the tile under the pointer (see preview()).
+    void draw_preview(ui::Canvas& canvas) const;
+
     WorldModel& model_;
     std::shared_ptr<const input::Pointer> pointer_;
     std::optional<std::size_t> open_tab_;
     const ::world::Construction* selected_ = nullptr;
     // Layout state, recomputed by every layout(); mutable because draw() is const.
+    mutable ui::Size screen_;
     mutable ui::Rect bar_;
     mutable std::vector<ui::Rect> tabs_;
     mutable ui::Rect list_;

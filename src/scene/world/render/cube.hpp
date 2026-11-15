@@ -6,6 +6,9 @@
 
 namespace scene::world {
 
+// Side of a building's cube at zoom 1: as wide as a tile.
+inline constexpr float BuildingCubeSize = 64.0f;
+
 // A cube seen from the front: a lighter top face over a square front face. `size` is the
 // side of the front face in pixels, so any size can be created. The front face is centred
 // on the position it is drawn at; the top face sits right above it.

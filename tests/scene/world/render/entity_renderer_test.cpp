@@ -8,6 +8,7 @@
 #include "scene/world/render/entity_renderer.hpp"
 #include "support/fake_canvas.hpp"
 #include "support/fake_texture_loader.hpp"
+#include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/character.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/entities/character.hpp"
@@ -130,4 +131,27 @@ TEST(EntityRenderer, EntitiesShiftOnScreenOppositeToTheCameraMovement) {
     const ui::Point marker_center = center_of(canvas.fills.back().rect);
     EXPECT_FLOAT_EQ(marker_center.x, 640.0f - 64.0f);
     EXPECT_FLOAT_EQ(marker_center.y, 360.0f - 32.0f);
+}
+
+TEST(EntityRenderer, ABuildingIsABiggerCubeAndASiteShowsItsProgress) {
+    // Given
+    core::Registry registry;
+    const core::EntityId character = world::spawn_character(registry, "Player", {0.0f, 0.0f});
+    const core::EntityId site = registry.create("Mine");
+    registry.add(site, world::Position{{4.0f, 4.0f}});
+    registry.add(site, world::Building{});
+    registry.add(site, world::ConstructionSite{1.0f, 4.0f});
+    const world::Camera camera;
+    const scene::world::EntityRenderer renderer(registry, camera);
+    FakeCanvas canvas;
+    (void)character;
+
+    // When
+    renderer.draw(canvas, Screen);
+
+    // Then: the character (front at fills[1]) is drawn before the building (fills[3])
+    ASSERT_EQ(canvas.fills.size(), 4u);
+    EXPECT_GT(canvas.fills[3].rect.width, canvas.fills[1].rect.width);
+    ASSERT_EQ(canvas.texts.size(), 2u);
+    EXPECT_EQ(canvas.texts[1].text, "Mine (25%)");
 }

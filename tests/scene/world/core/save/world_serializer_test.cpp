@@ -2,7 +2,11 @@
 
 #include "core/registry.hpp"
 #include "logging/logger.hpp"
+#include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/character.hpp"
+#include "scene/world/core/construction/build_rules.hpp"
+#include "scene/world/core/entities/building.hpp"
+#include "scene/world/core/save/codecs.hpp"
 #include "scene/world/core/components/inventory.hpp"
 #include "scene/world/core/components/persistent.hpp"
 #include "scene/world/core/components/player_controlled.hpp"
@@ -249,4 +253,65 @@ TEST(WorldSerializer, BadInventoryEntriesAreSkippedAndTheValidOnesKept) {
     EXPECT_EQ(inventory.count(world::items::IronOre), 0);
     EXPECT_EQ(inventory.free_slots(), 39u);
     ASSERT_TRUE(inventory.slots()[5].has_value());
+}
+
+TEST(WorldSerializer, AHeadquartersRoundTripsOnItsTile) {
+    // Given
+    Fixture saved;
+    const core::EntityId id = *saved.factory.spawn(saved.registry, world::BuildingArchetype,
+                                                   "Headquarters");
+    world::make_building(saved.registry, id,
+                          *world::find_construction(world::BuildingType::Headquarters), {-3, 7});
+    const auto records = saved.serializer.snapshot(saved.registry);
+
+    // When
+    Fixture loaded;
+    loaded.serializer.restore(loaded.registry, records);
+
+    // Then
+    ASSERT_EQ(loaded.registry.entities().size(), 1u);
+    const core::EntityId hq = loaded.registry.entities().front().id;
+    const world::Building* building = loaded.registry.get<world::Building>(hq);
+    ASSERT_NE(building, nullptr);
+    EXPECT_EQ(building->type, world::BuildingType::Headquarters);
+    EXPECT_EQ(building->tile, (world::TileCoord{-3, 7}));
+    EXPECT_FLOAT_EQ(loaded.registry.get<world::Position>(hq)->point.x, -2.5f);
+    EXPECT_FALSE(loaded.registry.has<world::ConstructionSite>(hq));
+    EXPECT_TRUE(world::has_headquarters(loaded.registry));
+}
+
+TEST(ConstructionSiteCodec, KeepsTheProgressOfAHalfBuiltSite) {
+    // Given
+    core::Registry registry;
+    const world::ConstructionSiteCodec codec;
+    const core::EntityId saved = registry.create("site");
+    registry.add(saved, world::Building{});
+    registry.add(saved, world::ConstructionSite{1.5f, 4.0f});
+    world::Fields fields;
+    codec.write(registry, saved, fields);
+    const core::EntityId loaded = registry.create("site");
+    registry.add(loaded, world::Building{});
+    registry.add(loaded, world::ConstructionSite{0.0f, 4.0f});
+
+    // When
+    codec.read(registry, loaded, fields);
+
+    // Then
+    ASSERT_TRUE(registry.has<world::ConstructionSite>(loaded));
+    EXPECT_FLOAT_EQ(registry.get<world::ConstructionSite>(loaded)->progress, 1.5f);
+}
+
+TEST(ConstructionSiteCodec, ABuildingSavedFinishedLoadsWithoutASite) {
+    // Given
+    core::Registry registry;
+    const world::ConstructionSiteCodec codec;
+    const core::EntityId loaded = registry.create("building");
+    registry.add(loaded, world::Building{});
+    registry.add(loaded, world::ConstructionSite{0.0f, 4.0f});
+
+    // When
+    codec.read(registry, loaded, world::Fields{{"building.type", "Headquarters"}});
+
+    // Then
+    EXPECT_FALSE(registry.has<world::ConstructionSite>(loaded));
 }

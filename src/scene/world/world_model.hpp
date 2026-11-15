@@ -10,6 +10,7 @@
 #include "input/input_handler.hpp"
 #include "scene/scene.hpp"
 #include "scene/world/core/camera.hpp"
+#include "scene/world/core/construction/build_rules.hpp"
 #include "scene/world/core/entities/entity_factory.hpp"
 #include "scene/world/core/isometric.hpp"
 #include "scene/world/core/save/world_serializer.hpp"
@@ -48,6 +49,19 @@ public:
     // Opens or closes the build bar of the HUD (B). Ignored while paused.
     void toggle_build_bar();
     bool is_build_bar_open() const { return build_bar_open_; }
+
+    // Asks to place a building on a tile (::world::BuildRequested on the bus); the build
+    // system builds it when the rules allow, paid by the player.
+    void request_build(::world::BuildingType type, ::world::TileCoord tile);
+
+    // Whether a construction can be built at all now (headquarters rule, uniqueness),
+    // regardless of tile and cost: the build bar disables the others.
+    ::world::BuildResult build_status(const ::world::Construction& construction) const;
+
+    // Every rule for placing `construction` on `tile` now, paid by the player (the build
+    // preview shows it).
+    ::world::BuildResult placement_status(const ::world::Construction& construction,
+                                          ::world::TileCoord tile) const;
 
     // The "back" action (Esc): closes the player menu when it is open, otherwise opens
     // or closes the pause.

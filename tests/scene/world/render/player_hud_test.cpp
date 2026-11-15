@@ -1,9 +1,13 @@
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <vector>
 
 #include "event/event_bus.hpp"
 #include "graphics/texture_manager.hpp"
+#include "scene/world/core/components/building.hpp"
+#include "scene/world/core/construction/build_rules.hpp"
+#include "scene/world/core/events/building_events.hpp"
 #include "scene/world/render/player_hud.hpp"
 #include "support/fake_canvas.hpp"
 #include "support/fake_input.hpp"
@@ -141,14 +145,14 @@ TEST_F(PlayerHud, ClickingAnotherTabSwitchesTheList) {
 
 TEST_F(PlayerHud, ClickingAConstructionSelectsItAndClosesTheList) {
     // Given
-    click(centre_of(hud.tab_bounds(2)));
+    click(centre_of(hud.tab_bounds(0)));
 
     // When
     click(centre_of(hud.item_bounds(0)));
 
     // Then
     ASSERT_NE(hud.selected(), nullptr);
-    EXPECT_EQ(hud.selected()->name, world::construction_catalog()[2].constructions[0].name);
+    EXPECT_EQ(hud.selected()->name, "Headquarters");
     EXPECT_FALSE(hud.open_tab().has_value());
 }
 
@@ -165,4 +169,121 @@ TEST_F(PlayerHud, DrawsAPlaceholderIconForEveryTabAndListedConstruction) {
     for (const auto& drawn : canvas.textures) {
         EXPECT_EQ(drawn.texture.id, FakeTextureLoader::PlaceholderId);
     }
+}
+
+TEST_F(PlayerHud, AnEntryThatCannotBeBuiltYetIsNotSelected) {
+    // Given
+    click(centre_of(hud.tab_bounds(0))); // Special: Headquarters, Storage
+
+    // When
+    click(centre_of(hud.item_bounds(1)));
+
+    // Then
+    EXPECT_EQ(hud.selected(), nullptr);
+}
+
+TEST_F(PlayerHud, ClickingTheWorldWithASelectionBuildsItOnTheTileUnderThePointer) {
+    // Given
+    std::vector<::world::BuildRequested> requests;
+    const auto subscription = event::subscribe_scoped<::world::BuildRequested>(
+        bus, [&](const ::world::BuildRequested& request) { requests.push_back(request); });
+    click(centre_of(hud.tab_bounds(0)));
+    click(centre_of(hud.item_bounds(0)));
+    ASSERT_NE(hud.selected(), nullptr);
+    const ui::Point target{Screen.width / 2.0f + 70.0f, Screen.height / 3.0f};
+    const ::world::TileCoord expected =
+        model.camera().projection(Screen.width, Screen.height).tile_at({target.x, target.y});
+
+    // When
+    click(target);
+
+    // Then
+    ASSERT_EQ(requests.size(), 1u);
+    EXPECT_EQ(requests[0].type, ::world::BuildingType::Headquarters);
+    EXPECT_EQ(requests[0].tile, expected);
+    EXPECT_EQ(hud.selected(), nullptr);
+    EXPECT_TRUE(::world::has_headquarters(model.registry()));
+}
+
+TEST_F(PlayerHud, TheHeadquartersCannotBeSelectedOnceItExists) {
+    // Given
+    model.request_build(::world::BuildingType::Headquarters, {2, 2});
+    click(centre_of(hud.tab_bounds(0)));
+
+    // When
+    click(centre_of(hud.item_bounds(0)));
+
+    // Then
+    EXPECT_EQ(hud.selected(), nullptr);
+}
+
+TEST_F(PlayerHud, ClickingTheBarWithASelectionDoesNotBuild) {
+    // Given
+    click(centre_of(hud.tab_bounds(0)));
+    click(centre_of(hud.item_bounds(0)));
+    const ui::Rect bar = hud.bar_bounds();
+
+    // When
+    click({bar.x + 2.0f, bar.y + 2.0f});
+
+    // Then
+    EXPECT_FALSE(::world::has_headquarters(model.registry()));
+    EXPECT_NE(hud.selected(), nullptr);
+}
+
+TEST_F(PlayerHud, ShowsNoPreviewWithoutASelection) {
+    // Given
+    pointer->at = {Screen.width / 2.0f + 70.0f, Screen.height / 3.0f};
+
+    // When
+    const auto preview = hud.preview();
+
+    // Then
+    EXPECT_FALSE(preview.has_value());
+}
+
+TEST_F(PlayerHud, PreviewsTheSelectionOnTheTileUnderThePointer) {
+    // Given
+    click(centre_of(hud.tab_bounds(0)));
+    click(centre_of(hud.item_bounds(0)));
+    pointer->at = {Screen.width / 2.0f + 70.0f, Screen.height / 3.0f};
+    const ::world::TileCoord expected =
+        model.camera().projection(Screen.width, Screen.height).tile_at({pointer->at.x, pointer->at.y});
+
+    // When
+    const auto preview = hud.preview();
+
+    // Then
+    ASSERT_TRUE(preview.has_value());
+    EXPECT_EQ(preview->tile, expected);
+    EXPECT_TRUE(preview->valid);
+}
+
+TEST_F(PlayerHud, ThePreviewIsInvalidOnATileThatCannotBeBuilt) {
+    // Given: the headquarters is selected, then one gets built on the tile under the pointer
+    click(centre_of(hud.tab_bounds(0)));
+    click(centre_of(hud.item_bounds(0)));
+    pointer->at = {Screen.width / 2.0f + 70.0f, Screen.height / 3.0f};
+    model.request_build(::world::BuildingType::Headquarters, hud.preview()->tile);
+
+    // When
+    const auto preview = hud.preview();
+
+    // Then
+    ASSERT_TRUE(preview.has_value());
+    EXPECT_FALSE(preview->valid);
+}
+
+TEST_F(PlayerHud, NoPreviewWhileThePointerIsOverTheBar) {
+    // Given
+    click(centre_of(hud.tab_bounds(0)));
+    click(centre_of(hud.item_bounds(0)));
+    const ui::Rect bar = hud.bar_bounds();
+    pointer->at = {bar.x + 2.0f, bar.y + 2.0f};
+
+    // When
+    const auto preview = hud.preview();
+
+    // Then
+    EXPECT_FALSE(preview.has_value());
 }

@@ -40,4 +40,21 @@ public:
     void read(core::Registry& registry, core::EntityId id, const Fields& fields) const override;
 };
 
+// "building.type" (save key of the BuildingType), "building.x" / "building.y" (its tile).
+// On read, a valid record re-places the building (position and site from the catalog).
+class BuildingCodec : public ComponentCodec {
+public:
+    void write(const core::Registry& registry, core::EntityId id, Fields& fields) const override;
+    void read(core::Registry& registry, core::EntityId id, const Fields& fields) const override;
+};
+
+// "construction.progress" while a building is unfinished. On read (buildings only), a
+// missing value means it was finished, so the site is removed; the effort comes from the
+// catalog, not the save.
+class ConstructionSiteCodec : public ComponentCodec {
+public:
+    void write(const core::Registry& registry, core::EntityId id, Fields& fields) const override;
+    void read(core::Registry& registry, core::EntityId id, const Fields& fields) const override;
+};
+
 } // namespace world

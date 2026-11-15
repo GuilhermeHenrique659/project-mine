@@ -343,3 +343,23 @@ TEST(WorldModel, BuildBarCannotBeOpenedWhilePaused) {
     // Then
     EXPECT_FALSE(model.is_build_bar_open());
 }
+
+TEST(WorldModel, ARequestedHeadquartersIsBuiltAndSurvivesASave) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    const ::world::Construction& hq =
+        *::world::find_construction(::world::BuildingType::Headquarters);
+    const auto before = model.build_status(hq);
+
+    // When
+    model.request_build(::world::BuildingType::Headquarters, {3, 2});
+
+    // Then
+    EXPECT_EQ(before, ::world::BuildResult::Ok);
+    EXPECT_EQ(model.build_status(hq), ::world::BuildResult::AlreadyExists);
+    event::EventBus other_bus;
+    const scene::world::WorldModel loaded(other_bus, input.handler, model.save_game());
+    EXPECT_TRUE(::world::has_headquarters(loaded.registry()));
+}

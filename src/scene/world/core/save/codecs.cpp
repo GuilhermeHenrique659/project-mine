@@ -6,7 +6,9 @@
 #include <string>
 #include <string_view>
 
+#include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/entities/building.hpp"
 #include "scene/world/core/components/player_controlled.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "text/parse.hpp"
@@ -183,6 +185,59 @@ void InventoryCodec::read(core::Registry& registry, core::EntityId id,
             continue;
         }
         inventory->set_slot(*index, stack);
+    }
+}
+
+void BuildingCodec::write(const core::Registry& registry, core::EntityId id,
+                          Fields& fields) const {
+    const Building* building = registry.get<Building>(id);
+    if (building == nullptr) {
+        return;
+    }
+    fields["building.type"] = std::string(building_type_key(building->type));
+    fields["building.x"] = text::format(building->tile.x);
+    fields["building.y"] = text::format(building->tile.y);
+}
+
+void BuildingCodec::read(core::Registry& registry, core::EntityId id,
+                         const Fields& fields) const {
+    const auto type_field = fields.find("building.type");
+    const auto x_field = fields.find("building.x");
+    const auto y_field = fields.find("building.y");
+    if (!registry.has<Building>(id) || type_field == fields.end() || x_field == fields.end() ||
+        y_field == fields.end()) {
+        return;
+    }
+    const auto type = parse_building_type(type_field->second);
+    const auto x = text::parse<int>(x_field->second);
+    const auto y = text::parse<int>(y_field->second);
+    if (!type || !x || !y) {
+        return;
+    }
+    make_building(registry, id, *find_construction(*type), TileCoord{*x, *y});
+}
+
+void ConstructionSiteCodec::write(const core::Registry& registry, core::EntityId id,
+                                  Fields& fields) const {
+    const ConstructionSite* site = registry.get<ConstructionSite>(id);
+    if (site == nullptr) {
+        return;
+    }
+    fields["construction.progress"] = text::format(site->progress);
+}
+
+void ConstructionSiteCodec::read(core::Registry& registry, core::EntityId id,
+                                 const Fields& fields) const {
+    if (!registry.has<Building>(id)) {
+        return;
+    }
+    const auto progress = parse_float(fields, "construction.progress");
+    if (!progress) {
+        registry.remove<ConstructionSite>(id);
+        return;
+    }
+    if (ConstructionSite* site = registry.get<ConstructionSite>(id)) {
+        site->progress = *progress;
     }
 }
 

@@ -2,10 +2,25 @@
 
 namespace world {
 
+std::string_view building_type_key(BuildingType type) {
+    switch (type) {
+        case BuildingType::Headquarters: break;
+    }
+    return "Headquarters";
+}
+
+std::optional<BuildingType> parse_building_type(std::string_view key) {
+    if (key == building_type_key(BuildingType::Headquarters)) {
+        return BuildingType::Headquarters;
+    }
+    return std::nullopt;
+}
+
 const std::vector<ConstructionGroup>& construction_catalog() {
     static const std::vector<ConstructionGroup> catalog{
         {ConstructionCategory::Special, "Special", "icon_tab_special",
-         {{"Headquarters", "icon_headquarters"}, {"Storage", "icon_storage"}}},
+         {{"Headquarters", "icon_headquarters", BuildingType::Headquarters, {}, 0.0f, true, false},
+          {"Storage", "icon_storage"}}},
         {ConstructionCategory::Mine, "Mines", "icon_tab_mines",
          {{"Iron Mine", "icon_iron_mine"},
           {"Copper Mine", "icon_copper_mine"},
@@ -16,6 +31,17 @@ const std::vector<ConstructionGroup>& construction_catalog() {
          {{"Barracks", "icon_barracks"}, {"Turret", "icon_turret"}, {"Wall", "icon_wall"}}},
     };
     return catalog;
+}
+
+const Construction* find_construction(BuildingType type) {
+    for (const auto& group : construction_catalog()) {
+        for (const auto& construction : group.constructions) {
+            if (construction.type == type) {
+                return &construction;
+            }
+        }
+    }
+    return nullptr;
 }
 
 } // namespace world

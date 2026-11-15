@@ -48,6 +48,9 @@ WorldSerializer make_world_serializer(const EntityFactory& factory) {
     codecs.push_back(std::make_unique<CharacterCodec>());
     codecs.push_back(std::make_unique<PlayerControlledCodec>());
     codecs.push_back(std::make_unique<InventoryCodec>());
+    // Building first: it re-places the building, then the site restores its progress.
+    codecs.push_back(std::make_unique<BuildingCodec>());
+    codecs.push_back(std::make_unique<ConstructionSiteCodec>());
     return WorldSerializer(factory, std::move(codecs));
 }
 

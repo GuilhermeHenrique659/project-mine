@@ -27,7 +27,8 @@ private:
     std::unordered_map<std::string, Spawner> spawners_;
 };
 
-// Every archetype of the game: today "character" -> spawn_character at (0, 0).
+// Every archetype of the game: "character" -> spawn_character at (0, 0) and "building" ->
+// spawn_building (placed afterwards with make_building()).
 EntityFactory make_entity_factory();
 
 } // namespace world

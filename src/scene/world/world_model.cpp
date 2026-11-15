@@ -1,7 +1,10 @@
 #include "scene/world/world_model.hpp"
 
+#include "scene/world/core/components/inventory.hpp"
 #include "scene/world/core/components/player_controlled.hpp"
 #include "scene/world/core/components/position.hpp"
+#include "scene/world/core/events/building_events.hpp"
+#include "scene/world/core/systems/build_system.hpp"
 #include "scene/world/core/systems/camera_follow_system.hpp"
 #include "scene/world/core/systems/character_move_system.hpp"
 #include "scene/world/core/systems/player_input_system.hpp"
@@ -27,6 +30,10 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
     systems_.push_back(std::make_unique<::world::CharacterMoveSystem>(registry_, bus_));
     // After movement, so the camera is on the player's new position.
     systems_.push_back(std::make_unique<::world::CameraFollowSystem>(registry_, camera_));
+    // Builds on BuildRequested (paid by the player), then advances the construction sites.
+    systems_.push_back(
+        std::make_unique<::world::BuildSystem>(registry_, bus_, terrain_, factory_, player_));
+    systems_.push_back(std::make_unique<::world::ConstructionProgressSystem>(registry_, bus_));
     // The first frame is already centred on the player.
     if (const auto* position = registry_.get<::world::Position>(player_)) {
         camera_.center = position->point;
@@ -78,6 +85,20 @@ void WorldModel::toggle_build_bar() {
         return;
     }
     build_bar_open_ = !build_bar_open_;
+}
+
+void WorldModel::request_build(::world::BuildingType type, ::world::TileCoord tile) {
+    bus_.publish(::world::BuildRequested{type, tile});
+}
+
+::world::BuildResult WorldModel::build_status(const ::world::Construction& construction) const {
+    return ::world::check_unlocked(registry_, construction);
+}
+
+::world::BuildResult WorldModel::placement_status(const ::world::Construction& construction,
+                                                  ::world::TileCoord tile) const {
+    return ::world::can_build(registry_, construction, tile, terrain_,
+                              registry_.get<::world::Inventory>(player_));
 }
 
 void WorldModel::cancel() {
