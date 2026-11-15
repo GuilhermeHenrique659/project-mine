@@ -10,8 +10,9 @@ namespace scene::world {
 
 // Lets the player build by hand: while the left button is held over a construction site,
 // the player works on it (WorldModel::work_on(), which only progresses within reach);
-// otherwise the player stops. Hidden (and not working) while paused or while the player
-// menu is open. It draws nothing; draw() only records the screen size used to pick the
+// otherwise the player stops. A click on a finished building with an inventory opens the
+// item transfer with it (WorldModel::open_transfer()). Hidden (and not working) while
+// paused, while the player menu is open or while a transfer is open. It draws nothing; draw() only records the screen size used to pick the
 // tile under the pointer. The model must outlive it.
 class SiteWork : public Renderer {
 public:

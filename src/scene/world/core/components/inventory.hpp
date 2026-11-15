@@ -38,4 +38,9 @@ private:
     std::vector<std::optional<ItemStack>> slots_;
 };
 
+// Moves up to `count` of `item` from one inventory to the other: never more than `from`
+// holds nor more than fits in `to` (what does not fit stays in `from`). Returns how many
+// were moved.
+int transfer_items(Inventory& from, Inventory& to, Item item, int count);
+
 } // namespace world

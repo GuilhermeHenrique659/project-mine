@@ -315,3 +315,25 @@ TEST(ConstructionSiteCodec, ABuildingSavedFinishedLoadsWithoutASite) {
     // Then
     EXPECT_FALSE(registry.has<world::ConstructionSite>(loaded));
 }
+
+TEST(WorldSerializer, AMineKeepsItsInventoryThroughASave) {
+    // Given
+    Fixture saved;
+    const core::EntityId id = *saved.factory.spawn(saved.registry, world::BuildingArchetype, "Mine");
+    world::make_building(saved.registry, id, *world::find_construction(world::BuildingType::Mine),
+                         {30, 2});
+    saved.registry.get<world::Inventory>(id)->set_slot(2, world::ItemStack{world::items::Coal, 40});
+    const auto records = saved.serializer.snapshot(saved.registry);
+
+    // When
+    Fixture loaded;
+    loaded.serializer.restore(loaded.registry, records);
+
+    // Then
+    const core::EntityId mine = loaded.registry.entities().front().id;
+    const world::Inventory* inventory = loaded.registry.get<world::Inventory>(mine);
+    ASSERT_NE(inventory, nullptr);
+    EXPECT_EQ(inventory->capacity(), world::find_construction(world::BuildingType::Mine)->inventory_slots);
+    ASSERT_TRUE(inventory->slots()[2].has_value());
+    EXPECT_EQ(inventory->slots()[2]->count, 40);
+}

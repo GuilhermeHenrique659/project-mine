@@ -88,3 +88,28 @@ TEST_F(SiteWork, PausingStopsTheWorkAndHidesIt) {
     EXPECT_FALSE(work.visible());
     EXPECT_EQ(working_on(), 0u);
 }
+
+TEST(SiteWorkClick, ClickingAFinishedBuildingWithAnInventoryOpensTheTransfer) {
+    // Given: a finished mine next to the player
+    event::EventBus bus;
+    FakeInput input;
+    FakeCanvas canvas;
+    auto pointer = std::make_shared<FakePointer>();
+    game::SaveGame save{"Alpha", 0};
+    save.entities.push_back(
+        {"building", "Mine", {{"building.type", "Mine"}, {"building.x", "1"}, {"building.y", "0"}}});
+    scene::world::WorldModel model(bus, input.handler, save);
+    scene::world::SiteWork work(model, pointer);
+    work.draw(canvas, Screen);
+    const ::world::ScreenPoint over =
+        model.camera().projection(Screen.width, Screen.height).tile_center({1, 0});
+    pointer->at = {over.x, over.y};
+    pointer->release = true;
+
+    // When
+    work.update();
+
+    // Then
+    EXPECT_EQ(model.transfer_target(), model.registry().entities().front().id);
+    EXPECT_FALSE(work.visible());
+}

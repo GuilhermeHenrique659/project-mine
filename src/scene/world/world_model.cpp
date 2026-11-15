@@ -7,7 +7,9 @@
 #include "scene/world/core/components/player_controlled.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/events/building_events.hpp"
+#include "scene/world/core/events/item_transfer_requested.hpp"
 #include "scene/world/core/systems/build_system.hpp"
+#include "scene/world/core/systems/inventory_transfer_system.hpp"
 #include "scene/world/core/systems/camera_follow_system.hpp"
 #include "scene/world/core/systems/character_move_system.hpp"
 #include "scene/world/core/systems/player_input_system.hpp"
@@ -39,6 +41,7 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
     systems_.push_back(
         std::make_unique<::world::BuildSystem>(registry_, bus_, terrain_, factory_, player_));
     systems_.push_back(std::make_unique<::world::ConstructionWorkSystem>(registry_, bus_));
+    systems_.push_back(std::make_unique<::world::InventoryTransferSystem>(registry_, bus_));
     // The first frame is already centred on the player.
     if (const auto* position = registry_.get<::world::Position>(player_)) {
         camera_.center = position->point;
@@ -66,6 +69,9 @@ void WorldModel::update(float delta_time) {
     }
     for (const auto& system : systems_) {
         system->update(delta_time);
+    }
+    if (transfer_target_ != 0 && !::world::within_transfer_reach(registry_, player_, transfer_target_)) {
+        close_transfer();
     }
 }
 
@@ -130,7 +136,32 @@ void WorldModel::work_on(std::optional<::world::TileCoord> tile) {
     }
 }
 
+void WorldModel::open_transfer(::world::TileCoord tile) {
+    for (const core::Entity& entity : registry_.entities()) {
+        const auto* building = registry_.get<::world::Building>(entity.id);
+        if (building == nullptr || building->tile != tile) {
+            continue;
+        }
+        if (registry_.has<::world::ConstructionSite>(entity.id) ||
+            !registry_.has<::world::Inventory>(entity.id) ||
+            !::world::within_transfer_reach(registry_, player_, entity.id)) {
+            return;
+        }
+        transfer_target_ = entity.id;
+        return;
+    }
+}
+
+void WorldModel::request_transfer(core::EntityId from, core::EntityId to, ::world::Item item,
+                                  int count) {
+    bus_.publish(::world::ItemTransferRequested{from, to, item, count});
+}
+
 void WorldModel::cancel() {
+    if (transfer_target_ != 0) {
+        close_transfer();
+        return;
+    }
     if (player_menu_open_) {
         close_player_menu();
         return;

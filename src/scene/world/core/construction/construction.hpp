@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -37,6 +38,8 @@ struct Construction {
     bool unique = false;
     bool needs_headquarters = true;
     bool needs_ore = false;
+    // Slots of the building's own inventory (0 = it has none).
+    std::size_t inventory_slots = 0;
 };
 
 // The constructions of one category, with the category's own name and icon.

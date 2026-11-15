@@ -442,3 +442,84 @@ TEST(WorldModel, ThePlayerBuildsTheSiteItWorksOnOnlyWhileWorking) {
     EXPECT_FLOAT_EQ(while_working, ::world::CharacterBuildRate);
     EXPECT_FLOAT_EQ(site_progress(model, *ore), ::world::CharacterBuildRate);
 }
+
+namespace {
+
+// save_next_to(tile) plus a finished mine on `tile` holding 40 coal.
+game::SaveGame save_with_mine(::world::TileCoord tile) {
+    game::SaveGame save = save_next_to(tile);
+    save.entities.push_back({"building", "Mine",
+                             {{"building.type", "Mine"},
+                              {"building.x", std::to_string(tile.x)},
+                              {"building.y", std::to_string(tile.y)},
+                              {"inventory.0", "Coal:40"}}});
+    return save;
+}
+
+struct MineWorld {
+    event::EventBus bus;
+    FakeInput input;
+    ::world::TileCoord ore = *find_ore(::world::Terrain(game::SaveGame{"Alpha", {}}.seed));
+    scene::world::WorldModel model{bus, input.handler, save_with_mine(ore)};
+
+    int coal(core::EntityId id) const {
+        return model.registry().get<::world::Inventory>(id)->count(::world::items::Coal);
+    }
+};
+
+} // namespace
+
+TEST(WorldModel, OpeningTheTransferOnAMineInReachLetsItemsMoveToThePlayer) {
+    // Given
+    MineWorld w;
+
+    // When
+    w.model.open_transfer(w.ore);
+    const core::EntityId mine = w.model.transfer_target();
+    w.model.request_transfer(mine, w.model.player_id(), ::world::items::Coal, 40);
+
+    // Then
+    ASSERT_NE(mine, 0u);
+    EXPECT_EQ(w.model.registry().get<::world::Building>(mine)->type, ::world::BuildingType::Mine);
+    EXPECT_EQ(w.coal(mine), 0);
+    EXPECT_EQ(w.coal(w.model.player_id()), 40);
+}
+
+TEST(WorldModel, TheTransferDoesNotOpenOnABuildingOutOfReachOrWithoutAnInventory) {
+    // Given
+    MineWorld w;
+
+    // When: the headquarters on (0, 0) is far from the player and has no inventory
+    w.model.open_transfer({0, 0});
+
+    // Then
+    EXPECT_EQ(w.model.transfer_target(), 0u);
+}
+
+TEST(WorldModel, WalkingOutOfReachClosesTheTransfer) {
+    // Given
+    MineWorld w;
+    w.model.open_transfer(w.ore);
+    w.input.keyboard.down = {input::Key::S, input::Key::D}; // walk away along world +x
+
+    // When
+    for (int frame = 0; frame < 10; ++frame) {
+        w.model.update(0.1f);
+    }
+
+    // Then
+    EXPECT_EQ(w.model.transfer_target(), 0u);
+}
+
+TEST(WorldModel, CancelClosesTheTransferBeforePausing) {
+    // Given
+    MineWorld w;
+    w.model.open_transfer(w.ore);
+
+    // When
+    w.model.cancel();
+
+    // Then
+    EXPECT_EQ(w.model.transfer_target(), 0u);
+    EXPECT_FALSE(w.model.is_paused());
+}

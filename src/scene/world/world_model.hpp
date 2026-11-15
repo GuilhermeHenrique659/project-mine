@@ -70,8 +70,19 @@ public:
     // menu stops the work.
     void work_on(std::optional<::world::TileCoord> tile);
 
-    // The "back" action (Esc): closes the player menu when it is open, otherwise opens
-    // or closes the pause.
+    // Opens the item transfer with the finished building on `tile` when it has an
+    // inventory and is within ::world::TransferReach of the player; otherwise nothing.
+    void open_transfer(::world::TileCoord tile);
+    // The building the transfer is open with, 0 when closed. It closes by itself when the
+    // player walks out of reach or the building is gone.
+    core::EntityId transfer_target() const { return transfer_target_; }
+    void close_transfer() { transfer_target_ = 0; }
+
+    // Asks to move items between two inventories (::world::ItemTransferRequested).
+    void request_transfer(core::EntityId from, core::EntityId to, ::world::Item item, int count);
+
+    // The "back" action (Esc): closes the transfer or the player menu when one is open,
+    // otherwise opens or closes the pause.
     void cancel();
 
     // Everything that has to be written to disk to continue this game later: the save's
@@ -113,6 +124,7 @@ private:
     bool paused_ = false;
     bool player_menu_open_ = false;
     bool build_bar_open_ = false;
+    core::EntityId transfer_target_ = 0;
 };
 
 } // namespace scene::world

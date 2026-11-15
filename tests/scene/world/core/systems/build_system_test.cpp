@@ -187,3 +187,21 @@ TEST(ConstructionWorkSystem, FinishesTheSiteAtItsEffortAndAnnouncesItOnce) {
     EXPECT_EQ(f.completed, 1);
     EXPECT_EQ(f.registry.get<world::Builder>(f.builder)->site, 0u);
 }
+
+TEST(MakeBuilding, AMineHasAnInventoryAndTheHeadquartersNone) {
+    // Given
+    core::Registry registry;
+    const core::EntityId mine = registry.create("Mine");
+    const core::EntityId hq = registry.create("Headquarters");
+
+    // When
+    world::make_building(registry, mine, *world::find_construction(world::BuildingType::Mine), {1, 1});
+    world::make_building(registry, hq,
+                         *world::find_construction(world::BuildingType::Headquarters), {2, 2});
+
+    // Then
+    const world::Inventory* inventory = registry.get<world::Inventory>(mine);
+    ASSERT_NE(inventory, nullptr);
+    EXPECT_EQ(inventory->capacity(), 10u);
+    EXPECT_FALSE(registry.has<world::Inventory>(hq));
+}

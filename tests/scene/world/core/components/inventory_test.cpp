@@ -195,3 +195,48 @@ TEST(Inventory, EntitiesInARegistryKeepIndependentInventories) {
     EXPECT_EQ(registry.get<Inventory>(chest)->count(world::items::IronOre), 80);
     EXPECT_TRUE(registry.get<Inventory>(player)->is_empty());
 }
+
+TEST(TransferItems, MovesTheItemsFromOneInventoryToTheOther) {
+    // Given
+    world::Inventory from(4);
+    world::Inventory to(4);
+    from.add(world::items::IronOre, 50);
+
+    // When
+    const int moved = world::transfer_items(from, to, world::items::IronOre, 30);
+
+    // Then
+    EXPECT_EQ(moved, 30);
+    EXPECT_EQ(from.count(world::items::IronOre), 20);
+    EXPECT_EQ(to.count(world::items::IronOre), 30);
+}
+
+TEST(TransferItems, MovesNoMoreThanTheSourceHolds) {
+    // Given
+    world::Inventory from(4);
+    world::Inventory to(4);
+    from.add(world::items::Coal, 5);
+
+    // When
+    const int moved = world::transfer_items(from, to, world::items::Coal, 30);
+
+    // Then
+    EXPECT_EQ(moved, 5);
+    EXPECT_EQ(from.count(world::items::Coal), 0);
+}
+
+TEST(TransferItems, LeavesWhatDoesNotFitInTheSource) {
+    // Given: the target has one free slot, so it takes one stack (100) of the 150
+    world::Inventory from(4);
+    world::Inventory to(2);
+    to.add(world::items::Coal, 100);
+    from.add(world::items::IronOre, 150);
+
+    // When
+    const int moved = world::transfer_items(from, to, world::items::IronOre, 150);
+
+    // Then
+    EXPECT_EQ(moved, 100);
+    EXPECT_EQ(from.count(world::items::IronOre), 50);
+    EXPECT_EQ(to.count(world::items::IronOre), 100);
+}

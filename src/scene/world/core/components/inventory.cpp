@@ -67,4 +67,12 @@ std::size_t Inventory::free_slots() const {
 
 bool Inventory::is_empty() const { return free_slots() == slots_.size(); }
 
+int transfer_items(Inventory& from, Inventory& to, Item item, int count) {
+    const int taken = from.remove(item, count);
+    const int leftover = to.add(item, taken);
+    // What did not fit goes back where it came from (it was just taken, so it fits).
+    from.add(item, leftover);
+    return taken - leftover;
+}
+
 } // namespace world

@@ -44,13 +44,14 @@ void WorldSerializer::restore(core::Registry& registry,
 
 WorldSerializer make_world_serializer(const EntityFactory& factory) {
     std::vector<std::unique_ptr<ComponentCodec>> codecs;
+    // Building first: it re-places the building (position, site, inventory), so the codecs
+    // after it restore the saved data on top.
+    codecs.push_back(std::make_unique<BuildingCodec>());
+    codecs.push_back(std::make_unique<ConstructionSiteCodec>());
     codecs.push_back(std::make_unique<PositionCodec>());
     codecs.push_back(std::make_unique<CharacterCodec>());
     codecs.push_back(std::make_unique<PlayerControlledCodec>());
     codecs.push_back(std::make_unique<InventoryCodec>());
-    // Building first: it re-places the building, then the site restores its progress.
-    codecs.push_back(std::make_unique<BuildingCodec>());
-    codecs.push_back(std::make_unique<ConstructionSiteCodec>());
     return WorldSerializer(factory, std::move(codecs));
 }
 
