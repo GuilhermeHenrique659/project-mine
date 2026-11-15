@@ -207,3 +207,30 @@ TEST(WorldModel, SaveWithoutAPlayerRecordGetsADefaultPlayer) {
     EXPECT_EQ(model.registry().find(model.player_id())->label, "Player");
     EXPECT_FLOAT_EQ(player_position(model).x, 0.0f);
 }
+
+TEST(WorldModel, ZoomingChangesTheCameraZoom) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+
+    // When
+    model.zoom_camera(-2.0f);
+
+    // Then
+    EXPECT_LT(model.camera().zoom, 1.0f);
+}
+
+TEST(WorldModel, ZoomingIsIgnoredWhilePaused) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    model.toggle_pause();
+
+    // When
+    model.zoom_camera(2.0f);
+
+    // Then
+    EXPECT_FLOAT_EQ(model.camera().zoom, 1.0f);
+}

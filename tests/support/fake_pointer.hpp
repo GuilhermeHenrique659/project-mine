@@ -7,7 +7,9 @@
 struct FakePointer : input::Pointer {
     input::PointerPosition position() const override { return at; }
     bool released() const override { return release; }
+    float scroll() const override { return wheel; }
 
     input::PointerPosition at;
     bool release = false;
+    float wheel = 0.0f;
 };

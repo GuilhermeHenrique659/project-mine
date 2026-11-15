@@ -56,6 +56,9 @@ public:
     // Where the view is centred: it follows the player.
     const ::world::Camera& camera() const { return camera_; }
 
+    // Zooms the camera by mouse wheel notches (positive = in). Ignored while paused.
+    void zoom_camera(float steps);
+
 private:
     // The first PlayerControlled entity, or 0 when there is none (ids start at 1).
     core::EntityId find_player() const;

@@ -30,11 +30,12 @@ struct WorldInput {
 // Translates player input into calls on the view or business events. It only knows
 // actions (see input::Action), never physical keys. Movement is not handled here (the
 // model's PlayerInputSystem reads the held move actions) and neither is the mouse (the
-// menu renderer reads it).
+// menu renderer reads it), except the wheel, which zooms the camera.
 class WorldController : public scene::Controller {
 public:
-    WorldController(WorldMenu& menu, WorldModel& model, std::shared_ptr<WorldInput> input)
-        : input_(std::move(input)) {
+    WorldController(WorldMenu& menu, WorldModel& model, std::shared_ptr<WorldInput> input,
+                    std::shared_ptr<input::Pointer> pointer)
+        : input_(std::move(input)), model_(model), pointer_(std::move(pointer)) {
         ui::FocusGroup& focus = menu.focus_group();
         // The menu is hidden while playing, so keyboard navigation only applies when paused.
         input_->handler.on(input::Action::NavigateUp, [&focus, &model] {
@@ -50,10 +51,15 @@ public:
     }
 
     // The mouse is not handled here: the menu renderer reads it itself.
-    void handle_input() override { input_->handler.update(); }
+    void handle_input() override {
+        input_->handler.update();
+        model_.zoom_camera(pointer_->scroll());
+    }
 
 private:
     std::shared_ptr<WorldInput> input_;
+    WorldModel& model_;
+    std::shared_ptr<input::Pointer> pointer_;
 };
 
 } // namespace
@@ -61,10 +67,10 @@ private:
 std::unique_ptr<scene::Scene> make_world_scene(game::Game& game, game::SaveGame save) {
     auto input = std::make_shared<WorldInput>();
     auto model = std::make_unique<WorldModel>(game.event_bus(), input->handler, std::move(save));
-    auto pointer = std::make_shared<input::RaylibPointer>();
+    std::shared_ptr<input::Pointer> pointer = std::make_shared<input::RaylibPointer>();
 
     // Bottom to top. Adding something to the screen is one more entry here.
-    auto menu = std::make_unique<WorldMenu>(game.event_bus(), *model, std::move(pointer));
+    auto menu = std::make_unique<WorldMenu>(game.event_bus(), *model, pointer);
     WorldMenu& menu_ref = *menu; // owned by the view, which outlives the controller
     std::vector<std::unique_ptr<Renderer>> renderers;
     renderers.push_back(std::make_unique<TerrainRenderer>(model->terrain(), model->camera()));
@@ -72,7 +78,7 @@ std::unique_ptr<scene::Scene> make_world_scene(game::Game& game, game::SaveGame 
     renderers.push_back(std::move(menu));
 
     auto view = std::make_unique<WorldView>(std::move(renderers));
-    auto controller = std::make_unique<WorldController>(menu_ref, *model, std::move(input));
+    auto controller = std::make_unique<WorldController>(menu_ref, *model, std::move(input), pointer);
     return std::make_unique<scene::Scene>(std::move(model), std::move(view),
                                           std::move(controller));
 }

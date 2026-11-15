@@ -45,7 +45,8 @@ void EntityRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
 
     for (const Marker& marker : markers) {
         const ::world::ScreenPoint center = projection.world_to_screen(marker.point);
-        const Cube cube(CubeSize);
+        // The cube scales with the zoom, like the tiles.
+        const Cube cube(CubeSize * projection.tile_width / ::world::IsoProjection{}.tile_width);
         cube.draw(canvas, center);
         const ui::Rect body = cube.bounds(center);
         const ui::Size text = canvas.measure_text(marker.label, LabelFontSize);

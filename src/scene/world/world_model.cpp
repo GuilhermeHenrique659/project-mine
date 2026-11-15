@@ -57,6 +57,13 @@ void WorldModel::update(float delta_time) {
     }
 }
 
+void WorldModel::zoom_camera(float steps) {
+    if (paused_) {
+        return;
+    }
+    camera_.zoom_by(steps);
+}
+
 void WorldModel::toggle_pause() { paused_ = !paused_; }
 
 } // namespace scene::world
