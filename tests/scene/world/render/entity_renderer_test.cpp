@@ -17,8 +17,25 @@ namespace {
 
 constexpr ui::Size Screen{1280.0f, 720.0f};
 
-ui::Point center_of(const ui::Rect& rect) {
-    return {rect.x + rect.width / 2.0f, rect.y + rect.height / 2.0f};
+// Every cube is 6 triangles (top, left, right faces). The second triangle of the left face
+// runs top-left, front-bottom, left-bottom: the ground point is (front.x, left.y).
+constexpr std::size_t TrianglesPerCube = 6;
+
+ui::Point ground_of(const FakeCanvas& canvas, std::size_t cube) {
+    const FilledTriangle& left = canvas.triangles[cube * TrianglesPerCube + 3];
+    return {left.b.x, left.c.y};
+}
+
+// Width of a cube on screen: from the left face's outer edge to the right face's.
+float width_of(const FakeCanvas& canvas, std::size_t cube) {
+    const FilledTriangle& left = canvas.triangles[cube * TrianglesPerCube + 3];
+    const FilledTriangle& right = canvas.triangles[cube * TrianglesPerCube + 5];
+    return right.c.x - left.c.x;
+}
+
+// The highest point of a cube (its back top corner).
+float top_of(const FakeCanvas& canvas, std::size_t cube) {
+    return canvas.triangles[cube * TrianglesPerCube].a.y;
 }
 
 } // namespace
@@ -36,13 +53,13 @@ TEST(EntityRenderer, CharacterIsDrawnAsACubeWithItsLabelAndStateAroundTheScreenC
     renderer.draw(canvas, Screen);
 
     // Then: world (2, 0) with 64x32 tiles is (64, 32) pixels from the screen centre
-    ASSERT_EQ(canvas.fills.size(), 2u); // top face, then front face
-    const ui::Point marker_center = center_of(canvas.fills.back().rect);
-    EXPECT_FLOAT_EQ(marker_center.x, 640.0f + 64.0f);
-    EXPECT_FLOAT_EQ(marker_center.y, 360.0f + 32.0f);
+    ASSERT_EQ(canvas.triangles.size(), TrianglesPerCube);
+    const ui::Point ground = ground_of(canvas, 0);
+    EXPECT_FLOAT_EQ(ground.x, 640.0f + 64.0f);
+    EXPECT_FLOAT_EQ(ground.y, 360.0f + 32.0f);
     ASSERT_EQ(canvas.texts.size(), 1u);
     EXPECT_EQ(canvas.texts.front().text, "Player (Moving)");
-    EXPECT_LT(canvas.texts.front().position.y, canvas.fills.front().rect.y);
+    EXPECT_LT(canvas.texts.front().position.y, top_of(canvas, 0));
 }
 
 TEST(EntityRenderer, EntityFurtherDownTheScreenIsDrawnAfterOneBehindIt) {
@@ -91,7 +108,7 @@ TEST_F(EntityRendererTexture, CharacterIsDrawnAsACubeEvenWhenTheTextureLoaderHas
 
     // Then
     EXPECT_TRUE(canvas.textures.empty());
-    EXPECT_EQ(canvas.fills.size(), 2u);
+    EXPECT_EQ(canvas.triangles.size(), TrianglesPerCube);
     EXPECT_EQ(canvas.texts.size(), 1u); // the label is still shown
 }
 
@@ -108,10 +125,10 @@ TEST(EntityRenderer, EntityUnderTheCameraIsDrawnAtTheScreenCentreWhateverItsWorl
     renderer.draw(canvas, Screen);
 
     // Then
-    ASSERT_EQ(canvas.fills.size(), 2u);
-    const ui::Point marker_center = center_of(canvas.fills.back().rect);
-    EXPECT_FLOAT_EQ(marker_center.x, 640.0f);
-    EXPECT_FLOAT_EQ(marker_center.y, 360.0f);
+    ASSERT_EQ(canvas.triangles.size(), TrianglesPerCube);
+    const ui::Point ground = ground_of(canvas, 0);
+    EXPECT_FLOAT_EQ(ground.x, 640.0f);
+    EXPECT_FLOAT_EQ(ground.y, 360.0f);
 }
 
 TEST(EntityRenderer, EntitiesShiftOnScreenOppositeToTheCameraMovement) {
@@ -127,10 +144,10 @@ TEST(EntityRenderer, EntitiesShiftOnScreenOppositeToTheCameraMovement) {
     renderer.draw(canvas, Screen);
 
     // Then: it is (64, 32) pixels up-left of the screen centre
-    ASSERT_EQ(canvas.fills.size(), 2u);
-    const ui::Point marker_center = center_of(canvas.fills.back().rect);
-    EXPECT_FLOAT_EQ(marker_center.x, 640.0f - 64.0f);
-    EXPECT_FLOAT_EQ(marker_center.y, 360.0f - 32.0f);
+    ASSERT_EQ(canvas.triangles.size(), TrianglesPerCube);
+    const ui::Point ground = ground_of(canvas, 0);
+    EXPECT_FLOAT_EQ(ground.x, 640.0f - 64.0f);
+    EXPECT_FLOAT_EQ(ground.y, 360.0f - 32.0f);
 }
 
 TEST(EntityRenderer, ABuildingIsABiggerCubeAndASiteShowsItsProgress) {
@@ -149,9 +166,9 @@ TEST(EntityRenderer, ABuildingIsABiggerCubeAndASiteShowsItsProgress) {
     // When
     renderer.draw(canvas, Screen);
 
-    // Then: the character (front at fills[1]) is drawn before the building (fills[3])
-    ASSERT_EQ(canvas.fills.size(), 4u);
-    EXPECT_GT(canvas.fills[3].rect.width, canvas.fills[1].rect.width);
+    // Then: the character (cube 0) is drawn before the building (cube 1)
+    ASSERT_EQ(canvas.triangles.size(), 2 * TrianglesPerCube);
+    EXPECT_GT(width_of(canvas, 1), width_of(canvas, 0));
     ASSERT_EQ(canvas.texts.size(), 2u);
     EXPECT_EQ(canvas.texts[1].text, "Mine (25%)");
 }
