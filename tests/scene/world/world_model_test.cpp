@@ -4,6 +4,12 @@
 #include "scene/world/world_model.hpp"
 #include "support/fake_input.hpp"
 #include "scene/world/core/components/position.hpp"
+#include "scene/world/core/components/builder.hpp"
+#include "scene/world/core/components/building.hpp"
+#include "scene/world/core/components/inventory.hpp"
+
+#include <optional>
+#include <string>
 
 namespace {
 
@@ -362,4 +368,77 @@ TEST(WorldModel, ARequestedHeadquartersIsBuiltAndSurvivesASave) {
     event::EventBus other_bus;
     const scene::world::WorldModel loaded(other_bus, input.handler, model.save_game());
     EXPECT_TRUE(::world::has_headquarters(loaded.registry()));
+}
+
+namespace {
+
+std::optional<::world::TileCoord> find_ore(const ::world::Terrain& terrain) {
+    for (int x = -60; x < 60; ++x) {
+        for (int y = -60; y < 60; ++y) {
+            if (::world::is_ore(terrain.tile_at({x, y}))) {
+                return ::world::TileCoord{x, y};
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+// A save whose player stands next to `tile` with 100 iron ore, and a headquarters.
+game::SaveGame save_next_to(::world::TileCoord tile) {
+    game::SaveGame save{"Alpha", {}};
+    save.entities.push_back({"character", "Player",
+                             {{"position.x", std::to_string(tile.x + 1.5f)},
+                              {"position.y", std::to_string(tile.y + 0.5f)},
+                              {"player", "1"},
+                              {"inventory.0", "IronOre:100"}}});
+    save.entities.push_back(
+        {"building", "Headquarters", {{"building.type", "Headquarters"}, {"building.x", "0"}, {"building.y", "0"}}});
+    return save;
+}
+
+float site_progress(const scene::world::WorldModel& model, ::world::TileCoord tile) {
+    for (const core::Entity& entity : model.registry().entities()) {
+        const auto* building = model.registry().get<::world::Building>(entity.id);
+        const auto* site = model.registry().get<::world::ConstructionSite>(entity.id);
+        if (building != nullptr && site != nullptr && building->tile == tile) {
+            return site->progress;
+        }
+    }
+    return -1.0f;
+}
+
+} // namespace
+
+TEST(WorldModel, ANewPlayerStartsWith200IronOre) {
+    // Given / When
+    event::EventBus bus;
+    FakeInput input;
+    const scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+
+    // Then
+    const auto* inventory = model.registry().get<::world::Inventory>(model.player_id());
+    ASSERT_NE(inventory, nullptr);
+    EXPECT_EQ(inventory->count(::world::items::IronOre), 200);
+}
+
+TEST(WorldModel, ThePlayerBuildsTheSiteItWorksOnOnlyWhileWorking) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    const auto ore = find_ore(::world::Terrain(game::SaveGame{"Alpha", {}}.seed));
+    ASSERT_TRUE(ore);
+    scene::world::WorldModel model(bus, input.handler, save_next_to(*ore));
+    model.request_build(::world::BuildingType::Mine, *ore);
+    ASSERT_FLOAT_EQ(site_progress(model, *ore), 0.0f);
+
+    // When
+    model.work_on(*ore);
+    model.update(1.0f);
+    const float while_working = site_progress(model, *ore);
+    model.work_on(std::nullopt);
+    model.update(1.0f);
+
+    // Then
+    EXPECT_FLOAT_EQ(while_working, ::world::CharacterBuildRate);
+    EXPECT_FLOAT_EQ(site_progress(model, *ore), ::world::CharacterBuildRate);
 }

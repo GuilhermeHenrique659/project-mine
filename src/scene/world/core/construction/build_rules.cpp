@@ -59,6 +59,9 @@ BuildResult can_build(const core::Registry& registry, const Construction& constr
         any_building(registry, [tile](const Building& building) { return building.tile == tile; })) {
         return BuildResult::TileBlocked;
     }
+    if (construction.needs_ore && !is_ore(terrain.tile_at(tile))) {
+        return BuildResult::NeedsOre;
+    }
     if (!can_pay(construction.cost, payer)) {
         return BuildResult::NotEnoughResources;
     }

@@ -287,3 +287,40 @@ TEST_F(PlayerHud, NoPreviewWhileThePointerIsOverTheBar) {
     // Then
     EXPECT_FALSE(preview.has_value());
 }
+
+TEST_F(PlayerHud, ARefusedClickKeepsThePreviewAndMarksItRejected) {
+    // Given: a headquarters already exists, so a second one is refused everywhere
+    click(centre_of(hud.tab_bounds(0)));
+    click(centre_of(hud.item_bounds(0)));
+    const ui::Point target{Screen.width / 2.0f + 70.0f, Screen.height / 3.0f};
+    pointer->at = {target.x, target.y};
+    model.request_build(::world::BuildingType::Headquarters, {-20, -20});
+    std::vector<::world::BuildRequested> requests;
+    const auto subscription = event::subscribe_scoped<::world::BuildRequested>(
+        bus, [&](const ::world::BuildRequested& request) { requests.push_back(request); });
+
+    // When
+    click(target);
+
+    // Then
+    EXPECT_TRUE(requests.empty());
+    ASSERT_NE(hud.selected(), nullptr);
+    ASSERT_TRUE(hud.preview().has_value());
+    EXPECT_FALSE(hud.preview()->valid);
+    EXPECT_TRUE(hud.preview()->rejected);
+}
+
+TEST_F(PlayerHud, TheRejectedMarkClearsOnAnotherTile) {
+    // Given
+    click(centre_of(hud.tab_bounds(0)));
+    click(centre_of(hud.item_bounds(0)));
+    model.request_build(::world::BuildingType::Headquarters, {-20, -20});
+    click({Screen.width / 2.0f + 70.0f, Screen.height / 3.0f});
+
+    // When
+    pointer->at = {Screen.width / 2.0f - 200.0f, Screen.height / 3.0f};
+
+    // Then
+    ASSERT_TRUE(hud.preview().has_value());
+    EXPECT_FALSE(hud.preview()->rejected);
+}

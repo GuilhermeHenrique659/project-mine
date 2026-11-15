@@ -4,6 +4,7 @@ namespace world {
 
 std::string_view building_type_key(BuildingType type) {
     switch (type) {
+        case BuildingType::Mine: return "Mine";
         case BuildingType::Headquarters: break;
     }
     return "Headquarters";
@@ -12,6 +13,9 @@ std::string_view building_type_key(BuildingType type) {
 std::optional<BuildingType> parse_building_type(std::string_view key) {
     if (key == building_type_key(BuildingType::Headquarters)) {
         return BuildingType::Headquarters;
+    }
+    if (key == building_type_key(BuildingType::Mine)) {
+        return BuildingType::Mine;
     }
     return std::nullopt;
 }
@@ -22,9 +26,8 @@ const std::vector<ConstructionGroup>& construction_catalog() {
          {{"Headquarters", "icon_headquarters", BuildingType::Headquarters, {}, 0.0f, true, false},
           {"Storage", "icon_storage"}}},
         {ConstructionCategory::Mine, "Mines", "icon_tab_mines",
-         {{"Iron Mine", "icon_iron_mine"},
-          {"Copper Mine", "icon_copper_mine"},
-          {"Coal Mine", "icon_coal_mine"}}},
+         {{"Mine", "icon_mine", BuildingType::Mine, {{items::IronOre, 100}}, 300.0f, false, true,
+           true}}},
         {ConstructionCategory::Factory, "Factories", "icon_tab_factories",
          {{"Smelter", "icon_smelter"}, {"Assembler", "icon_assembler"}}},
         {ConstructionCategory::Military, "Military", "icon_tab_military",

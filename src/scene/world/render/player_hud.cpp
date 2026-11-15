@@ -21,6 +21,9 @@ constexpr ui::Color PreviewValidFront{60, 170, 80, 140};
 constexpr ui::Color PreviewValidTop{110, 220, 130, 140};
 constexpr ui::Color PreviewBlockedFront{190, 50, 50, 140};
 constexpr ui::Color PreviewBlockedTop{235, 100, 100, 140};
+// After a refused click: opaque, saturated red.
+constexpr ui::Color PreviewRejectedFront{220, 0, 0, 230};
+constexpr ui::Color PreviewRejectedTop{255, 40, 40, 230};
 
 const std::vector<::world::ConstructionGroup>& catalog() {
     return ::world::construction_catalog();
@@ -65,6 +68,7 @@ void PlayerHud::update() {
             return;
         }
         selected_ = &construction;
+        rejected_tile_.reset();
         open_tab_.reset();
         return;
     }
@@ -82,9 +86,16 @@ void PlayerHud::update() {
     if (selected_ == nullptr || bar_.contains(position) || list_.contains(position)) {
         return;
     }
-    // A click on the world places the selected construction on the tile under the pointer.
-    model_.request_build(*selected_->type, preview()->tile);
+    // A click on the world places the selected construction on the tile under the pointer;
+    // a refused one keeps the selection and marks the tile rejected.
+    const Preview shown = *preview();
+    if (!shown.valid) {
+        rejected_tile_ = shown.tile;
+        return;
+    }
+    model_.request_build(*selected_->type, shown.tile);
     selected_ = nullptr;
+    rejected_tile_.reset();
 }
 
 std::optional<PlayerHud::Preview> PlayerHud::preview() const {
@@ -95,7 +106,8 @@ std::optional<PlayerHud::Preview> PlayerHud::preview() const {
     }
     const ::world::TileCoord tile =
         model_.camera().projection(screen_.width, screen_.height).tile_at({at.x, at.y});
-    return Preview{tile, model_.placement_status(*selected_, tile) == ::world::BuildResult::Ok};
+    return Preview{tile, model_.placement_status(*selected_, tile) == ::world::BuildResult::Ok,
+                   rejected_tile_ == tile};
 }
 
 void PlayerHud::draw_preview(ui::Canvas& canvas) const {
@@ -109,8 +121,9 @@ void PlayerHud::draw_preview(ui::Canvas& canvas) const {
         {shown->tile.x + 0.5f, shown->tile.y + 0.5f});
     const float size = BuildingCubeSize * projection.tile_width / ::world::IsoProjection{}.tile_width;
     // Translucent green where it can be built, red where it cannot.
-    const Cube cube = shown->valid ? Cube(size, PreviewValidFront, PreviewValidTop)
-                                   : Cube(size, PreviewBlockedFront, PreviewBlockedTop);
+    const Cube cube = shown->valid      ? Cube(size, PreviewValidFront, PreviewValidTop)
+                      : shown->rejected ? Cube(size, PreviewRejectedFront, PreviewRejectedTop)
+                                        : Cube(size, PreviewBlockedFront, PreviewBlockedTop);
     cube.draw(canvas, center);
 }
 

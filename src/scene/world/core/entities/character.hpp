@@ -14,8 +14,11 @@ constexpr float CharacterSpeed = 4.0f;
 // Number of inventory slots a character carries.
 constexpr std::size_t CharacterInventorySlots = 40;
 
+// Iron ore the player's character carries at the start of a new game.
+constexpr int StartingIronOre = 200;
+
 // A character is an archetype, not a class: an entity with the Character marker,
-// Position, Mover and an Inventory of CharacterInventorySlots.
+// Position, Mover, an Inventory of CharacterInventorySlots and a Builder.
 core::EntityId spawn_character(core::Registry& registry, std::string label, WorldPoint position);
 
 } // namespace world

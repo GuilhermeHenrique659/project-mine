@@ -15,6 +15,7 @@ enum class BuildResult {
     NeedsHeadquarters,  // everything but the headquarters needs one first
     AlreadyExists,      // a unique building that is already built (or being built)
     TileBlocked,        // water or another building
+    NeedsOre,           // a mine off an ore tile
     NotEnoughResources, // the payer's inventory lacks part of the cost
 };
 

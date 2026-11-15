@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -62,6 +63,12 @@ public:
     // preview shows it).
     ::world::BuildResult placement_status(const ::world::Construction& construction,
                                           ::world::TileCoord tile) const;
+
+    // Points the player at the construction site on `tile` (none = stops working; a tile
+    // without a site also stops). The work itself happens in update(), only while the
+    // player is within ::world::BuildReach of the site. Pausing or opening the player
+    // menu stops the work.
+    void work_on(std::optional<::world::TileCoord> tile);
 
     // The "back" action (Esc): closes the player menu when it is open, otherwise opens
     // or closes the pause.

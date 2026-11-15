@@ -11,6 +11,8 @@ PointerPosition RaylibPointer::position() const {
 
 bool RaylibPointer::released() const { return IsMouseButtonReleased(MOUSE_BUTTON_LEFT); }
 
+bool RaylibPointer::down() const { return IsMouseButtonDown(MOUSE_BUTTON_LEFT); }
+
 float RaylibPointer::scroll() const { return GetMouseWheelMove(); }
 
 } // namespace input

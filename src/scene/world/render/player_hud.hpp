@@ -20,7 +20,8 @@ namespace scene::world {
 // (WorldModel::build_status(): not implemented yet, no headquarters yet, unique and already
 // built) are drawn disabled and cannot be selected. With a selection, a click on the world
 // (outside the bar and the list) asks the model to build it on the tile under the pointer
-// and clears the selection; until then a translucent cube previews it on the tile under
+// and clears the selection (a refused click keeps it and turns the preview a stronger red
+// until the pointer leaves that tile); until then a translucent cube previews it on the tile under
 // the pointer, green where it can be built and red where it cannot. It reads the mouse itself in
 // update() through the injected pointer, using the bounds of the last layout. The model
 // must outlive the HUD.
@@ -56,6 +57,8 @@ public:
     struct Preview {
         ::world::TileCoord tile;
         bool valid = false;
+        // A click was refused on this tile (drawn a stronger red until the pointer moves on).
+        bool rejected = false;
     };
     std::optional<Preview> preview() const;
 
@@ -71,6 +74,8 @@ private:
     std::shared_ptr<const input::Pointer> pointer_;
     std::optional<std::size_t> open_tab_;
     const ::world::Construction* selected_ = nullptr;
+    // The tile of the last refused click, shown a stronger red while the pointer is on it.
+    std::optional<::world::TileCoord> rejected_tile_;
     // Layout state, recomputed by every layout(); mutable because draw() is const.
     mutable ui::Size screen_;
     mutable ui::Rect bar_;

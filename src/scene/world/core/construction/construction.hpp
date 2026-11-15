@@ -14,7 +14,7 @@ enum class ConstructionCategory { Special, Mine, Factory, Military };
 
 // The buildings that exist in the simulation. One value per implemented building; the
 // catalog lists others without a type until they are implemented.
-enum class BuildingType { Headquarters };
+enum class BuildingType { Headquarters, Mine };
 
 // Stable save-file name of a building type ("Headquarters").
 std::string_view building_type_key(BuildingType type);
@@ -26,7 +26,8 @@ std::optional<BuildingType> parse_building_type(std::string_view key);
 // inventory when the construction is placed; `effort` is the work (units, one per second
 // today) needed to finish it, 0 = finished at once. A `unique` building exists at most once.
 // Only a construction with `needs_headquarters` false (the headquarters itself) can be
-// built before a headquarters exists.
+// built before a headquarters exists. A construction that `needs_ore` stands only on an
+// ore tile (iron, copper or coal).
 struct Construction {
     std::string name;
     std::string icon;
@@ -35,6 +36,7 @@ struct Construction {
     float effort = 0.0f;
     bool unique = false;
     bool needs_headquarters = true;
+    bool needs_ore = false;
 };
 
 // The constructions of one category, with the category's own name and icon.

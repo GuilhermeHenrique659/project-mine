@@ -3,6 +3,7 @@
 #include "core/registry.hpp"
 #include "event/event_bus.hpp"
 #include "scene/world/core/components/building.hpp"
+#include "scene/world/core/components/builder.hpp"
 #include "scene/world/core/components/inventory.hpp"
 #include "scene/world/core/components/persistent.hpp"
 #include "scene/world/core/components/position.hpp"
@@ -114,29 +115,75 @@ TEST(Build, WithoutEnoughResourcesTakesNothing) {
     EXPECT_EQ(f.building_count(), 1u);
 }
 
-TEST(ConstructionProgressSystem, FinishesTheSiteAtItsEffortAndAnnouncesItOnce) {
-    // Given
-    Fixture f;
-    const core::EntityId id = f.registry.create("site");
-    f.registry.add(id, world::ConstructionSite{0.0f, 4.0f});
-    world::ConstructionProgressSystem system(f.registry, f.bus);
+namespace {
+
+// A site at world (5.5, 5.5) needing 30 units and a builder working on it from `at`.
+struct WorkFixture : Fixture {
+    core::EntityId site = registry.create("Mine");
+    core::EntityId builder = registry.create("Builder");
+    world::ConstructionWorkSystem system{registry, bus};
     int completed = 0;
-    core::EntityId completed_id = 0;
-    const auto subscription = event::subscribe_scoped<world::BuildingCompleted>(
-        f.bus, [&](const world::BuildingCompleted& event) {
-            ++completed;
-            completed_id = event.entity;
-        });
+    event::ScopedSubscription subscription = event::subscribe_scoped<world::BuildingCompleted>(
+        bus, [this](const world::BuildingCompleted&) { ++completed; });
+
+    explicit WorkFixture(world::WorldPoint at) {
+        registry.add(site, world::Building{world::BuildingType::Mine, {5, 5}});
+        registry.add(site, world::Position{{5.5f, 5.5f}});
+        registry.add(site, world::ConstructionSite{0.0f, 30.0f});
+        registry.add(builder, world::Position{at});
+        registry.add(builder, world::Builder{10.0f, site});
+    }
+
+    float progress() const { return registry.get<world::ConstructionSite>(site)->progress; }
+};
+
+} // namespace
+
+TEST(ConstructionWorkSystem, ABuilderInReachAdvancesTheSiteByItsRate) {
+    // Given
+    WorkFixture f({6.5f, 5.5f}); // one tile away
 
     // When
-    system.update(3.0f);
-    const float progress = f.registry.get<world::ConstructionSite>(id)->progress;
-    system.update(1.0f);
-    system.update(1.0f);
+    f.system.update(0.5f);
 
     // Then
-    EXPECT_FLOAT_EQ(progress, 3.0f);
-    EXPECT_FALSE(f.registry.has<world::ConstructionSite>(id));
-    EXPECT_EQ(completed, 1);
-    EXPECT_EQ(completed_id, id);
+    EXPECT_FLOAT_EQ(f.progress(), 5.0f);
+}
+
+TEST(ConstructionWorkSystem, ASiteWithNobodyWorkingOnItDoesNotAdvance) {
+    // Given
+    WorkFixture f({6.5f, 5.5f});
+    f.registry.get<world::Builder>(f.builder)->site = 0;
+
+    // When
+    f.system.update(1.0f);
+
+    // Then
+    EXPECT_FLOAT_EQ(f.progress(), 0.0f);
+}
+
+TEST(ConstructionWorkSystem, ABuilderOutOfReachDoesNotAdvanceTheSite) {
+    // Given
+    WorkFixture f({5.5f + world::BuildReach + 0.1f, 5.5f});
+
+    // When
+    f.system.update(1.0f);
+
+    // Then
+    EXPECT_FLOAT_EQ(f.progress(), 0.0f);
+}
+
+TEST(ConstructionWorkSystem, FinishesTheSiteAtItsEffortAndAnnouncesItOnce) {
+    // Given
+    WorkFixture f({6.5f, 5.5f});
+
+    // When
+    f.system.update(2.0f);
+    f.system.update(1.0f);
+    f.system.update(1.0f);
+
+    // Then
+    EXPECT_FALSE(f.registry.has<world::ConstructionSite>(f.site));
+    EXPECT_EQ(f.completed, 1);
+    EXPECT_EQ(f.registry.get<world::Builder>(f.builder)->site, 0u);
 }

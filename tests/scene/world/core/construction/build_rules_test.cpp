@@ -140,3 +140,51 @@ TEST(BuildRules, TheCostMustBeInThePayersInventory) {
     EXPECT_EQ(enough, world::BuildResult::Ok);
     EXPECT_EQ(no_payer, world::BuildResult::NotEnoughResources);
 }
+
+namespace {
+
+std::optional<world::TileCoord> find_ore(const world::Terrain& terrain) {
+    for (int x = -60; x < 60; ++x) {
+        for (int y = -60; y < 60; ++y) {
+            if (world::is_ore(terrain.tile_at({x, y}))) {
+                return world::TileCoord{x, y};
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+world::Construction catalog_mine() { return *world::find_construction(world::BuildingType::Mine); }
+
+} // namespace
+
+TEST(BuildRules, AMineCosts100IronOreAnd300Effort) {
+    // Given / When
+    const world::Construction mine = catalog_mine();
+
+    // Then
+    ASSERT_EQ(mine.cost.size(), 1u);
+    EXPECT_EQ(mine.cost[0].item, world::items::IronOre);
+    EXPECT_EQ(mine.cost[0].count, 100);
+    EXPECT_FLOAT_EQ(mine.effort, 300.0f);
+    EXPECT_TRUE(mine.needs_headquarters);
+}
+
+TEST(BuildRules, AMineMustStandOnAnOreTile) {
+    // Given
+    core::Registry registry;
+    const world::Terrain terrain(7);
+    place(registry, world::BuildingType::Headquarters, {5, 5});
+    world::Inventory inventory(10);
+    inventory.add(world::items::IronOre, 100);
+    const auto ore = find_ore(terrain);
+    ASSERT_TRUE(ore);
+
+    // When
+    const auto on_grass = world::can_build(registry, catalog_mine(), Grass, terrain, &inventory);
+    const auto on_ore = world::can_build(registry, catalog_mine(), *ore, terrain, &inventory);
+
+    // Then
+    EXPECT_EQ(on_grass, world::BuildResult::NeedsOre);
+    EXPECT_EQ(on_ore, world::BuildResult::Ok);
+}

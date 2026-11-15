@@ -25,12 +25,12 @@ private:
     event::ScopedSubscription subscription_;
 };
 
-// Advances every ConstructionSite by the time step (one effort unit per second). A site
-// that reaches its effort is removed, which finishes the building, and BuildingCompleted
-// is published for it.
-class ConstructionProgressSystem : public System {
+// Builders work on their site: each one with a site in reach (BuildReach) adds rate * dt to
+// its progress. A site that reaches its effort is removed, which finishes the building;
+// BuildingCompleted is published for it and its builders stop working on it.
+class ConstructionWorkSystem : public System {
 public:
-    ConstructionProgressSystem(core::Registry& registry, event::EventBus& bus);
+    ConstructionWorkSystem(core::Registry& registry, event::EventBus& bus);
 
     void update(float delta_time) override;
 
