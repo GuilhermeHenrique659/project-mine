@@ -45,6 +45,10 @@ public:
     bool is_player_menu_open() const { return player_menu_open_; }
     void close_player_menu() { player_menu_open_ = false; }
 
+    // Opens or closes the build bar of the HUD (B). Ignored while paused.
+    void toggle_build_bar();
+    bool is_build_bar_open() const { return build_bar_open_; }
+
     // The "back" action (Esc): closes the player menu when it is open, otherwise opens
     // or closes the pause.
     void cancel();
@@ -87,6 +91,7 @@ private:
     std::vector<std::unique_ptr<::world::System>> systems_;
     bool paused_ = false;
     bool player_menu_open_ = false;
+    bool build_bar_open_ = false;
 };
 
 } // namespace scene::world

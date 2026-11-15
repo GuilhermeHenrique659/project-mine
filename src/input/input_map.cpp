@@ -55,7 +55,8 @@ InputMap InputMap::world_defaults() {
         .bind(Key::Enter, Action::Confirm)
         .bind(Key::Space, Action::Confirm)
         .bind(Key::Escape, Action::Pause)
-        .bind(Key::Tab, Action::ToggleInventory);
+        .bind(Key::Tab, Action::ToggleInventory)
+        .bind(Key::B, Action::ToggleBuildMenu);
     return map;
 }
 

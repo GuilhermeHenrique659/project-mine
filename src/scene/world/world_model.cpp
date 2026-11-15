@@ -73,6 +73,13 @@ void WorldModel::toggle_player_menu() {
     player_menu_open_ = !player_menu_open_;
 }
 
+void WorldModel::toggle_build_bar() {
+    if (paused_) {
+        return;
+    }
+    build_bar_open_ = !build_bar_open_;
+}
+
 void WorldModel::cancel() {
     if (player_menu_open_) {
         close_player_menu();

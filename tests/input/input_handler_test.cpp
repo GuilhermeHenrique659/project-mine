@@ -250,3 +250,14 @@ TEST(InputHandler, WorldDefaultsToggleTheInventoryWithTab) {
     // Then
     EXPECT_EQ(action, Action::ToggleInventory);
 }
+
+TEST(InputHandler, WorldDefaultsToggleTheBuildMenuWithB) {
+    // Given
+    const InputMap map = InputMap::world_defaults();
+
+    // When
+    const auto action = map.action_for(Key::B);
+
+    // Then
+    EXPECT_EQ(action, Action::ToggleBuildMenu);
+}

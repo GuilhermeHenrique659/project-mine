@@ -313,3 +313,33 @@ TEST(WorldModel, CancelTogglesThePauseWhenThePlayerMenuIsClosed) {
     EXPECT_TRUE(paused_after_first);
     EXPECT_FALSE(model.is_paused());
 }
+
+TEST(WorldModel, BuildBarOpensAndClosesWhenToggled) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+
+    // When
+    model.toggle_build_bar();
+    const bool open_after_first = model.is_build_bar_open();
+    model.toggle_build_bar();
+
+    // Then
+    EXPECT_TRUE(open_after_first);
+    EXPECT_FALSE(model.is_build_bar_open());
+}
+
+TEST(WorldModel, BuildBarCannotBeOpenedWhilePaused) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    model.toggle_pause();
+
+    // When
+    model.toggle_build_bar();
+
+    // Then
+    EXPECT_FALSE(model.is_build_bar_open());
+}
