@@ -21,6 +21,15 @@ enum class BuildingType { Headquarters, Mine };
 std::string_view building_type_key(BuildingType type);
 std::optional<BuildingType> parse_building_type(std::string_view key);
 
+// What a building produces: every 1 / `rate` seconds it consumes `input` (none = needs
+// nothing, like a mine) from its inventory and adds one `output` to it. An empty `output`
+// means the resource on the ground under the building (the ore under a mine).
+struct Recipe {
+    std::optional<ItemStack> input = std::nullopt;
+    std::optional<Item> output = std::nullopt;
+    float rate = 0.0f; // outputs per second
+};
+
 // A building the player can construct. `icon` is the name of its texture (see
 // graphics::TextureManager); none exists yet, so it is drawn with the fallback texture.
 // `type` is empty for an entry that cannot be built yet. `cost` is taken from the player's
@@ -40,6 +49,8 @@ struct Construction {
     bool needs_ore = false;
     // Slots of the building's own inventory (0 = it has none).
     std::size_t inventory_slots = 0;
+    // What it produces once finished (none = produces nothing). Needs an inventory.
+    std::optional<Recipe> recipe = std::nullopt;
 };
 
 // The constructions of one category, with the category's own name and icon.

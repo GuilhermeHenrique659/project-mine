@@ -27,7 +27,7 @@ const std::vector<ConstructionGroup>& construction_catalog() {
           {"Storage", "icon_storage"}}},
         {ConstructionCategory::Mine, "Mines", "icon_tab_mines",
          {{"Mine", "icon_mine", BuildingType::Mine, {{items::IronOre, 100}}, 300.0f, false, true,
-           true, 10}}},
+           true, 10, Recipe{std::nullopt, std::nullopt, 0.5f}}}},
         {ConstructionCategory::Factory, "Factories", "icon_tab_factories",
          {{"Smelter", "icon_smelter"}, {"Assembler", "icon_assembler"}}},
         {ConstructionCategory::Military, "Military", "icon_tab_military",

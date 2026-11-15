@@ -22,6 +22,11 @@ void make_building(core::Registry& registry, core::EntityId id, const Constructi
         (inventory == nullptr || inventory->capacity() != construction.inventory_slots)) {
         registry.add(id, Inventory{construction.inventory_slots});
     }
+    if (construction.recipe) {
+        registry.add(id, Producer{*construction.recipe});
+    } else {
+        registry.remove<Producer>(id);
+    }
     if (construction.effort <= 0.0f) {
         registry.remove<ConstructionSite>(id);
         return;

@@ -18,7 +18,7 @@ core::EntityId spawn_building(core::Registry& registry, std::string label);
 // Makes the entity the given building of `construction` (which must have a type) on
 // `tile`: Building, Position at the tile centre, and a ConstructionSite when its effort is
 // above zero (none otherwise), plus an Inventory of its `inventory_slots` when it has any
-// (an existing one of that size is kept).
+// (an existing one of that size is kept) and a Producer of its recipe when it has one.
 void make_building(core::Registry& registry, core::EntityId id, const Construction& construction,
                    TileCoord tile);
 

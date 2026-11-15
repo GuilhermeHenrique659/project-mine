@@ -17,4 +17,11 @@ struct ConstructionSite {
     float effort = 0.0f;
 };
 
+// A building that produces (see Recipe). It holds its own copy of the recipe so the rate
+// can change per building; `progress` counts towards the next output (1 = one output).
+struct Producer {
+    Recipe recipe;
+    float progress = 0.0f;
+};
+
 } // namespace world
