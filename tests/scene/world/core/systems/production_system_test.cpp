@@ -338,3 +338,25 @@ TEST(ProductionSystem, AStaffedSteelworksTurnsTwoCoalAndTwoIronOreIntoSteelTwice
     EXPECT_EQ(f.count(id, world::items::IronOre), 6);
     EXPECT_EQ(f.count(id, world::items::Coal), 6);
 }
+
+TEST(ProductionSystem, AStaffedElectronicFactoryTurnsCopperAndIronOreIntoElectronicsTwicePerSecond) {
+    // Given
+    Fixture f;
+    const world::Construction* factory =
+        world::find_construction(world::BuildingType::ElectronicFactory);
+    ASSERT_NE(factory, nullptr);
+    const core::EntityId id = f.registry.create("Electronic Factory");
+    world::make_building(f.registry, id, *factory, {1, 1});
+    f.registry.remove<world::ConstructionSite>(id);
+    f.staff(id, factory->blueprint.find<world::Staffing>()->needed);
+    f.registry.get<world::Inventory>(id)->add(world::items::CopperOre, 10);
+    f.registry.get<world::Inventory>(id)->add(world::items::IronOre, 10);
+
+    // When
+    f.system.update(1.0f);
+
+    // Then
+    EXPECT_EQ(f.count(id, world::items::Electronics), 2);
+    EXPECT_EQ(f.count(id, world::items::CopperOre), 6);
+    EXPECT_EQ(f.count(id, world::items::IronOre), 6);
+}

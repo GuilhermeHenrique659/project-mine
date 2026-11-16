@@ -15,6 +15,7 @@ WorkerType type_at(BuildingType building) {
     switch (building) {
         case BuildingType::Mine: return WorkerType::Miner;
         case BuildingType::Steelworks: return WorkerType::Steelworker;
+        case BuildingType::ElectronicFactory: return WorkerType::Technician;
         case BuildingType::Headquarters:
         case BuildingType::Storage: break;
     }

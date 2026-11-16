@@ -137,3 +137,73 @@ TEST(ConstructionCatalog, SteelworksHasGeneralSlotsAndOneSectionForIronOreAndOne
     EXPECT_EQ(coal_left, 500);
     EXPECT_EQ(steel_left, 1000);
 }
+
+TEST(ConstructionCatalog, ElectronicFactoryCosts200SteelTakes1200WorkNeeds50WorkersOn200Kw) {
+    // Given / When
+    const world::Construction* factory =
+        world::find_construction(world::BuildingType::ElectronicFactory);
+
+    // Then
+    ASSERT_NE(factory, nullptr);
+    EXPECT_EQ(factory->name, "Electronic Factory");
+    ASSERT_EQ(factory->cost.size(), 1u);
+    EXPECT_EQ(factory->cost[0].item, world::items::Steel);
+    EXPECT_EQ(factory->cost[0].count, 200);
+    EXPECT_FLOAT_EQ(factory->effort, 1200.0f);
+    const auto* staffing = factory->blueprint.find<world::Staffing>();
+    ASSERT_NE(staffing, nullptr);
+    EXPECT_EQ(staffing->needed, 50);
+    const auto* power = factory->blueprint.find<world::PowerConsumer>();
+    ASSERT_NE(power, nullptr);
+    EXPECT_FLOAT_EQ(power->demand_kw, 200.0f);
+}
+
+TEST(ConstructionCatalog, ElectronicFactoryMakesElectronicsFromTwoCopperOreAndTwoIronOreAtTwoPerSecond) {
+    // Given / When
+    const world::Construction* factory =
+        world::find_construction(world::BuildingType::ElectronicFactory);
+    ASSERT_NE(factory, nullptr);
+    const auto* producer = factory->blueprint.find<world::Producer>();
+
+    // Then
+    ASSERT_NE(producer, nullptr);
+    const world::Recipe& recipe = producer->recipe;
+    EXPECT_EQ(recipe.output, world::items::Electronics);
+    EXPECT_FLOAT_EQ(recipe.rate, 2.0f);
+    ASSERT_EQ(recipe.inputs.size(), 2u);
+    EXPECT_EQ(recipe.inputs[0].item, world::items::CopperOre);
+    EXPECT_EQ(recipe.inputs[0].count, 2);
+    EXPECT_EQ(recipe.inputs[1].item, world::items::IronOre);
+    EXPECT_EQ(recipe.inputs[1].count, 2);
+}
+
+TEST(BuildingType, ElectronicFactoryRoundTripsThroughItsSaveKey) {
+    // Given
+    const std::string_view key = world::building_type_key(world::BuildingType::ElectronicFactory);
+
+    // When
+    const auto parsed = world::parse_building_type(key);
+
+    // Then
+    EXPECT_EQ(key, "ElectronicFactory");
+    EXPECT_EQ(parsed, world::BuildingType::ElectronicFactory);
+}
+
+TEST(ConstructionCatalog, ElectronicFactoryHasGeneralSlotsAndOneSectionForCopperOreAndOneForIronOre) {
+    // Given
+    const world::Construction* factory =
+        world::find_construction(world::BuildingType::ElectronicFactory);
+    ASSERT_NE(factory, nullptr);
+    world::Inventory inventory = *factory->blueprint.find<world::Inventory>();
+
+    // When
+    const int copper_left = inventory.add(world::items::CopperOre, 1000);
+    const int iron_left = inventory.add(world::items::IronOre, 1000);
+    const int electronics_left = inventory.add(world::items::Electronics, 2000);
+
+    // Then: 5 slots each for copper and iron, 10 general slots for the electronics
+    EXPECT_EQ(inventory.capacity(), 20u);
+    EXPECT_EQ(copper_left, 500);
+    EXPECT_EQ(iron_left, 500);
+    EXPECT_EQ(electronics_left, 1000);
+}

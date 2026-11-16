@@ -115,3 +115,16 @@ TEST(WorkerType, AWorkerAssignedToASteelworksIsASteelworker) {
     EXPECT_EQ(f.type(), world::WorkerType::Steelworker);
     EXPECT_STREQ(world::to_string(f.type()), "Steelworker");
 }
+
+TEST(WorkerType, AWorkerAssignedToAnElectronicFactoryIsATechnician) {
+    // Given
+    Fixture f;
+    const auto factory = f.add_building(world::BuildingType::ElectronicFactory);
+
+    // When
+    *f.registry.get<world::Worker>(f.worker) = {world::WorkerState::Working, factory};
+
+    // Then
+    EXPECT_EQ(f.type(), world::WorkerType::Technician);
+    EXPECT_STREQ(world::to_string(f.type()), "Technician");
+}

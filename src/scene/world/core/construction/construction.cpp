@@ -12,6 +12,7 @@ std::string_view building_type_key(BuildingType type) {
         case BuildingType::Mine: return "Mine";
         case BuildingType::Storage: return "Storage";
         case BuildingType::Steelworks: return "Steelworks";
+        case BuildingType::ElectronicFactory: return "ElectronicFactory";
         case BuildingType::Headquarters: break;
     }
     return "Headquarters";
@@ -29,6 +30,9 @@ std::optional<BuildingType> parse_building_type(std::string_view key) {
     }
     if (key == building_type_key(BuildingType::Steelworks)) {
         return BuildingType::Steelworks;
+    }
+    if (key == building_type_key(BuildingType::ElectronicFactory)) {
+        return BuildingType::ElectronicFactory;
     }
     return std::nullopt;
 }
@@ -61,6 +65,16 @@ const std::vector<ConstructionGroup>& construction_catalog() {
            Blueprint{}
                .with(Inventory{10}.append(5, ItemType::IronOre).append(5, ItemType::Coal))
                .with(Producer{Recipe{{{items::IronOre, 2}, {items::Coal, 2}}, items::Steel, 2.0f}})
+               .with(PowerConsumer{200.0f})
+               .with(BuildingStatus{})
+               .with(Staffing{50}),
+           TileSize{3, 3}},
+          {"Electronic Factory", "icon_electronic_factory", BuildingType::ElectronicFactory,
+           {{items::Steel, 200}}, 1200.0f, {std::make_shared<NeedsHeadquartersRule>()},
+           Blueprint{}
+               .with(Inventory{10}.append(5, ItemType::CopperOre).append(5, ItemType::IronOre))
+               .with(Producer{Recipe{{{items::CopperOre, 2}, {items::IronOre, 2}},
+                                     items::Electronics, 2.0f}})
                .with(PowerConsumer{200.0f})
                .with(BuildingStatus{})
                .with(Staffing{50}),

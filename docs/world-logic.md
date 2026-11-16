@@ -43,13 +43,13 @@ The ECS content of the world, built on the generic `core/` ECS. It lives under `
 
 ## Items
 
-`items/item.hpp`: `ItemType` (`IronOre`, `CopperOre`, `Coal`, `Steel`), `Item { type, max_stack }` (definitions in `items::`, 100 each), `ItemStack { item, count }`, `to_string(ItemType)`.
+`items/item.hpp`: `ItemType` (`IronOre`, `CopperOre`, `Coal`, `Steel`, `Electronics`), `Item { type, max_stack }` (definitions in `items::`, 100 each), `ItemStack { item, count }`, `to_string(ItemType)`.
 
 ## Entities
 
 - `entities/character.hpp`: `spawn_character()` (`"character"` archetype): `Character` + `Position` + `Mover` at `CharacterSpeed` + an `Inventory` of `CharacterInventorySlots` (40) + a `Builder`. A new game's player gets `StartingIronOre` (200).
 - `entities/unit.hpp`: `spawn_unit()`: a character + the `Unit` marker (`components/unit.hpp`), the base archetype of every simulation-driven character (never the player). Units "inherit" by composition: a unit archetype is `spawn_unit()` plus its own component.
-- `worker_type.hpp`: `WorkerType { None, Builder, Miner, Hauler, Steelworker }` and `worker_type(registry, worker)`: derived from the current job, never stored (a `Hauler` = Hauler; a workplace = its building's type, a Mine = Miner, a Steelworks = Steelworker; a `Builder` site under construction = Builder; idle = None, shown as "Idle"). A new production building = a new case in `type_at()`.
+- `worker_type.hpp`: `WorkerType { None, Builder, Miner, Hauler, Steelworker, Technician }` and `worker_type(registry, worker)`: derived from the current job, never stored (a `Hauler` = Hauler; a workplace = its building's type, a Mine = Miner, a Steelworks = Steelworker, an Electronic Factory = Technician; a `Builder` site under construction = Builder; idle = None, shown as "Idle"). A new production building = a new case in `type_at()`.
 - `entities/worker.hpp`: `spawn_worker()` (`"worker"` archetype, `WorkerArchetype`): a unit + `Worker`, with an `Inventory` of `WorkerInventorySlots` (1) instead of the character's 40. Drawn as a cube like the player, labelled with its worker type ("Worker (Miner)", "Worker (Idle)").
 - `entities/building.hpp`: `spawn_building()` (`"building"` archetype) and `make_building()`: `Building` (with the construction's `size`) + `Position` at the footprint centre. Reach checks (transfer, building, workers at work) use `distance_to_building()` (`occupancy.hpp`): distance to the nearest footprint edge, 0 inside, or to the `Position` for a non-building + `blueprint.apply()` + a site when effort > 0. It knows no building feature: those come from the blueprint.
 - `entities/entity_factory.hpp`: `EntityFactory` (archetype name → spawn function, injected; `make_entity_factory()` registers them; `spawn()` adds `Persistent`). `WorldModel` spawns the new-game player through it too.
@@ -60,7 +60,7 @@ The ECS content of the world, built on the generic `core/` ECS. It lives under `
 
 ## Construction
 
-- `construction/building_type.hpp`: `BuildingType` (`Headquarters`, `Mine`, `Storage`, `Steelworks`; one value per implemented building; `building_type_key()` / `parse_building_type()` for saves).
+- `construction/building_type.hpp`: `BuildingType` (`Headquarters`, `Mine`, `Storage`, `Steelworks`, `ElectronicFactory`; one value per implemented building; `building_type_key()` / `parse_building_type()` for saves).
 - `construction/blueprint.hpp`: `Blueprint`, the prefab of a building: `with(component)` (any component type, chainable), `apply(registry, id)` (adds a copy of each; one the entity already has is kept, so a loaded inventory survives), `find<C>()` (the blueprint's data of C or null). A new building feature = a component + a `.with()` in the catalog; `Construction` and `make_building()` do not change.
 - `construction/build_rule.hpp`: `BuildResult`, `has_headquarters()`, the `BuildRule` interface (`check_unlocked(registry, type)` before a tile is chosen, `check_site(terrain, tile)` once the tile is free; both default Ok) and the rules `UniqueRule` (AlreadyExists), `NeedsHeadquartersRule` (NeedsHeadquarters), `NeedsOreRule` (NeedsOre). A new placement condition = a new subclass.
 - `construction/construction.hpp`: `ConstructionCategory` (`Special`, `Mine`, `Factory`, `Military`); `Construction { name, icon, type, cost, effort, rules, blueprint, size }` (`size` = its footprint, 1x1 by default; the Headquarters is 5x5 and the Mine 2x2) where `type` empty = listed but not buildable yet, `cost` = item stacks paid from the player's inventory, `effort` = work units, 0 = finished at once, `rules` = its `BuildRule`s in order, `blueprint` = its components; `ConstructionGroup`; `construction_catalog()` (by category, in build bar order) and `find_construction(type)`. `Recipe { inputs, output, rate }` lives with `Producer` in `components/building.hpp` (every 1/`rate` s consumes every stack of `inputs` (all must be there, else MissingInput; empty = none) and adds one `output`; empty `output` = the ore under the building); `GeneratorSpec { type, input, rate, power_kw }` / `GeneratorType` (`Solar`) live with `Generator` in `components/power.hpp`.
@@ -68,6 +68,7 @@ The ECS content of the world, built on the generic `core/` ECS. It lives under `
   - Mine: 2x2, 100 iron ore, effort 300; rules: NeedsHeadquarters, NeedsOre; blueprint: `Inventory` 10 slots, `Producer` (no input, the ore below, 4/s at 10 workers), `PowerConsumer` 100 kW, `BuildingStatus`, `Staffing` 10.
   - Storage: 2x2, 200 iron ore, effort 600; rules: NeedsHeadquarters; blueprint: `Inventory` 120 slots, `PowerConsumer` 20 kW.
   - Steelworks (Factory): 3x3, 300 iron ore, effort 1200; rules: NeedsHeadquarters; blueprint: `Inventory` 10 general slots + 5 iron ore + 5 coal filtered slots, `Producer` (2 iron ore + 2 coal -> 1 steel, 2/s at 50 workers), `PowerConsumer` 200 kW, `BuildingStatus`, `Staffing` 50.
+  - Electronic Factory (Factory): 3x3, 200 steel, effort 1200; rules: NeedsHeadquarters; blueprint: `Inventory` 10 general slots + 5 copper ore + 5 iron ore filtered slots, `Producer` (2 copper ore + 2 iron ore -> 1 electronics, 2/s at 50 workers), `PowerConsumer` 200 kW, `BuildingStatus`, `Staffing` 50.
 - `construction/build_rules.hpp`: `check_unlocked()` (NotBuildable, then each rule's `check_unlocked()`), `can_build()` (+ TileBlocked: water or another building under any footprint tile, each rule's `check_site()`, NotEnoughResources), `build()` (applies them, pays the cost, spawns through the factory).
 
 ## Terrain
