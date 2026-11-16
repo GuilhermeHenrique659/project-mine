@@ -12,6 +12,12 @@ struct BuildRequested {
     TileCoord tile{};
 };
 
+// A building was placed on a tile (a construction site or, with no effort, a finished
+// building). Anything that depends on where buildings stand (routes) recalculates on it.
+struct BuildingPlaced {
+    TileCoord tile{};
+};
+
 // Published once when a construction site reaches its effort and becomes a finished
 // building (a building with no effort is finished at once and publishes nothing).
 struct BuildingCompleted {

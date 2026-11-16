@@ -77,6 +77,37 @@ TEST(BuildSystem, ARefusedRequestBuildsNothing) {
     EXPECT_EQ(f.building_count(), 1u);
 }
 
+TEST(BuildSystem, APlacedBuildingIsAnnouncedWithItsTile) {
+    // Given
+    Fixture f;
+    world::BuildSystem system(f.registry, f.bus, f.terrain, f.factory, f.player);
+    std::vector<world::TileCoord> placed;
+    f.bus.subscribe<world::BuildingPlaced>(
+        [&](const world::BuildingPlaced& event) { placed.push_back(event.tile); });
+
+    // When
+    f.bus.publish(world::BuildRequested{world::BuildingType::Headquarters, Grass});
+
+    // Then
+    ASSERT_EQ(placed.size(), 1u);
+    EXPECT_EQ(placed.front(), Grass);
+}
+
+TEST(BuildSystem, ARefusedRequestAnnouncesNothing) {
+    // Given: a headquarters already stands, so a second one is refused
+    Fixture f;
+    world::BuildSystem system(f.registry, f.bus, f.terrain, f.factory, f.player);
+    f.bus.publish(world::BuildRequested{world::BuildingType::Headquarters, Grass});
+    int placed = 0;
+    f.bus.subscribe<world::BuildingPlaced>([&](const world::BuildingPlaced&) { ++placed; });
+
+    // When
+    f.bus.publish(world::BuildRequested{world::BuildingType::Headquarters, {4, 4}});
+
+    // Then
+    EXPECT_EQ(placed, 0);
+}
+
 TEST(Build, PaysTheCostAndStartsAConstructionSite) {
     // Given
     Fixture f;

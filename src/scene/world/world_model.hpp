@@ -14,6 +14,7 @@
 #include "scene/world/core/construction/build_rules.hpp"
 #include "scene/world/core/entities/entity_factory.hpp"
 #include "scene/world/core/isometric.hpp"
+#include "scene/world/core/pathfinding/route_network.hpp"
 #include "scene/world/core/save/world_serializer.hpp"
 #include "scene/world/core/system.hpp"
 #include "scene/world/core/terrain/terrain.hpp"
@@ -102,6 +103,9 @@ public:
     // Where the view is centred: it follows the player.
     const ::world::Camera& camera() const { return camera_; }
 
+    // The precomputed routes between buildings (entities follow them with a RouteFollower).
+    const ::world::RouteNetwork& routes() const { return routes_; }
+
     // Zooms the camera by mouse wheel notches (positive = in). Ignored while paused.
     void zoom_camera(float steps);
 
@@ -119,6 +123,8 @@ private:
     core::Registry registry_;
     core::EntityId player_ = 0;
     ::world::Camera camera_;
+    // Routes between buildings (headquarters -> each building); rebuilt by the RouteSystem.
+    ::world::RouteNetwork routes_{std::make_unique<::world::HeadquartersRoutePlanner>()};
     // Declared after registry_ and bus_, which the systems refer to, so they are destroyed first.
     std::vector<std::unique_ptr<::world::System>> systems_;
     bool paused_ = false;

@@ -9,7 +9,8 @@
 namespace world {
 
 // Places buildings: on each BuildRequested it runs build() for the catalog entry of the
-// type, paid by `payer`. Refused requests change nothing. Everything passed must outlive it.
+// type, paid by `payer`, and publishes BuildingPlaced for it. Refused requests change and
+// publish nothing. Everything passed must outlive it.
 class BuildSystem : public System {
 public:
     BuildSystem(core::Registry& registry, event::EventBus& bus, const Terrain& terrain,
@@ -19,6 +20,7 @@ public:
 
 private:
     core::Registry& registry_;
+    event::EventBus& bus_;
     const Terrain& terrain_;
     const EntityFactory& factory_;
     core::EntityId payer_;

@@ -7,12 +7,13 @@ The ECS content of the world, built on the generic `core/` ECS. It lives under `
 `system.hpp`: the `System` base class (`update(dt)`; a system gets the registry and bus in its constructor). Order in `WorldModel`'s list is order of execution:
 
 1. `PlayerInputSystem(registry, input)`: sets the `Mover` direction of `PlayerControlled` entities from the held `Move*` actions (screen space turned into world space).
-2. `CharacterMoveSystem(registry, bus)`: moves entities with `Character` + `Position` + `Mover` (normalized direction, so diagonals are not faster), sets the state and publishes `CharacterStateChanged{entity}` only when a character starts or stops moving.
-3. `CameraFollowSystem(registry, camera)`: centres the camera on the `PlayerControlled` entity.
-4. `BuildSystem`: builds on `BuildRequested`, paid by the player. `ConstructionWorkSystem`: each `Builder` within `BuildReach` of its site adds `rate * dt`; at the effort the site is removed, its builders stop and `BuildingCompleted` is published.
-5. `InventoryTransferSystem`: on `ItemTransferRequested{from, to, item, count}` runs `transfer_items()` when both have an `Inventory` and are within `TransferReach` (2 tiles; `within_transfer_reach()`).
-6. `PowerSystem(registry)`: one global power network. Supply = `power_kw` of every finished `Generator` (one with an `input` burns `input.count` from its `Inventory` every 1/`rate` s and supplies nothing without it, keeping at most one burn pending); demand = `demand_kw` of every finished `PowerConsumer`. When demand > supply every consumer gets `powered = false`, otherwise `true` (equal is enough). Sets `Generator::running` (false while out of fuel). `supply_kw()` / `demand_kw()` of the last update. Generator progress and `powered` are not saved (recomputed next frame).
-7. `ProductionSystem(registry, terrain)`: finished buildings with `Producer` + `Inventory` (and no unpowered `PowerConsumer`): progress += rate * dt, each whole unit makes one output into the building's inventory; waits with at most one unit banked while the input is missing or the output does not fit. Sets the `BuildingStatus` (when present) to `Working`, or `Idle` with the first reason: `NoPower`, `NoResource` (no output, a mine off ore), `MissingInput`, `OutputFull`. `item_from_tile()`. Production progress is not saved.
+2. `RouteSystem(registry, bus, terrain, network)`: rebuilds the `RouteNetwork` on its first update (the buildings of a loaded save) and on the update after any `BuildingPlaced` (once per frame however many); never otherwise. `RouteFollowSystem(registry, network)`: steers every `RouteFollower` (see Pathfinding).
+3. `CharacterMoveSystem(registry, bus)`: moves entities with `Character` + `Position` + `Mover` (normalized direction, so diagonals are not faster), sets the state and publishes `CharacterStateChanged{entity}` only when a character starts or stops moving.
+4. `CameraFollowSystem(registry, camera)`: centres the camera on the `PlayerControlled` entity.
+5. `BuildSystem`: builds on `BuildRequested`, paid by the player, and publishes `BuildingPlaced{tile}` (sites included); each placement is logged (`Placed <name> at (x, y)`). `ConstructionWorkSystem`: each `Builder` within `BuildReach` of its site adds `rate * dt`; at the effort the site is removed, its builders stop and `BuildingCompleted` is published.
+6. `InventoryTransferSystem`: on `ItemTransferRequested{from, to, item, count}` runs `transfer_items()` when both have an `Inventory` and are within `TransferReach` (2 tiles; `within_transfer_reach()`).
+7. `PowerSystem(registry)`: one global power network. Supply = `power_kw` of every finished `Generator` (one with an `input` burns `input.count` from its `Inventory` every 1/`rate` s and supplies nothing without it, keeping at most one burn pending); demand = `demand_kw` of every finished `PowerConsumer`. When demand > supply every consumer gets `powered = false`, otherwise `true` (equal is enough). Sets `Generator::running` (false while out of fuel). `supply_kw()` / `demand_kw()` of the last update. Generator progress and `powered` are not saved (recomputed next frame).
+8. `ProductionSystem(registry, terrain)`: finished buildings with `Producer` + `Inventory` (and no unpowered `PowerConsumer`): progress += rate * dt, each whole unit makes one output into the building's inventory; waits with at most one unit banked while the input is missing or the output does not fit. Sets the `BuildingStatus` (when present) to `Working`, or `Idle` with the first reason: `NoPower`, `NoResource` (no output, a mine off ore), `MissingInput`, `OutputFull`. `item_from_tile()`. Production progress is not saved.
 
 ## Components
 
@@ -23,6 +24,14 @@ The ECS content of the world, built on the generic `core/` ECS. It lives under `
 - `power_report.hpp`: `power_report(registry)` -> `PowerReport { generators, consumers, produced_kw, demand_kw, overloaded() }`, each a `PowerEntry { id, name (entity label), kw, active }`; finished buildings only, as the PowerSystem left them.
 - `builder.hpp`: `Builder { rate, site }` (`CharacterBuildRate` 10/s, `BuildReach` 2 tiles; every character has one).
 - `persistent.hpp`: `Persistent{archetype}`; only entities with it are saved.
+
+## Pathfinding
+
+`pathfinding/` computes walks between buildings once, not per frame:
+
+- `pathfinder.hpp`: `find_path(start, goal, is_blocked, max_nodes = MaxPathSearchNodes)`, A* over 8 neighbours (diagonal cost sqrt(2), no corner cutting: a diagonal needs both orthogonal neighbours free). `start` and `goal` are always walkable (they are buildings). The world has no edge, so the search gives up (none) after `max_nodes` (20000) expanded tiles.
+- `route_network.hpp`: `RouteKey{from, to}` (building ids, stable across rebuilds), `Route{key, tiles}` (from the `from` tile to the `to` tile, both included; empty = unreachable). `RoutePlanner` decides which pairs get a route: `HeadquartersRoutePlanner` = headquarters to every other building. A new combination = a new planner subclass. `RouteNetwork(planner)`: `rebuild(registry, terrain)` (blocked = water or any building tile, sites included), `find(key)`, `revision()` (grows each rebuild); each rebuild is logged with its revision, route count and unreachable count. Owned by `WorldModel` (`routes()`); not saved, recomputed after loading.
+- `components/route_follower.hpp`: `RouteFollower{route, end, waypoint, forward, revision}` signs an entity with `Position` + `Mover` up to a route; `RouteEnd::Stop` stands still on the last tile, `RouteEnd::Loop` walks back and forth. `RouteFollowSystem` points the `Mover` at the next waypoint's centre and moves on when within one step; after a rebuild it rejoins at the nearest waypoint (ties go forward); no route or unreachable = stands still. Not for `PlayerControlled` entities. Not saved.
 
 ## Items
 
@@ -36,7 +45,7 @@ The ECS content of the world, built on the generic `core/` ECS. It lives under `
 
 ## Events
 
-`events/character_state_changed.hpp` (`CharacterStateChanged`), `events/building_events.hpp` (`BuildRequested{type, tile}`, `BuildingCompleted{entity}`), `events/item_transfer_requested.hpp` (`ItemTransferRequested`).
+`events/character_state_changed.hpp` (`CharacterStateChanged`), `events/building_events.hpp` (`BuildRequested{type, tile}`, `BuildingPlaced{tile}`, `BuildingCompleted{entity}`), `events/item_transfer_requested.hpp` (`ItemTransferRequested`).
 
 ## Construction
 

@@ -15,6 +15,8 @@
 #include "scene/world/core/systems/camera_follow_system.hpp"
 #include "scene/world/core/systems/character_move_system.hpp"
 #include "scene/world/core/systems/player_input_system.hpp"
+#include "scene/world/core/systems/route_follow_system.hpp"
+#include "scene/world/core/systems/route_system.hpp"
 
 namespace scene::world {
 
@@ -36,6 +38,11 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
     }
     // Order matters: input writes the direction that movement then reads.
     systems_.push_back(std::make_unique<::world::PlayerInputSystem>(registry_, input));
+    // Routes are recomputed only on the first frame and after a building is placed; the
+    // followers then steer along them, before movement reads their direction.
+    systems_.push_back(
+        std::make_unique<::world::RouteSystem>(registry_, bus_, terrain_, routes_));
+    systems_.push_back(std::make_unique<::world::RouteFollowSystem>(registry_, routes_));
     systems_.push_back(std::make_unique<::world::CharacterMoveSystem>(registry_, bus_));
     // After movement, so the camera is on the player's new position.
     systems_.push_back(std::make_unique<::world::CameraFollowSystem>(registry_, camera_));

@@ -3,6 +3,9 @@
 #include <cmath>
 #include <vector>
 
+#include "logging/logger.hpp"
+#include "text/parse.hpp"
+
 #include "scene/world/core/components/builder.hpp"
 #include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/position.hpp"
@@ -14,6 +17,7 @@ namespace world {
 BuildSystem::BuildSystem(core::Registry& registry, event::EventBus& bus, const Terrain& terrain,
                          const EntityFactory& factory, core::EntityId payer)
     : registry_(registry),
+      bus_(bus),
       terrain_(terrain),
       factory_(factory),
       payer_(payer),
@@ -22,7 +26,13 @@ BuildSystem::BuildSystem(core::Registry& registry, event::EventBus& bus, const T
           if (construction == nullptr) {
               return;
           }
-          build(registry_, factory_, *construction, request.tile, terrain_, payer_);
+          if (build(registry_, factory_, *construction, request.tile, terrain_, payer_) !=
+              BuildResult::Ok) {
+              return;
+          }
+          logging::info("Placed " + construction->name + " at (" + text::format(request.tile.x) +
+                        ", " + text::format(request.tile.y) + ")");
+          bus_.publish(BuildingPlaced{request.tile});
       })) {}
 
 ConstructionWorkSystem::ConstructionWorkSystem(core::Registry& registry, event::EventBus& bus)
