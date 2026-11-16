@@ -16,6 +16,7 @@
 #include "scene/world/core/construction/build_rules.hpp"
 #include "scene/world/core/entities/entity_factory.hpp"
 #include "scene/world/core/isometric.hpp"
+#include "scene/world/core/components/hauler.hpp"
 #include "scene/world/core/pathfinding/route_network.hpp"
 #include "scene/world/core/save/world_serializer.hpp"
 #include "scene/world/core/system.hpp"
@@ -92,6 +93,12 @@ public:
     // Asks to send `count` idle workers to a production building, or with a negative count
     // to send that many of its workers back (::world::WorkerAssignmentRequested, next tick).
     void request_workers(core::EntityId building, int count);
+    // Asks to make `count` idle workers haulers of a logistic route in `mode`, or with a
+    // negative count to send that many of its haulers back (::world::HaulersRequested,
+    // next tick).
+    void request_haulers(::world::RouteKey route, ::world::HaulMode mode, int count);
+    // Asks to switch every hauler of a logistic route to `mode` (next tick).
+    void request_haul_mode(::world::RouteKey route, ::world::HaulMode mode);
 
     // The "back" action (Esc): closes the transfer or the player menu when one is open,
     // otherwise opens or closes the pause.
@@ -117,7 +124,8 @@ public:
     // The precomputed routes between buildings (entities follow them with a RouteFollower).
     const ::world::RouteNetwork& routes() const { return routes_; }
 
-    // Zooms the camera by mouse wheel notches (positive = in). Ignored while paused.
+    // Zooms the camera by mouse wheel notches (positive = in). Ignored while paused and
+    // while a transfer is open (the wheel scrolls the building panel then).
     void zoom_camera(float steps);
 
 private:
@@ -143,7 +151,7 @@ private:
     core::EntityId player_ = 0;
     ::world::Camera camera_;
     // Routes between buildings (headquarters -> each building); rebuilt by the RouteSystem.
-    ::world::RouteNetwork routes_{std::make_unique<::world::HeadquartersRoutePlanner>()};
+    ::world::RouteNetwork routes_{::world::default_route_planner()};
     // Declared after registry_ and bus_, which the systems refer to, so they are destroyed first.
     std::vector<std::unique_ptr<::world::System>> systems_;
     game::FixedStep clock_{SimulationTick};

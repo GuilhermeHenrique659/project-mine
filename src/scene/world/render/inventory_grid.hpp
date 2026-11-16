@@ -14,14 +14,23 @@ ui::Color item_color(::world::ItemType type);
 // Draws an entity's inventory as rows of square slots, Columns per row. A filled slot
 // shows the item's colour and its count in the bottom-right corner. It reads the
 // inventory from the registry on every layout/draw, so it always shows the current
-// contents; an entity without an inventory shows no slots. The registry must outlive it.
+// contents; an entity without an inventory shows no slots. With `visible_rows` above zero
+// it shows at most that many rows at once, scrolled with scroll(), and draws a scrollbar
+// right of the slots while rows are hidden; a hidden slot has empty bounds. The registry
+// must outlive it.
 class InventoryGrid : public ui::Widget {
 public:
     static constexpr int Columns = 10;
     static constexpr float SlotSize = 64.0f;
     static constexpr float SlotGap = 6.0f;
+    static constexpr float ScrollbarWidth = 10.0f;
 
-    InventoryGrid(const core::Registry& registry, core::EntityId entity);
+    InventoryGrid(const core::Registry& registry, core::EntityId entity,
+                  std::size_t visible_rows = 0);
+
+    // Moves the view by mouse wheel notches (positive = up), a row per notch.
+    void scroll(float notches);
+    std::size_t first_row() const { return first_row_; }
 
     ui::Size preferred_size(const ui::Canvas& canvas) const override;
     void layout(ui::Rect bounds, const ui::Canvas& canvas) override;
@@ -34,9 +43,17 @@ public:
 
 private:
     std::size_t capacity() const;
+    std::size_t total_rows() const;
+    // How many rows are shown at once.
+    std::size_t shown_rows() const;
+    // The largest first_row(): the last rows fill the view.
+    std::size_t last_first_row() const;
+    void draw_scrollbar(ui::Canvas& canvas) const;
 
     const core::Registry& registry_;
     core::EntityId entity_;
+    std::size_t visible_rows_;
+    std::size_t first_row_ = 0;
     std::vector<ui::Rect> slot_bounds_;
     static constexpr std::size_t NoSlot = static_cast<std::size_t>(-1);
     // The slot under the pointer, or NoSlot.

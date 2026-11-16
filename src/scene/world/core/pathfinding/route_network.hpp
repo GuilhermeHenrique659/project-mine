@@ -21,11 +21,23 @@ struct RouteKey {
     bool operator==(const RouteKey&) const = default;
 };
 
+// What a route is for: Worker routes take workers from the headquarters to their
+// building; Logistic routes link a storage to a production building, for carrying items
+// (listed in the Logistics tab of the player menu).
+enum class RouteKind { Worker, Logistic };
+
+// A route a planner asks for.
+struct RouteRequest {
+    RouteKey key;
+    RouteKind kind = RouteKind::Worker;
+};
+
 // A precomputed walk between two buildings: every tile from the `from` building's tile to
 // the `to` building's tile, both included. Empty when no path was found.
 struct Route {
     RouteKey key;
     std::vector<TileCoord> tiles;
+    RouteKind kind = RouteKind::Worker;
 
     bool reachable() const { return !tiles.empty(); }
 };
@@ -36,14 +48,36 @@ class RoutePlanner {
 public:
     virtual ~RoutePlanner() = default;
 
-    virtual std::vector<RouteKey> plan(const core::Registry& registry) const = 0;
+    virtual std::vector<RouteRequest> plan(const core::Registry& registry) const = 0;
 };
 
-// One route from the headquarters to every other building (none without a headquarters).
+// One Worker route from the headquarters to every other building (none without a
+// headquarters).
 class HeadquartersRoutePlanner : public RoutePlanner {
 public:
-    std::vector<RouteKey> plan(const core::Registry& registry) const override;
+    std::vector<RouteRequest> plan(const core::Registry& registry) const override;
 };
+
+// One Logistic route from every storage to every production building (one with a
+// Producer, finished or not).
+class LogisticRoutePlanner : public RoutePlanner {
+public:
+    std::vector<RouteRequest> plan(const core::Registry& registry) const override;
+};
+
+// The routes of several planners, in their order.
+class CompositeRoutePlanner : public RoutePlanner {
+public:
+    explicit CompositeRoutePlanner(std::vector<std::unique_ptr<RoutePlanner>> planners);
+
+    std::vector<RouteRequest> plan(const core::Registry& registry) const override;
+
+private:
+    std::vector<std::unique_ptr<RoutePlanner>> planners_;
+};
+
+// The game's planner: the headquarters' Worker routes, then the Logistic routes.
+std::unique_ptr<RoutePlanner> default_route_planner();
 
 // The routes between buildings, computed only by rebuild(), never per frame. Walking
 // avoids water and every building tile (sites included), except the route's own ends.

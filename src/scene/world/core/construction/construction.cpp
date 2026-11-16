@@ -10,6 +10,7 @@ namespace world {
 std::string_view building_type_key(BuildingType type) {
     switch (type) {
         case BuildingType::Mine: return "Mine";
+        case BuildingType::Storage: return "Storage";
         case BuildingType::Headquarters: break;
     }
     return "Headquarters";
@@ -22,6 +23,9 @@ std::optional<BuildingType> parse_building_type(std::string_view key) {
     if (key == building_type_key(BuildingType::Mine)) {
         return BuildingType::Mine;
     }
+    if (key == building_type_key(BuildingType::Storage)) {
+        return BuildingType::Storage;
+    }
     return std::nullopt;
 }
 
@@ -33,7 +37,10 @@ const std::vector<ConstructionGroup>& construction_catalog() {
            Blueprint{}.with(
                Generator{GeneratorSpec{GeneratorType::Solar, std::nullopt, 0.0f, 1000.0f}}),
            TileSize{5, 5}},
-          {"Storage", "icon_storage"}}},
+          {"Storage", "icon_storage", BuildingType::Storage, {{items::IronOre, 200}}, 600.0f,
+           {std::make_shared<NeedsHeadquartersRule>()},
+           Blueprint{}.with(Inventory{120}).with(PowerConsumer{20.0f}),
+           TileSize{2, 2}}}},
         {ConstructionCategory::Mine, "Mines", "icon_tab_mines",
          {{"Mine", "icon_mine", BuildingType::Mine, {{items::IronOre, 100}}, 300.0f,
            {std::make_shared<NeedsHeadquartersRule>(), std::make_shared<NeedsOreRule>()},

@@ -16,6 +16,7 @@
 #include "scene/world/core/systems/production_system.hpp"
 #include "scene/world/core/systems/camera_follow_system.hpp"
 #include "scene/world/core/systems/character_move_system.hpp"
+#include "scene/world/core/systems/haul_system.hpp"
 #include "scene/world/core/systems/player_input_system.hpp"
 #include "scene/world/core/systems/route_follow_system.hpp"
 #include "scene/world/core/systems/route_system.hpp"
@@ -51,6 +52,7 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
     systems_.push_back(std::make_unique<::world::WorkerSystem>(registry_, bus_, factory_));
     systems_.push_back(std::make_unique<::world::RouteFollowSystem>(registry_, routes_));
     systems_.push_back(std::make_unique<::world::CharacterMoveSystem>(registry_, bus_, &terrain_));
+    systems_.push_back(std::make_unique<::world::HaulSystem>(registry_, bus_, routes_));
     // After movement, so the camera is on the player's new position.
     systems_.push_back(std::make_unique<::world::CameraFollowSystem>(registry_, camera_));
     // Builds on BuildRequested (paid by the player), then advances the construction sites.
@@ -108,7 +110,8 @@ void WorldModel::run_tick() {
 }
 
 void WorldModel::zoom_camera(float steps) {
-    if (paused_) {
+    // While a transfer is open the wheel scrolls its panel instead.
+    if (paused_ || transfer_target() != 0) {
         return;
     }
     camera_.zoom_by(steps);
@@ -181,6 +184,14 @@ void WorldModel::request_transfer(core::EntityId from, core::EntityId to, ::worl
 
 void WorldModel::request_workers(core::EntityId building, int count) {
     enqueue(::world::WorkerAssignmentRequested{building, count});
+}
+
+void WorldModel::request_haulers(::world::RouteKey route, ::world::HaulMode mode, int count) {
+    enqueue(::world::HaulersRequested{route, mode, count});
+}
+
+void WorldModel::request_haul_mode(::world::RouteKey route, ::world::HaulMode mode) {
+    enqueue(::world::HaulModeRequested{route, mode});
 }
 
 void WorldModel::cancel() {

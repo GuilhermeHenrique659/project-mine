@@ -16,6 +16,8 @@ constexpr float BorderWidth = 2.0f;
 constexpr int TitleFontSize = 20;
 constexpr int DetailFontSize = 16;
 constexpr float DetailGap = 4.0f;
+// Rows of a building's inventory shown at once; a bigger one (a storage) scrolls.
+constexpr std::size_t BuildingVisibleRows = 4;
 
 ui::Rect slot_or_empty(const InventoryGrid& grid, std::size_t index) {
     const auto& slots = grid.slot_bounds();
@@ -36,7 +38,7 @@ bool BuildingPanel::visible() const { return model_.transfer_target() != 0 && !m
 InventoryGrid& BuildingPanel::building_grid() const {
     const core::EntityId target = model_.transfer_target();
     if (!building_grid_ || building_ != target) {
-        building_grid_ = std::make_unique<InventoryGrid>(model_.registry(), target);
+        building_grid_ = std::make_unique<InventoryGrid>(model_.registry(), target, BuildingVisibleRows);
         building_ = target;
     }
     return *building_grid_;
@@ -65,6 +67,9 @@ void BuildingPanel::update() {
     const bool released = pointer_->released();
     player_grid_->handle_pointer(position, released);
     building_grid().handle_pointer(position, released);
+    if (building_grid().bounds().contains(position)) {
+        building_grid().scroll(pointer_->scroll());
+    }
     if (!released) {
         return;
     }

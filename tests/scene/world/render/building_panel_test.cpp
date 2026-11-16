@@ -137,3 +137,63 @@ TEST_F(BuildingPanel, ShowsTheBuildingNameAndDetailsAboveItsInventory) {
     EXPECT_LT(state, power);
     EXPECT_LT(power + 16.0f, panel.building_slot_bounds(0).y);
 }
+
+namespace {
+
+// A finished storage (120 slots) next to the player, with its transfer open.
+struct StoragePanel {
+    static game::SaveGame save() {
+        game::SaveGame save{"Alpha", 0};
+        save.entities.push_back({"building", "Storage",
+                                 {{"building.type", "Storage"},
+                                  {"building.x", "1"},
+                                  {"building.y", "0"}}});
+        return save;
+    }
+
+    StoragePanel() : model(bus, input.handler, save()), panel(model, pointer) {
+        model.open_transfer(MineTile);
+        panel.layout(canvas, Screen);
+    }
+
+    event::EventBus bus;
+    FakeInput input;
+    FakeCanvas canvas;
+    std::shared_ptr<FakePointer> pointer = std::make_shared<FakePointer>();
+    scene::world::WorldModel model;
+    scene::world::BuildingPanel panel;
+};
+
+} // namespace
+
+TEST(BuildingPanelScroll, ABigInventoryShowsFourRowsAndTheWheelOverItScrollsIt) {
+    // Given
+    StoragePanel p;
+    ASSERT_NE(p.model.transfer_target(), 0u);
+    const ui::Rect first = p.panel.building_slot_bounds(0);
+    EXPECT_FLOAT_EQ(p.panel.building_slot_bounds(40).width, 0.0f);
+
+    // When
+    p.pointer->at = {first.x + 1.0f, first.y + 1.0f};
+    p.pointer->wheel = -1.0f;
+    p.panel.update();
+    p.panel.layout(p.canvas, Screen);
+
+    // Then
+    EXPECT_FLOAT_EQ(p.panel.building_slot_bounds(0).width, 0.0f);
+    EXPECT_FLOAT_EQ(p.panel.building_slot_bounds(10).y, first.y);
+}
+
+TEST(BuildingPanelScroll, TheWheelOutsideTheBuildingInventoryDoesNotScrollIt) {
+    // Given
+    StoragePanel p;
+
+    // When
+    p.pointer->at = {0.0f, 0.0f};
+    p.pointer->wheel = -1.0f;
+    p.panel.update();
+    p.panel.layout(p.canvas, Screen);
+
+    // Then
+    EXPECT_GT(p.panel.building_slot_bounds(0).width, 0.0f);
+}

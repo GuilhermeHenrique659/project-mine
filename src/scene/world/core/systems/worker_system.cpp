@@ -6,6 +6,7 @@
 
 #include "scene/world/core/components/builder.hpp"
 #include "scene/world/core/components/building.hpp"
+#include "scene/world/core/components/hauler.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/components/route_follower.hpp"
 #include "scene/world/core/components/worker.hpp"
@@ -163,7 +164,8 @@ void WorkerSystem::update(float) {
     // Finished (or vanished) jobs: back to idle, walking the route back home.
     std::unordered_map<core::EntityId, int> assigned;
     registry_.each<Worker, Builder>([&](core::EntityId id, Worker& worker, Builder& builder) {
-        if (worker.state != WorkerState::Working) {
+        // Haulers belong to the HaulSystem.
+        if (worker.state != WorkerState::Working || registry_.has<Hauler>(id)) {
             return;
         }
         if (worker.workplace != 0 && registry_.has<Building>(worker.workplace)) {

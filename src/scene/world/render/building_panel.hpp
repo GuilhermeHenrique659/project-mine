@@ -14,7 +14,8 @@ namespace scene::world {
 
 // The item transfer with a building (WorldModel::transfer_target()): a panel in the
 // middle of the screen with the player's inventory on top and, below it, the building's
-// name, its details (state, power; see building_details()) and its inventory.
+// name, its details (state, power; see building_details()) and its inventory, at most
+// four rows at once: the mouse wheel over it scrolls a bigger one (a storage).
 // Clicking a filled slot moves that whole stack to the other inventory (as much as fits,
 // through WorldModel::request_transfer()); the red X closes it. Visible while a transfer
 // is open and the game is not paused. It reads the mouse itself in update(), using the

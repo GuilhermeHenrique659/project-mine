@@ -1,6 +1,7 @@
 #include "scene/world/render/player_menu.hpp"
 
 #include "scene/world/render/energy_page.hpp"
+#include "scene/world/render/logistics_page.hpp"
 #include "scene/world/render/workers_page.hpp"
 #include "ui/theme.hpp"
 
@@ -21,7 +22,7 @@ PlayerMenu::PlayerMenu(WorldModel& model, std::shared_ptr<const input::Pointer> 
                                {"Energy", true},
                                {"Workers", true},
                                {"Statistics", false},
-                               {"Logistics", false}},
+                               {"Logistics", true}},
           ui::theme::tab_style(), ui::theme::active_tab_style(),
           ui::theme::disabled_tab_style())),
       close_button_(std::make_unique<ui::Button>("X", ui::theme::close_button_style(), true)) {
@@ -32,7 +33,14 @@ PlayerMenu::PlayerMenu(WorldModel& model, std::shared_ptr<const input::Pointer> 
         model.registry(),
         [&model](core::EntityId building, int count) { model.request_workers(building, count); }));
     pages_.push_back(nullptr); // Statistics: not available yet
-    pages_.push_back(nullptr); // Logistics: not available yet
+    pages_.push_back(std::make_unique<LogisticsPage>(
+        model.registry(), model.routes(),
+        [&model](::world::RouteKey route, ::world::HaulMode mode, int count) {
+            model.request_haulers(route, mode, count);
+        },
+        [&model](::world::RouteKey route, ::world::HaulMode mode) {
+            model.request_haul_mode(route, mode);
+        }));
 }
 
 bool PlayerMenu::visible() const { return model_.is_player_menu_open() && !model_.is_paused(); }

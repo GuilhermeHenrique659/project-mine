@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/entity.hpp"
+#include "scene/world/core/components/hauler.hpp"
 
 namespace world {
 
@@ -10,6 +11,20 @@ namespace world {
 struct WorkerAssignmentRequested {
     core::EntityId building = 0;
     int count = 0;
+};
+
+// The player asks to make `count` idle workers haulers of a logistic route in `mode`
+// (negative = send that many of its haulers back idle). See HaulSystem.
+struct HaulersRequested {
+    RouteKey route;
+    HaulMode mode = HaulMode::Take;
+    int count = 0;
+};
+
+// The player switches every hauler of a logistic route to `mode`.
+struct HaulModeRequested {
+    RouteKey route;
+    HaulMode mode = HaulMode::Take;
 };
 
 } // namespace world

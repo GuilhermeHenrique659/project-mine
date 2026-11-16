@@ -13,9 +13,9 @@
 namespace scene::world {
 
 // The player menu (Tab): a panel covering almost the whole screen with a tab bar on top
-// (Inventory, active; Energy; Workers; Statistics and Logistics, disabled until they exist) and
+// (Inventory, active; Energy; Workers; Statistics, disabled until it exists; Logistics) and
 // the active tab's page below it (Inventory: the player's inventory grid; Energy: the
-// EnergyPage; Workers: the WorkersPage), and an X button in the
+// EnergyPage; Workers: the WorkersPage; Logistics: the LogisticsPage), and an X button in the
 // top-right corner that closes it. Visible while the model's player menu is open and the
 // game is not paused; the world keeps running behind it. It reads the mouse itself in
 // update() through the injected pointer, using the bounds of the last draw(). The model

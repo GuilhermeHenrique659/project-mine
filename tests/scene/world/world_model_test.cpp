@@ -599,3 +599,21 @@ TEST(WorldModel, RequestsMadeWhilePausedWaitForTheSimulationToResume) {
     EXPECT_EQ(while_paused, ::world::BuildResult::Ok);
     EXPECT_EQ(model.build_status(hq), ::world::BuildResult::AlreadyExists);
 }
+
+TEST(WorldModel, ZoomingIsIgnoredWhileATransferIsOpen) {
+    // Given: a storage next to the player, its transfer open
+    event::EventBus bus;
+    FakeInput input;
+    game::SaveGame save{"Alpha", 0};
+    save.entities.push_back({"building", "Storage",
+                             {{"building.type", "Storage"}, {"building.x", "1"}, {"building.y", "0"}}});
+    scene::world::WorldModel model(bus, input.handler, save);
+    model.open_transfer({1, 0});
+    ASSERT_NE(model.transfer_target(), 0u);
+
+    // When
+    model.zoom_camera(2.0f);
+
+    // Then
+    EXPECT_FLOAT_EQ(model.camera().zoom, 1.0f);
+}

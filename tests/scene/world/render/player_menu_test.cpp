@@ -50,7 +50,7 @@ TEST(PlayerMenu, IsVisibleOnlyWhileOpenAndTheGameIsNotPaused) {
     EXPECT_FALSE(m.menu.visible());
 }
 
-TEST(PlayerMenu, OpensOnTheInventoryTabWithEnergyAndWorkersNextAndStatisticsAndLogisticsDisabled) {
+TEST(PlayerMenu, OpensOnTheInventoryTabWithStatisticsDisabledAndLogisticsEnabled) {
     // Given
     Menu m;
 
@@ -69,7 +69,7 @@ TEST(PlayerMenu, OpensOnTheInventoryTabWithEnergyAndWorkersNextAndStatisticsAndL
     EXPECT_TRUE(tabs.tabs()[1].enabled);
     EXPECT_TRUE(tabs.tabs()[2].enabled);
     EXPECT_FALSE(tabs.tabs()[3].enabled);
-    EXPECT_FALSE(tabs.tabs()[4].enabled);
+    EXPECT_TRUE(tabs.tabs()[4].enabled);
 }
 
 TEST(PlayerMenu, CoversAlmostTheWholeScreenCentred) {
@@ -197,4 +197,26 @@ TEST(PlayerMenu, ClickingTheWorkersTabShowsTheIdleWorkers) {
         if (text.text.starts_with("Idle workers:")) idle = true;
     }
     EXPECT_TRUE(idle);
+}
+
+TEST(PlayerMenu, ClickingTheLogisticsTabShowsTheLogisticRoutes) {
+    // Given
+    Menu m;
+    m.model.toggle_player_menu();
+    m.menu.layout(m.canvas, Screen);
+    const ui::Rect logistics = m.menu.tab_bar().tab_bounds()[4];
+    m.pointer->at = {logistics.x + logistics.width / 2.0f, logistics.y + logistics.height / 2.0f};
+    m.pointer->release = true;
+
+    // When
+    m.menu.update();
+    m.menu.draw(m.canvas, Screen);
+
+    // Then
+    EXPECT_EQ(m.menu.tab_bar().active(), 4u);
+    bool listed = false;
+    for (const DrawnText& text : m.canvas.texts) {
+        if (text.text.starts_with("Logistic routes:")) listed = true;
+    }
+    EXPECT_TRUE(listed);
 }
