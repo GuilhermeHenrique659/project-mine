@@ -10,10 +10,11 @@ namespace world {
 namespace {
 
 // The worker type of a production building's workers. A new production building = a new
-// case here (a smelter's workers would be smelters).
+// case here (a steelworks' workers are steelworkers).
 WorkerType type_at(BuildingType building) {
     switch (building) {
         case BuildingType::Mine: return WorkerType::Miner;
+        case BuildingType::Steelworks: return WorkerType::Steelworker;
         case BuildingType::Headquarters:
         case BuildingType::Storage: break;
     }

@@ -43,10 +43,11 @@ CharacterState parse_state(const std::string& text) {
 constexpr std::string_view InventoryPrefix = "inventory.";
 
 // Save-file names of the item types: stable keys, not the names shown to the player.
-constexpr std::array<std::pair<ItemType, std::string_view>, 3> ItemKeys{{
+constexpr std::array<std::pair<ItemType, std::string_view>, 4> ItemKeys{{
     {ItemType::IronOre, "IronOre"},
     {ItemType::CopperOre, "CopperOre"},
     {ItemType::Coal, "Coal"},
+    {ItemType::Steel, "Steel"},
 }};
 
 std::string_view item_key(ItemType type) {

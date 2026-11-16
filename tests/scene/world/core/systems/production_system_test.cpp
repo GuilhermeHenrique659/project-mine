@@ -89,7 +89,7 @@ TEST(ProductionSystem, TheMineRecipeNeedsNoInputAndYieldsTheGroundAtHalfAnItemPe
     // Then
     ASSERT_NE(producer, nullptr);
     const world::Recipe* recipe = &producer->recipe;
-    EXPECT_FALSE(recipe->input.has_value());
+    EXPECT_TRUE(recipe->inputs.empty());
     EXPECT_FALSE(recipe->output.has_value());
     EXPECT_FLOAT_EQ(recipe->rate, 4.0f);
 }
@@ -194,7 +194,7 @@ TEST(ProductionSystem, AConstructionSiteProducesNothing) {
 TEST(ProductionSystem, AFullInventoryWaitsWithAtMostOneItemOfProgress) {
     // Given: one slot, already full of iron ore
     Fixture f;
-    const core::EntityId id = f.producer({std::nullopt, world::items::IronOre, 1.0f}, 1);
+    const core::EntityId id = f.producer({{}, world::items::IronOre, 1.0f}, 1);
     f.registry.get<world::Inventory>(id)->add(world::items::IronOre, 100);
 
     // When
@@ -210,7 +210,7 @@ TEST(ProductionSystem, AnInputIsConsumedForEachOutputAndItsLackStopsProduction) 
     // Given: 2 iron ore -> 1 coal, with iron for one output only
     Fixture f;
     const core::EntityId id =
-        f.producer({world::ItemStack{world::items::IronOre, 2}, world::items::Coal, 1.0f}, 4);
+        f.producer({{world::ItemStack{world::items::IronOre, 2}}, world::items::Coal, 1.0f}, 4);
     f.registry.get<world::Inventory>(id)->add(world::items::IronOre, 3);
 
     // When
@@ -256,7 +256,7 @@ TEST(ProductionSystem, ABuildingWithoutItsInputIsIdleForMissingInput) {
     // Given: 2 iron ore -> 1 coal, with no iron
     Fixture f;
     const core::EntityId id =
-        f.producer({world::ItemStack{world::items::IronOre, 2}, world::items::Coal, 1.0f}, 4);
+        f.producer({{world::ItemStack{world::items::IronOre, 2}}, world::items::Coal, 1.0f}, 4);
 
     // When
     f.system.update(1.0f);
@@ -269,7 +269,7 @@ TEST(ProductionSystem, ABuildingWithoutItsInputIsIdleForMissingInput) {
 TEST(ProductionSystem, ABuildingWhoseOutputDoesNotFitIsIdleForFullOutput) {
     // Given: one slot, already full of iron ore
     Fixture f;
-    const core::EntityId id = f.producer({std::nullopt, world::items::IronOre, 1.0f}, 1);
+    const core::EntityId id = f.producer({{}, world::items::IronOre, 1.0f}, 1);
     f.registry.get<world::Inventory>(id)->add(world::items::IronOre, 100);
 
     // When
@@ -294,4 +294,47 @@ TEST(ProductionSystem, AMineOffOreIsIdleForLackOfResource) {
     // Then
     EXPECT_EQ(f.status(mine).state, world::BuildingState::Idle);
     EXPECT_EQ(f.status(mine).reason, world::IdleReason::NoResource);
+}
+
+TEST(ProductionSystem, ARecipeWithSeveralInputsNeedsAllOfThemForEachOutput) {
+    // Given: 2 iron ore + 2 coal -> 1 copper ore, with coal for one output only
+    Fixture f;
+    const core::EntityId id = f.producer(
+        {{world::ItemStack{world::items::IronOre, 2}, world::ItemStack{world::items::Coal, 2}},
+         world::items::CopperOre,
+         1.0f},
+        4);
+    f.registry.get<world::Inventory>(id)->add(world::items::IronOre, 6);
+    f.registry.get<world::Inventory>(id)->add(world::items::Coal, 3);
+
+    // When
+    f.system.update(3.0f);
+
+    // Then
+    EXPECT_EQ(f.count(id, world::items::CopperOre), 1);
+    EXPECT_EQ(f.count(id, world::items::IronOre), 4);
+    EXPECT_EQ(f.count(id, world::items::Coal), 1);
+    EXPECT_EQ(f.status(id).reason, world::IdleReason::MissingInput);
+}
+
+TEST(ProductionSystem, AStaffedSteelworksTurnsTwoCoalAndTwoIronOreIntoSteelTwicePerSecond) {
+    // Given
+    Fixture f;
+    const world::Construction* steelworks =
+        world::find_construction(world::BuildingType::Steelworks);
+    ASSERT_NE(steelworks, nullptr);
+    const core::EntityId id = f.registry.create("Steelworks");
+    world::make_building(f.registry, id, *steelworks, {1, 1});
+    f.registry.remove<world::ConstructionSite>(id);
+    f.staff(id, steelworks->blueprint.find<world::Staffing>()->needed);
+    f.registry.get<world::Inventory>(id)->add(world::items::IronOre, 10);
+    f.registry.get<world::Inventory>(id)->add(world::items::Coal, 10);
+
+    // When
+    f.system.update(1.0f);
+
+    // Then
+    EXPECT_EQ(f.count(id, world::items::Steel), 2);
+    EXPECT_EQ(f.count(id, world::items::IronOre), 6);
+    EXPECT_EQ(f.count(id, world::items::Coal), 6);
 }

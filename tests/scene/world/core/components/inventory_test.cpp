@@ -240,3 +240,60 @@ TEST(TransferItems, LeavesWhatDoesNotFitInTheSource) {
     EXPECT_EQ(from.count(world::items::IronOre), 50);
     EXPECT_EQ(to.count(world::items::IronOre), 100);
 }
+
+TEST(Inventory, AppendingAFilteredSectionAddsSlotsThatOnlyAcceptTheirItem) {
+    // Given: no general slot, 2 slots for iron ore only
+    Inventory inventory{0};
+    inventory.append(2, ItemType::IronOre);
+
+    // When
+    const int coal_left = inventory.add(world::items::Coal, 10);
+    const int iron_left = inventory.add(world::items::IronOre, 250);
+
+    // Then
+    EXPECT_EQ(inventory.capacity(), 2u);
+    EXPECT_EQ(coal_left, 10);
+    EXPECT_EQ(iron_left, 50);
+    EXPECT_EQ(inventory.filter(0), ItemType::IronOre);
+}
+
+TEST(Inventory, AnItemWithFilteredSlotsNeverSpillsIntoGeneralSlots) {
+    // Given: 2 general slots, then 1 slot for iron ore only
+    Inventory inventory{2};
+    inventory.append(1, ItemType::IronOre);
+
+    // When
+    const int leftover = inventory.add(world::items::IronOre, 150);
+
+    // Then: only the iron slot took iron, the general slots stay free for the rest
+    EXPECT_EQ(leftover, 50);
+    EXPECT_EQ(stack_count(inventory, 0), 0);
+    EXPECT_EQ(stack_count(inventory, 1), 0);
+    EXPECT_EQ(stack_count(inventory, 2), 100);
+}
+
+TEST(Inventory, ItemsWithoutAFilteredSectionFillTheGeneralSlots) {
+    // Given
+    Inventory inventory{1};
+    inventory.append(1, ItemType::IronOre);
+
+    // When
+    const int leftover = inventory.add(world::items::Steel, 150);
+
+    // Then
+    EXPECT_EQ(leftover, 50);
+    EXPECT_EQ(stack_count(inventory, 0), 100);
+    EXPECT_FALSE(inventory.filter(0).has_value());
+}
+
+TEST(Inventory, SetSlotIgnoresAStackTheSlotsFilterRefuses) {
+    // Given
+    Inventory inventory{0};
+    inventory.append(1, ItemType::Coal);
+
+    // When
+    inventory.set_slot(0, world::ItemStack{world::items::IronOre, 5});
+
+    // Then
+    EXPECT_TRUE(inventory.is_empty());
+}

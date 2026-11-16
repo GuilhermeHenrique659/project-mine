@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <vector>
 
 #include "scene/world/core/construction/building_type.hpp"
 #include "scene/world/core/isometric.hpp"
@@ -30,11 +31,11 @@ struct ConstructionSite {
     float effort = 0.0f;
 };
 
-// What a building produces: every 1 / `rate` seconds it consumes `input` (none = needs
-// nothing, like a mine) from its inventory and adds one `output` to it. An empty `output`
+// What a building produces: every 1 / `rate` seconds it consumes all of `inputs` (empty =
+// needs nothing, like a mine) from its inventory and adds one `output` to it. An empty `output`
 // means the resource on the ground under the building (the ore under a mine).
 struct Recipe {
-    std::optional<ItemStack> input = std::nullopt;
+    std::vector<ItemStack> inputs{};
     std::optional<Item> output = std::nullopt;
     float rate = 0.0f; // outputs per second
 };
@@ -47,7 +48,7 @@ enum class IdleReason {
     NoPower,      // its PowerConsumer is not powered
     NoResource,   // nothing to produce: a mine off ore
     NoWorkers,    // its Staffing needs workers and none is at the building
-    MissingInput, // the recipe's input is not in its inventory
+    MissingInput, // one of the recipe's inputs is not in its inventory
     OutputFull,   // the output does not fit in its inventory
 };
 

@@ -4,7 +4,7 @@
 
 namespace world {
 
-Inventory::Inventory(std::size_t capacity) : slots_(capacity) {}
+Inventory::Inventory(std::size_t capacity) : slots_(capacity), filters_(capacity) {}
 
 std::size_t Inventory::capacity() const { return slots_.size(); }
 
@@ -14,16 +14,18 @@ int Inventory::add(Item item, int count) {
     if (count <= 0) return 0;
     if (item.max_stack <= 0) return count;
 
-    for (auto& slot : slots_) {
+    for (std::size_t i = 0; i < slots_.size(); ++i) {
+        auto& slot = slots_[i];
         if (count == 0) return 0;
-        if (!slot || slot->item.type != item.type) continue;
+        if (!slot || slot->item.type != item.type || !accepts(i, item.type)) continue;
         const int moved = std::min(count, std::max(0, item.max_stack - slot->count));
         slot->count += moved;
         count -= moved;
     }
-    for (auto& slot : slots_) {
+    for (std::size_t i = 0; i < slots_.size(); ++i) {
+        auto& slot = slots_[i];
         if (count == 0) return 0;
-        if (slot) continue;
+        if (slot || !accepts(i, item.type)) continue;
         const int moved = std::min(count, item.max_stack);
         slot = ItemStack{item, moved};
         count -= moved;
@@ -57,7 +59,32 @@ void Inventory::set_slot(std::size_t index, std::optional<ItemStack> stack) {
     if (index >= slots_.size()) {
         return;
     }
+    if (stack && !accepts(index, stack->item.type)) {
+        return;
+    }
     slots_[index] = stack;
+}
+
+Inventory& Inventory::append(std::size_t count, ItemType filter) {
+    slots_.resize(slots_.size() + count);
+    filters_.resize(filters_.size() + count, filter);
+    return *this;
+}
+
+std::optional<ItemType> Inventory::filter(std::size_t index) const {
+    if (index >= filters_.size()) {
+        return std::nullopt;
+    }
+    return filters_[index];
+}
+
+bool Inventory::accepts(std::size_t index, ItemType type) const {
+    if (filters_[index]) {
+        return *filters_[index] == type;
+    }
+    // A general slot takes any item that has no filtered slot of its own here.
+    return std::find(filters_.begin(), filters_.end(), std::optional<ItemType>{type}) ==
+           filters_.end();
 }
 
 std::size_t Inventory::free_slots() const {

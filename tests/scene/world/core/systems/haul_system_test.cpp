@@ -333,3 +333,23 @@ TEST(HaulSystem, WorkersWaitingAtTheHeadquartersStayWhereTheyAre) {
         EXPECT_FLOAT_EQ(at.y, 0.5f);
     });
 }
+
+TEST(HaulSystem, TakeModeLeavesTheProducersFilteredInputSlotsAlone) {
+    // Given: a producer with iron in an input slot and steel in its general slots
+    Fixture f;
+    f.add_worker();
+    world::Inventory producer{2};
+    producer.append(1, world::ItemType::IronOre);
+    producer.add(world::items::IronOre, 40);
+    producer.add(world::items::Steel, 30);
+    f.inventory(f.mine) = producer;
+    f.bus.publish(world::HaulersRequested{f.route, world::HaulMode::Take, 1});
+
+    // When
+    f.run(600);
+
+    // Then
+    EXPECT_EQ(f.inventory(f.storage).count(world::items::Steel), 30);
+    EXPECT_EQ(f.inventory(f.storage).count(world::items::IronOre), 0);
+    EXPECT_EQ(f.inventory(f.mine).count(world::items::IronOre), 40);
+}

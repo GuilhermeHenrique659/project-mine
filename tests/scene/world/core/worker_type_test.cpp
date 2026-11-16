@@ -102,3 +102,16 @@ TEST(WorkerType, AWorkerGoingHomeFromItsSiteHasNoTypeAnyMore) {
     // Then
     EXPECT_EQ(f.type(), world::WorkerType::None);
 }
+
+TEST(WorkerType, AWorkerAssignedToASteelworksIsASteelworker) {
+    // Given
+    Fixture f;
+    const auto steelworks = f.add_building(world::BuildingType::Steelworks);
+
+    // When
+    *f.registry.get<world::Worker>(f.worker) = {world::WorkerState::Working, steelworks};
+
+    // Then
+    EXPECT_EQ(f.type(), world::WorkerType::Steelworker);
+    EXPECT_STREQ(world::to_string(f.type()), "Steelworker");
+}

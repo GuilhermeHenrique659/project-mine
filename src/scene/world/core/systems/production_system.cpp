@@ -24,21 +24,23 @@ std::optional<Item> item_from_tile(TileType type) {
 
 namespace {
 
-// Makes one output when the input is there and the output fits; otherwise nothing changes
-// and the reason is returned (None = made one).
-IdleReason produce_one(Inventory& inventory, const std::optional<ItemStack>& input, Item output) {
-    if (input && inventory.count(input->item) < input->count) {
-        return IdleReason::MissingInput;
+// Makes one output when every input is there and the output fits; otherwise nothing
+// changes and the reason is returned (None = made one).
+IdleReason produce_one(Inventory& inventory, const std::vector<ItemStack>& inputs, Item output) {
+    for (const ItemStack& input : inputs) {
+        if (inventory.count(input.item) < input.count) {
+            return IdleReason::MissingInput;
+        }
     }
-    if (input) {
-        inventory.remove(input->item, input->count);
+    for (const ItemStack& input : inputs) {
+        inventory.remove(input.item, input.count);
     }
     if (inventory.add(output, 1) == 0) {
         return IdleReason::None;
     }
-    // No room: undo the input.
-    if (input) {
-        inventory.add(input->item, input->count);
+    // No room: undo the inputs.
+    for (const ItemStack& input : inputs) {
+        inventory.add(input.item, input.count);
     }
     return IdleReason::OutputFull;
 }
@@ -66,7 +68,7 @@ IdleReason run(Producer& producer, Inventory& inventory, const std::optional<Ite
     }
     producer.progress += producer.recipe.rate * crew * delta_time;
     while (producer.progress >= 1.0f) {
-        const IdleReason reason = produce_one(inventory, producer.recipe.input, *output);
+        const IdleReason reason = produce_one(inventory, producer.recipe.inputs, *output);
         if (reason != IdleReason::None) {
             // Waiting: keep one output ready, do not bank more.
             producer.progress = 1.0f;

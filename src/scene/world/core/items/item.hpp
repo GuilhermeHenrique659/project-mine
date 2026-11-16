@@ -3,7 +3,7 @@
 namespace world {
 
 // Kinds of item that can be stored in an inventory.
-enum class ItemType { IronOre, CopperOre, Coal };
+enum class ItemType { IronOre, CopperOre, Coal, Steel };
 
 // An item definition: its type and how many fit in one inventory slot.
 struct Item {
@@ -18,6 +18,7 @@ namespace items {
 inline constexpr Item IronOre{ItemType::IronOre, 100};
 inline constexpr Item CopperOre{ItemType::CopperOre, 100};
 inline constexpr Item Coal{ItemType::Coal, 100};
+inline constexpr Item Steel{ItemType::Steel, 100};
 } // namespace items
 
 // The definition of an item type.
@@ -25,6 +26,7 @@ constexpr Item item_of(ItemType type) {
     switch (type) {
         case ItemType::CopperOre: return items::CopperOre;
         case ItemType::Coal: return items::Coal;
+        case ItemType::Steel: return items::Steel;
         case ItemType::IronOre: break;
     }
     return items::IronOre;
@@ -41,6 +43,7 @@ constexpr const char* to_string(ItemType type) {
     switch (type) {
         case ItemType::CopperOre: return "Copper Ore";
         case ItemType::Coal: return "Coal";
+        case ItemType::Steel: return "Steel";
         case ItemType::IronOre: break;
     }
     return "Iron Ore";

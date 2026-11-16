@@ -198,6 +198,27 @@ TEST(WorldSerializer, SnapshotWritesEachFilledInventorySlotWithItsIndex) {
     EXPECT_EQ(fields.count("inventory.1"), 0u);
 }
 
+TEST(WorldSerializer, SteelInAnInventorySurvivesASaveAndLoad) {
+    // Given
+    Fixture saved;
+    const core::EntityId id = saved.spawn_player({0.0f, 0.0f});
+    saved.registry.get<world::Inventory>(id)->set_slot(
+        0, world::ItemStack{world::items::Steel, 12});
+    const auto records = saved.serializer.snapshot(saved.registry);
+    Fixture loaded;
+
+    // When
+    loaded.serializer.restore(loaded.registry, records);
+
+    // Then
+    EXPECT_EQ(records[0].fields.at("inventory.0"), "Steel:12");
+    const auto& slots =
+        loaded.registry.get<world::Inventory>(loaded.registry.entities()[0].id)->slots();
+    ASSERT_TRUE(slots[0].has_value());
+    EXPECT_EQ(slots[0]->item, world::items::Steel);
+    EXPECT_EQ(slots[0]->count, 12);
+}
+
 TEST(WorldSerializer, InventoryRoundTripKeepsEveryStackInItsSlot) {
     // Given
     Fixture saved;

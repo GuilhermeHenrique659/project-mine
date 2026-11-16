@@ -18,12 +18,17 @@ constexpr int CountFontSize = 18;
 constexpr float CountMargin = 4.0f;
 // Space between the last column and the scrollbar.
 constexpr float ScrollbarGap = 8.0f;
+// Items that are not a tile (ores reuse their tile color).
+constexpr ui::Color SteelColor{185, 190, 198, 255};
+// Opacity of the item hint in an empty filtered slot.
+constexpr unsigned char FilterHintAlpha = 60;
 } // namespace
 
 ui::Color item_color(::world::ItemType type) {
     switch (type) {
     case ::world::ItemType::CopperOre: return CopperOreColor;
     case ::world::ItemType::Coal: return CoalColor;
+    case ::world::ItemType::Steel: return SteelColor;
     case ::world::ItemType::IronOre: break;
     }
     return IronOreColor;
@@ -116,6 +121,14 @@ void InventoryGrid::draw(ui::Canvas& canvas) const {
                                    : style_.background;
         ui::draw_raised(canvas, slot, face, style_);
         if (!slots[i]) {
+            // An empty filtered slot shows its item faintly.
+            if (const auto filter = inventory->filter(i)) {
+                ui::Color hint = item_color(*filter);
+                hint.a = FilterHintAlpha;
+                canvas.fill_rect({slot.x + ItemInset, slot.y + ItemInset,
+                                  slot.width - 2.0f * ItemInset, slot.height - 2.0f * ItemInset},
+                                 hint);
+            }
             continue;
         }
         canvas.fill_rect({slot.x + ItemInset, slot.y + ItemInset, slot.width - 2.0f * ItemInset,

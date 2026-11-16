@@ -35,13 +35,15 @@ void follow(core::Registry& registry, core::EntityId id, RouteFollower follower)
     registry.add(id, follower);
 }
 
-// Fills the hauler's empty inventory with the first item of `source`, as much as fits.
+// Fills the hauler's empty inventory with the first item in a general slot of `source`
+// (filtered slots hold a building's inputs and stay), as much as fits.
 void load(Inventory& hauler, Inventory& source) {
     if (!hauler.is_empty()) {
         return;
     }
-    for (const auto& slot : source.slots()) {
-        if (!slot) {
+    for (std::size_t i = 0; i < source.slots().size(); ++i) {
+        const auto& slot = source.slots()[i];
+        if (!slot || source.filter(i)) {
             continue;
         }
         const ItemStack stack = *slot;
