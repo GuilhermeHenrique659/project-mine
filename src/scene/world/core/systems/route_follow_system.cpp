@@ -54,6 +54,55 @@ bool advance(RouteFollower& follower, std::size_t size) {
     return advance(follower, size);
 }
 
+// The unit direction a follower walks into waypoint `i` with: from the waypoint before it
+// (along its walking direction), or towards the one after it at the start of the route.
+WorldPoint heading_into(const Route& route, std::size_t i, bool forward) {
+    const auto& tiles = route.tiles;
+    const bool has_previous = forward ? i > 0 : i + 1 < tiles.size();
+    const bool has_next = forward ? i + 1 < tiles.size() : i > 0;
+    TileCoord from = tiles[i];
+    TileCoord to = tiles[i];
+    if (has_previous) {
+        from = tiles[forward ? i - 1 : i + 1];
+    } else if (has_next) {
+        to = tiles[forward ? i + 1 : i - 1];
+    }
+    const float dx = static_cast<float>(to.x - from.x);
+    const float dy = static_cast<float>(to.y - from.y);
+    const float length = std::hypot(dx, dy);
+    return length > 0.0f ? WorldPoint{dx / length, dy / length} : WorldPoint{};
+}
+
+// Whether waypoint `i` is where a Stop follower stands still: it ends there on the centre.
+bool is_final(const RouteFollower& follower, std::size_t i, std::size_t size) {
+    return follower.end == RouteEnd::Stop && (follower.forward ? i + 1 == size : i == 0);
+}
+
+// Where the follower aims for waypoint `i`: the tile centre moved LaneOffset to the right
+// of its heading (so the two directions use two lanes), the plain centre for a Stop end.
+WorldPoint target_of(const Route& route, const RouteFollower& follower, std::size_t i) {
+    const WorldPoint centre = centre_of(route.tiles[i]);
+    if (is_final(follower, i, route.tiles.size())) {
+        return centre;
+    }
+    const WorldPoint heading = heading_into(route, i, follower.forward);
+    // Right of the heading, in world coordinates (y grows downwards on screen).
+    return {centre.x - heading.y * LaneOffset, centre.y + heading.x * LaneOffset};
+}
+
+// Whether the follower is done with waypoint `i`: close enough, or already past it.
+bool arrived(const Route& route, const RouteFollower& follower, std::size_t i, WorldPoint at,
+             WorldPoint target, float step) {
+    if (is_final(follower, i, route.tiles.size())) {
+        return distance(at, target) <= step;
+    }
+    if (distance(at, target) <= std::max(step, ArriveRadius)) {
+        return true;
+    }
+    const WorldPoint heading = heading_into(route, i, follower.forward);
+    return (target.x - at.x) * heading.x + (target.y - at.y) * heading.y <= 0.0f;
+}
+
 } // namespace
 
 RouteFollowSystem::RouteFollowSystem(core::Registry& registry, const RouteNetwork& network)
@@ -75,13 +124,16 @@ void RouteFollowSystem::update(float delta_time) {
 
             const float speed = mover.running ? mover.speed * RunSpeedMultiplier : mover.speed;
             const float step = std::max(speed * delta_time, ArriveEpsilon);
-            WorldPoint target = centre_of(route->tiles[follower.waypoint]);
-            if (distance(position.point, target) <= step) {
-                position.point = target;
+            WorldPoint target = target_of(*route, follower, follower.waypoint);
+            if (arrived(*route, follower, follower.waypoint, position.point, target, step)) {
+                // Only a Stop end is stood on exactly; lane points are passed through.
+                if (is_final(follower, follower.waypoint, route->tiles.size())) {
+                    position.point = target;
+                }
                 if (!advance(follower, route->tiles.size())) {
                     return;
                 }
-                target = centre_of(route->tiles[follower.waypoint]);
+                target = target_of(*route, follower, follower.waypoint);
             }
             mover.direction = {target.x - position.point.x, target.y - position.point.y};
         });

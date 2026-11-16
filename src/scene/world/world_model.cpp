@@ -19,6 +19,7 @@
 #include "scene/world/core/systems/haul_system.hpp"
 #include "scene/world/core/systems/player_input_system.hpp"
 #include "scene/world/core/systems/route_follow_system.hpp"
+#include "scene/world/core/systems/unit_traffic_system.hpp"
 #include "scene/world/core/systems/route_system.hpp"
 #include "scene/world/core/systems/worker_system.hpp"
 
@@ -51,6 +52,7 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
     // the route to them.
     systems_.push_back(std::make_unique<::world::WorkerSystem>(registry_, bus_, factory_));
     systems_.push_back(std::make_unique<::world::RouteFollowSystem>(registry_, routes_));
+    systems_.push_back(std::make_unique<::world::UnitTrafficSystem>(registry_));
     systems_.push_back(std::make_unique<::world::CharacterMoveSystem>(registry_, bus_, &terrain_));
     systems_.push_back(std::make_unique<::world::HaulSystem>(registry_, bus_, routes_));
     // After movement, so the camera is on the player's new position.

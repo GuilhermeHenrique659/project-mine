@@ -17,6 +17,7 @@
 #include "scene/world/core/systems/character_move_system.hpp"
 #include "scene/world/core/systems/haul_system.hpp"
 #include "scene/world/core/systems/route_follow_system.hpp"
+#include "scene/world/core/systems/unit_traffic_system.hpp"
 #include "scene/world/core/systems/worker_system.hpp"
 #include "scene/world/core/terrain/terrain.hpp"
 
@@ -259,4 +260,76 @@ TEST(HaulSystem, AHaulerWhoseRouteIsGoneTurnsIdle) {
     // Then
     EXPECT_FALSE(f.registry.has<world::Hauler>(worker));
     EXPECT_EQ(f.registry.get<world::Worker>(worker)->state, world::WorkerState::Idle);
+}
+
+TEST(HaulSystem, HaulersStillLoadAndUnloadWhenFramesAreLong) {
+    // Given: frames four times longer than usual, so a hauler turning at an end can be
+    // out of the end tile again within one frame
+    Fixture f;
+    f.add_worker();
+    f.inventory(f.mine).add(world::items::Coal, 250);
+    f.bus.publish(world::HaulersRequested{f.route, world::HaulMode::Take, 1});
+
+    // When
+    for (int i = 0; i < 300; ++i) {
+        f.workers.update(0.2f);
+        f.follow.update(0.2f);
+        f.move.update(0.2f);
+        f.haul.update(0.2f);
+    }
+
+    // Then
+    EXPECT_EQ(f.inventory(f.storage).count(world::items::Coal), 250);
+}
+
+TEST(HaulSystem, SeveralHaulersOnOneRouteWithCollisionAndTrafficStillDeliverEverything) {
+    // Given: three haulers on the same corridor, walking both ways, with building and unit
+    // collision as in the game
+    Fixture f;
+    for (int i = 0; i < 3; ++i) f.add_worker();
+    f.inventory(f.mine).add(world::items::Coal, 250);
+    f.inventory(f.storage) = world::Inventory{10};
+    f.bus.publish(world::HaulersRequested{f.route, world::HaulMode::Take, 3});
+    world::UnitTrafficSystem traffic{f.registry};
+    world::CharacterMoveSystem colliding{f.registry, f.bus, &f.terrain};
+
+    // When
+    for (int i = 0; i < 1200; ++i) {
+        f.workers.update(Frame);
+        f.follow.update(Frame);
+        traffic.update(Frame);
+        colliding.update(Frame);
+        f.haul.update(Frame);
+    }
+
+    // Then: the coal ends up in the storage, nothing is stuck in a hauler
+    int carried = 0;
+    f.registry.each<world::Hauler>([&](core::EntityId id, world::Hauler&) {
+        carried += f.inventory(id).count(world::items::Coal);
+    });
+    EXPECT_EQ(f.inventory(f.storage).count(world::items::Coal) + carried, 250);
+    EXPECT_EQ(f.inventory(f.mine).count(world::items::Coal), 0);
+}
+
+TEST(HaulSystem, WorkersWaitingAtTheHeadquartersStayWhereTheyAre) {
+    // Given: a crowd of idle workers on one spot, with traffic and collision running
+    Fixture f;
+    for (int i = 0; i < 100; ++i) f.add_worker();
+    world::UnitTrafficSystem traffic{f.registry};
+    world::CharacterMoveSystem colliding{f.registry, f.bus, &f.terrain};
+
+    // When
+    for (int i = 0; i < 100; ++i) {
+        f.workers.update(Frame);
+        f.follow.update(Frame);
+        traffic.update(Frame);
+        colliding.update(Frame);
+    }
+
+    // Then
+    f.registry.each<world::Worker>([&](core::EntityId id, world::Worker&) {
+        const auto& at = f.registry.get<world::Position>(id)->point;
+        EXPECT_FLOAT_EQ(at.x, 0.5f);
+        EXPECT_FLOAT_EQ(at.y, 0.5f);
+    });
 }

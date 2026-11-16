@@ -13,6 +13,8 @@
 #include "scene/world/core/systems/character_move_system.hpp"
 #include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/player_controlled.hpp"
+#include "scene/world/core/components/route_follower.hpp"
+#include "scene/world/core/components/unit.hpp"
 #include "scene/world/core/terrain/terrain.hpp"
 
 namespace {
@@ -396,4 +398,75 @@ TEST(CharacterMoveSystem, BlockedPlayerStopsTouchingTheBuildingInsteadOfAStepSho
 
     // Then: its body ends against the building's edge
     EXPECT_NEAR(registry.get<world::Position>(id)->point.x, 1.0f - world::PlayerRadius, 0.01f);
+}
+
+namespace {
+
+// A unit at (0.5, 0.5) walking right, following the route between `from` and `to`.
+core::EntityId spawn_unit_walker(core::Registry& registry, core::EntityId from, core::EntityId to) {
+    const core::EntityId id = spawn_walker(registry, 1.0f, {1.0f, 0.0f});
+    registry.get<world::Position>(id)->point = {0.5f, 0.5f};
+    registry.add(id, world::Unit{});
+    registry.add(id, world::RouteFollower{{from, to}});
+    return id;
+}
+
+core::EntityId building_on(core::Registry& registry, world::TileCoord tile) {
+    const core::EntityId id = registry.create("Mine");
+    registry.add(id, world::Building{world::BuildingType::Mine, tile, {1, 1}});
+    return id;
+}
+
+} // namespace
+
+TEST(CharacterMoveSystem, AUnitStopsAtABuildingThatIsNotOnItsRoute) {
+    // Given: a building right of the unit, which walks a route between two others
+    core::Registry registry;
+    event::EventBus bus;
+    const world::Terrain terrain(777);
+    world::CharacterMoveSystem system(registry, bus, &terrain);
+    building_on(registry, {1, 0});
+    const auto hq = building_on(registry, {-4, 0});
+    const auto mine = building_on(registry, {-4, 4});
+    const auto unit = spawn_unit_walker(registry, hq, mine);
+
+    // When
+    for (int step = 0; step < 20; ++step) system.update(0.1f);
+
+    // Then
+    EXPECT_LE(registry.get<world::Position>(unit)->point.x, 1.0f - world::UnitRadius);
+}
+
+TEST(CharacterMoveSystem, AUnitWalksIntoTheBuildingsAtTheEndsOfItsRoute) {
+    // Given: the building right of the unit is where its route ends
+    core::Registry registry;
+    event::EventBus bus;
+    const world::Terrain terrain(777);
+    world::CharacterMoveSystem system(registry, bus, &terrain);
+    const auto mine = building_on(registry, {1, 0});
+    const auto hq = building_on(registry, {-4, 0});
+    const auto unit = spawn_unit_walker(registry, hq, mine);
+
+    // When
+    system.update(1.0f);
+
+    // Then
+    EXPECT_FLOAT_EQ(registry.get<world::Position>(unit)->point.x, 1.5f);
+}
+
+TEST(CharacterMoveSystem, AUnitWithoutARouteStopsAtAnyBuilding) {
+    // Given
+    core::Registry registry;
+    event::EventBus bus;
+    const world::Terrain terrain(777);
+    world::CharacterMoveSystem system(registry, bus, &terrain);
+    building_on(registry, {1, 0});
+    const auto unit = spawn_unit_walker(registry, 0, 0);
+    registry.remove<world::RouteFollower>(unit);
+
+    // When
+    for (int step = 0; step < 20; ++step) system.update(0.1f);
+
+    // Then
+    EXPECT_LT(registry.get<world::Position>(unit)->point.x, 1.0f);
 }

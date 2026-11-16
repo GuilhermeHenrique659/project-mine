@@ -53,7 +53,7 @@ struct Fixture {
 
 } // namespace
 
-TEST(RouteFollowSystem, AWalkerAtTheStartHeadsToTheNextWaypoint) {
+TEST(RouteFollowSystem, AWalkerAtTheStartHeadsToTheNextWaypointOnItsLane) {
     // Given
     Fixture f;
     const auto walker = f.add_walker({0.5f, 0.5f}, world::RouteEnd::Stop);
@@ -61,9 +61,9 @@ TEST(RouteFollowSystem, AWalkerAtTheStartHeadsToTheNextWaypoint) {
     // When
     f.system.update(Frame);
 
-    // Then
-    EXPECT_GT(f.direction(walker).x, 0.0f);
-    EXPECT_FLOAT_EQ(f.direction(walker).y, 0.0f);
+    // Then: towards (1, 0), LaneOffset to the right of the +x heading
+    EXPECT_FLOAT_EQ(f.direction(walker).x, 1.0f);
+    EXPECT_FLOAT_EQ(f.direction(walker).y, world::LaneOffset);
 }
 
 TEST(RouteFollowSystem, StopModeStandsStillAtTheEndOfTheRoute) {
@@ -162,4 +162,60 @@ TEST(RouteFollowSystem, AfterARecalculationResumesFromTheNearestWaypoint) {
     const world::TileCoord next = route->tiles[follower.waypoint];
     EXPECT_FALSE(next == (world::TileCoord{2, 0}));
     EXPECT_LE(std::hypot(next.x + 0.5f - 1.5f, next.y + 0.5f - 0.5f), 1.5f);
+}
+
+TEST(RouteFollowSystem, WalkersGoingOppositeWaysKeepToOppositeSidesOfTheRoute) {
+    // Given: one walking out, one walking back, along the row y = 0
+    Fixture f;
+    const auto out = f.add_walker({0.5f, 0.5f}, world::RouteEnd::Loop);
+    const auto back = f.add_walker({3.5f, 0.5f}, world::RouteEnd::Loop);
+    f.registry.get<world::RouteFollower>(back)->forward = false;
+    world::CharacterMoveSystem move{f.registry, f.bus};
+
+    // When: half a tile per walker, still in the middle of the route
+    for (int frame = 0; frame < 8; ++frame) {
+        f.system.update(Frame);
+        move.update(Frame);
+    }
+
+    // Then: each is off the centre line by about a lane, on opposite sides
+    const float out_side = f.registry.get<world::Position>(out)->point.y - 0.5f;
+    const float back_side = f.registry.get<world::Position>(back)->point.y - 0.5f;
+    EXPECT_GT(std::abs(out_side), world::LaneOffset / 2.0f);
+    EXPECT_GT(std::abs(back_side), world::LaneOffset / 2.0f);
+    EXPECT_LT(out_side * back_side, 0.0f);
+}
+
+TEST(RouteFollowSystem, AWalkerPushedPastItsWaypointMovesOnInsteadOfTurningBack) {
+    // Given: heading to (2, 0), but already beyond it and off its lane
+    Fixture f;
+    const auto walker = f.add_walker({2.75f, 0.95f}, world::RouteEnd::Stop);
+    auto& follower = *f.registry.get<world::RouteFollower>(walker);
+    follower.revision = f.network.revision();
+    follower.waypoint = 2;
+
+    // When
+    f.system.update(Frame);
+
+    // Then
+    EXPECT_EQ(f.registry.get<world::RouteFollower>(walker)->waypoint, 3u);
+    EXPECT_GT(f.direction(walker).x, 0.0f);
+}
+
+TEST(RouteFollowSystem, AStopWalkerEndsOnTheCentreOfTheLastTileNotOnItsLane) {
+    // Given
+    Fixture f;
+    const auto walker = f.add_walker({0.5f, 0.5f}, world::RouteEnd::Stop);
+    world::CharacterMoveSystem move{f.registry, f.bus};
+
+    // When
+    for (int frame = 0; frame < 100; ++frame) {
+        f.system.update(Frame);
+        move.update(Frame);
+    }
+
+    // Then
+    const world::WorldPoint at = f.registry.get<world::Position>(walker)->point;
+    EXPECT_NEAR(at.x, 3.5f, 0.01f);
+    EXPECT_NEAR(at.y, 0.5f, 0.01f);
 }
