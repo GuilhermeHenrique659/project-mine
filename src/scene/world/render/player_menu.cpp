@@ -1,5 +1,6 @@
 #include "scene/world/render/player_menu.hpp"
 
+#include "scene/world/render/energy_page.hpp"
 #include "ui/theme.hpp"
 
 namespace scene::world {
@@ -15,12 +16,16 @@ constexpr float SeparatorHeight = 2.0f;
 PlayerMenu::PlayerMenu(WorldModel& model, std::shared_ptr<const input::Pointer> pointer)
     : model_(model), pointer_(std::move(pointer)),
       tab_bar_(std::make_unique<ui::TabBar>(
-          std::vector<ui::Tab>{{"Inventory", true}, {"Statistics", false}, {"Logistics", false}},
+          std::vector<ui::Tab>{{"Inventory", true},
+                               {"Energy", true},
+                               {"Statistics", false},
+                               {"Logistics", false}},
           ui::theme::tab_style(), ui::theme::active_tab_style(),
           ui::theme::disabled_tab_style())),
       close_button_(std::make_unique<ui::Button>("X", ui::theme::close_button_style(), true)) {
     close_button_->set_on_click([&model] { model.close_player_menu(); });
     pages_.push_back(std::make_unique<InventoryGrid>(model.registry(), model.player_id()));
+    pages_.push_back(std::make_unique<EnergyPage>(model.registry()));
     pages_.push_back(nullptr); // Statistics: not available yet
     pages_.push_back(nullptr); // Logistics: not available yet
 }

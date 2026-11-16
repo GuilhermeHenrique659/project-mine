@@ -9,7 +9,7 @@
 
 - **Pause (Esc)**: shows a menu with the save's name and creation date, a Save button (writes the save again, keeping the previous file as `<name>.sav_old`) and a Main Menu button.
 - **Player**: drawn as a cube labelled with its name and state (`Idle` / `Moving`); walks with WASD (diagonals are not faster, stops on release); the camera follows it so it stays at the screen centre. The mouse wheel zooms. A `CharacterStateChanged` event is published when it starts or stops moving.
-- **Inventory**: 40 slots of item stacks. A new game's player starts with 200 iron ore. Tab opens the player menu (the world keeps running; Esc, Tab or its X closes it) with tabs Inventory (slot grid), Statistics and Logistics (disabled).
+- **Inventory**: 40 slots of item stacks. A new game's player starts with 200 iron ore. Tab opens the player menu (the world keeps running; Esc, Tab or its X closes it) with tabs Inventory (slot grid), Energy (power produced and consumed, overload warning, the list of generators and of consumers with their kW and whether they run) and Statistics and Logistics (disabled).
 - **Build bar (B)**: icon tabs Special / Mines / Factories / Military, each with a drop-up list. Only these can be picked:
   - Headquarters: free, built at once, only one.
   - Mine: 100 iron ore, effort 300, only on an ore tile, only once a Headquarters exists.

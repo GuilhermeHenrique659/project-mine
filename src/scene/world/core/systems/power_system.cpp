@@ -35,8 +35,9 @@ void PowerSystem::update(float delta_time) {
         if (registry_.has<ConstructionSite>(id)) {
             return;
         }
-        if (generator.spec.input &&
-            !burn_fuel(generator, registry_.get<Inventory>(id), delta_time)) {
+        generator.running = !generator.spec.input ||
+                            burn_fuel(generator, registry_.get<Inventory>(id), delta_time);
+        if (!generator.running) {
             return;
         }
         supply_kw_ += generator.spec.power_kw;

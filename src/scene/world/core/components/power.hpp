@@ -20,10 +20,12 @@ struct GeneratorSpec {
 };
 
 // A building that generates electrical power (see GeneratorSpec). `progress` counts
-// towards the next consumption of its input (1 = one input stack burnt); it is not saved.
+// towards the next consumption of its input (1 = one input stack burnt); `running` is set
+// by the PowerSystem (false while it lacks its input). Neither is saved.
 struct Generator {
     GeneratorSpec spec;
     float progress = 0.0f;
+    bool running = true;
 };
 
 // A building that needs `demand_kw` of power to work. The PowerSystem sets `powered`:
