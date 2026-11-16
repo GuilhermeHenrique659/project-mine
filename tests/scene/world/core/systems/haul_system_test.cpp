@@ -353,3 +353,42 @@ TEST(HaulSystem, TakeModeLeavesTheProducersFilteredInputSlotsAlone) {
     EXPECT_EQ(f.inventory(f.storage).count(world::items::IronOre), 0);
     EXPECT_EQ(f.inventory(f.mine).count(world::items::IronOre), 40);
 }
+
+TEST(HaulSystem, PutModeCarriesOnlyTheItemsTheProducerTakesAsInputs) {
+    // Given: coal stored before the copper, a producer whose only input is copper ore
+    Fixture f;
+    f.add_worker();
+    f.inventory(f.storage).add(world::items::Coal, 100);
+    f.inventory(f.storage).add(world::items::CopperOre, 150);
+    world::Inventory producer{2};
+    producer.append(2, world::ItemType::CopperOre);
+    f.inventory(f.mine) = producer;
+    f.bus.publish(world::HaulersRequested{f.route, world::HaulMode::Put, 1});
+
+    // When
+    f.run(600);
+
+    // Then
+    EXPECT_EQ(f.inventory(f.mine).count(world::items::CopperOre), 150);
+    EXPECT_EQ(f.inventory(f.mine).count(world::items::Coal), 0);
+    EXPECT_EQ(f.inventory(f.storage).count(world::items::Coal), 100);
+}
+
+TEST(HaulSystem, PutModeLeavesAnInputInTheStorageWhileTheProducersSectionIsFull) {
+    // Given: the producer's only copper slot is full
+    Fixture f;
+    const auto worker = f.add_worker();
+    f.inventory(f.storage).add(world::items::CopperOre, 80);
+    world::Inventory producer{2};
+    producer.append(1, world::ItemType::CopperOre);
+    producer.add(world::items::CopperOre, 100);
+    f.inventory(f.mine) = producer;
+    f.bus.publish(world::HaulersRequested{f.route, world::HaulMode::Put, 1});
+
+    // When
+    f.run(600);
+
+    // Then
+    EXPECT_EQ(f.inventory(f.storage).count(world::items::CopperOre), 80);
+    EXPECT_TRUE(f.inventory(worker).is_empty());
+}

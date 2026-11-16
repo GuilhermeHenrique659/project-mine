@@ -35,15 +35,33 @@ void follow(core::Registry& registry, core::EntityId id, RouteFollower follower)
     registry.add(id, follower);
 }
 
+// Whether `destination` wants the item: a building with input sections wants only its
+// inputs, and only while they have room; one without (a storage, a mine) takes anything.
+bool wants(const Inventory& destination, Item item) {
+    bool has_sections = false;
+    bool is_input = false;
+    for (std::size_t i = 0; i < destination.capacity(); ++i) {
+        const auto filter = destination.filter(i);
+        has_sections = has_sections || filter.has_value();
+        is_input = is_input || filter == item.type;
+    }
+    if (!has_sections) {
+        return true;
+    }
+    Inventory probe = destination;
+    return is_input && probe.add(item, 1) == 0;
+}
+
 // Fills the hauler's empty inventory with the first item in a general slot of `source`
-// (filtered slots hold a building's inputs and stay), as much as fits.
-void load(Inventory& hauler, Inventory& source) {
+// (filtered slots hold a building's inputs and stay) that `destination` wants, as much
+// as fits.
+void load(Inventory& hauler, Inventory& source, const Inventory& destination) {
     if (!hauler.is_empty()) {
         return;
     }
     for (std::size_t i = 0; i < source.slots().size(); ++i) {
         const auto& slot = source.slots()[i];
-        if (!slot || source.filter(i)) {
+        if (!slot || source.filter(i) || !wants(destination, slot->item)) {
             continue;
         }
         const ItemStack stack = *slot;
@@ -211,8 +229,10 @@ void HaulSystem::update(float) {
             continue;
         }
         const bool at_source = (hauler.mode == HaulMode::Take) == at_producer;
-        if (at_source) {
-            load(*carried, *here);
+        const Inventory* there =
+            registry_.get<Inventory>(at_storage ? hauler.route.to : hauler.route.from);
+        if (at_source && there != nullptr) {
+            load(*carried, *here, *there);
         } else {
             unload(*carried, *here);
         }
