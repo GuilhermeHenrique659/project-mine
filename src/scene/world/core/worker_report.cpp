@@ -23,7 +23,7 @@ WorkerReport worker_report(const core::Registry& registry) {
             registry.has<ConstructionSite>(entity.id)) {
             continue;
         }
-        report.workplaces.push_back({entity.id, entity.label, building->tile, 0, staffing->needed});
+        report.workplaces.push_back({entity.id, entity.label, building->type, building->tile, 0, staffing->needed});
     }
     for (const core::Entity& entity : registry.entities()) {
         const auto* worker = registry.get<Worker>(entity.id);

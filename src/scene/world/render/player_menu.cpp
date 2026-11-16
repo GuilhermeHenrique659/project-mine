@@ -29,9 +29,11 @@ PlayerMenu::PlayerMenu(WorldModel& model, std::shared_ptr<const input::Pointer> 
     close_button_->set_on_click([&model] { model.close_player_menu(); });
     pages_.push_back(std::make_unique<InventoryGrid>(model.registry(), model.player_id()));
     pages_.push_back(std::make_unique<EnergyPage>(model.registry()));
-    pages_.push_back(std::make_unique<WorkersPage>(
+    auto workers = std::make_unique<WorkersPage>(
         model.registry(),
-        [&model](core::EntityId building, int count) { model.request_workers(building, count); }));
+        [&model](core::EntityId building, int count) { model.request_workers(building, count); });
+    workers_ = workers.get();
+    pages_.push_back(std::move(workers));
     pages_.push_back(nullptr); // Statistics: not available yet
     auto logistics = std::make_unique<LogisticsPage>(
         model.registry(), model.routes(),
@@ -54,9 +56,13 @@ void PlayerMenu::update() {
     tab_bar_->handle_pointer(position, released);
     if (const auto& page = pages_[tab_bar_->active()]) {
         page->handle_pointer(position, released);
-        // The mouse wheel over the Logistics page scrolls its routes.
-        if (page.get() == logistics_ && page->bounds().contains(position)) {
-            logistics_->scroll(pointer_->scroll());
+        // The mouse wheel over the Workers or Logistics page scrolls its list.
+        if (page->bounds().contains(position)) {
+            if (page.get() == logistics_) {
+                logistics_->scroll(pointer_->scroll());
+            } else if (page.get() == workers_) {
+                workers_->scroll(pointer_->scroll());
+            }
         }
     }
     // Last: a click on it closes the menu.

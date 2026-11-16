@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "core/registry.hpp"
+#include "scene/world/core/construction/building_type.hpp"
 #include "scene/world/core/isometric.hpp"
 
 namespace world {
@@ -12,6 +13,7 @@ namespace world {
 struct WorkplaceEntry {
     core::EntityId id = 0;
     std::string name;
+    BuildingType type = BuildingType::Headquarters;
     TileCoord tile{};
     int assigned = 0;
     int needed = 0;
