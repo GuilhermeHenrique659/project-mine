@@ -1,6 +1,7 @@
 #include "scene/world/render/player_menu.hpp"
 
 #include "scene/world/render/energy_page.hpp"
+#include "scene/world/render/workers_page.hpp"
 #include "ui/theme.hpp"
 
 namespace scene::world {
@@ -18,6 +19,7 @@ PlayerMenu::PlayerMenu(WorldModel& model, std::shared_ptr<const input::Pointer> 
       tab_bar_(std::make_unique<ui::TabBar>(
           std::vector<ui::Tab>{{"Inventory", true},
                                {"Energy", true},
+                               {"Workers", true},
                                {"Statistics", false},
                                {"Logistics", false}},
           ui::theme::tab_style(), ui::theme::active_tab_style(),
@@ -26,6 +28,9 @@ PlayerMenu::PlayerMenu(WorldModel& model, std::shared_ptr<const input::Pointer> 
     close_button_->set_on_click([&model] { model.close_player_menu(); });
     pages_.push_back(std::make_unique<InventoryGrid>(model.registry(), model.player_id()));
     pages_.push_back(std::make_unique<EnergyPage>(model.registry()));
+    pages_.push_back(std::make_unique<WorkersPage>(
+        model.registry(),
+        [&model](core::EntityId building, int count) { model.request_workers(building, count); }));
     pages_.push_back(nullptr); // Statistics: not available yet
     pages_.push_back(nullptr); // Logistics: not available yet
 }

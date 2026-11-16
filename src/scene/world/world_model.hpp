@@ -82,6 +82,10 @@ public:
     // Asks to move items between two inventories (::world::ItemTransferRequested).
     void request_transfer(core::EntityId from, core::EntityId to, ::world::Item item, int count);
 
+    // Asks to send `count` idle workers to a production building, or with a negative count
+    // to send that many of its workers back (::world::WorkerAssignmentRequested).
+    void request_workers(core::EntityId building, int count);
+
     // The "back" action (Esc): closes the transfer or the player menu when one is open,
     // otherwise opens or closes the pause.
     void cancel();

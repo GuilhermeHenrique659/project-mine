@@ -6,6 +6,8 @@
 #include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/inventory.hpp"
 #include "scene/world/core/components/power.hpp"
+#include "scene/world/core/components/position.hpp"
+#include "scene/world/core/components/worker.hpp"
 #include "scene/world/core/entities/building.hpp"
 #include "scene/world/core/systems/production_system.hpp"
 
@@ -35,6 +37,24 @@ struct Fixture {
         world::make_building(registry, id, *world::find_construction(world::BuildingType::Mine),
                              tile.value_or(world::TileCoord{}));
         registry.remove<world::ConstructionSite>(id);
+        return id;
+    }
+
+    // `count` workers assigned to `building`, standing `offset` tiles from it.
+    void staff(core::EntityId building, int count, float offset = 0.0f) {
+        const world::WorldPoint at = registry.get<world::Position>(building)->point;
+        for (int i = 0; i < count; ++i) {
+            const core::EntityId id = registry.create("Worker");
+            registry.add(id, world::Worker{world::WorkerState::Working, building});
+            registry.add(id, world::Position{{at.x + offset, at.y}});
+        }
+    }
+
+    // A fully staffed catalog mine on the first tile of `ore`.
+    core::EntityId staffed_mine_on(world::TileType ore) {
+        const core::EntityId id = mine_on(ore);
+        staff(id, world::find_construction(world::BuildingType::Mine)
+                      ->blueprint.find<world::Staffing>()->needed);
         return id;
     }
 
@@ -74,11 +94,66 @@ TEST(ProductionSystem, TheMineRecipeNeedsNoInputAndYieldsTheGroundAtHalfAnItemPe
     EXPECT_FLOAT_EQ(recipe->rate, 0.5f);
 }
 
+TEST(ProductionSystem, AMineNeedsTenWorkersForItsFullRate) {
+    // Given / When
+    const auto* staffing =
+        world::find_construction(world::BuildingType::Mine)->blueprint.find<world::Staffing>();
+
+    // Then
+    ASSERT_NE(staffing, nullptr);
+    EXPECT_EQ(staffing->needed, 10);
+}
+
+TEST(ProductionSystem, AMineWithHalfItsWorkersProducesAtHalfTheRate) {
+    // Given
+    Fixture f;
+    const core::EntityId mine = f.mine_on(world::TileType::IronOre);
+    f.staff(mine, 5);
+
+    // When: 0.5/s at half rate = one ore every 4 s
+    f.system.update(3.9f);
+    const int before = f.count(mine, world::items::IronOre);
+    f.system.update(0.2f);
+
+    // Then
+    EXPECT_EQ(before, 0);
+    EXPECT_EQ(f.count(mine, world::items::IronOre), 1);
+    EXPECT_EQ(f.status(mine).state, world::BuildingState::Working);
+}
+
+TEST(ProductionSystem, AMineWithoutWorkersIsIdleForLackOfWorkersAndProducesNothing) {
+    // Given
+    Fixture f;
+    const core::EntityId mine = f.mine_on(world::TileType::IronOre);
+
+    // When
+    f.system.update(10.0f);
+
+    // Then
+    EXPECT_EQ(f.count(mine, world::items::IronOre), 0);
+    EXPECT_EQ(f.status(mine).state, world::BuildingState::Idle);
+    EXPECT_EQ(f.status(mine).reason, world::IdleReason::NoWorkers);
+}
+
+TEST(ProductionSystem, WorkersStillWalkingToTheBuildingDoNotCount) {
+    // Given: assigned, but 5 tiles away (reach is 2)
+    Fixture f;
+    const core::EntityId mine = f.mine_on(world::TileType::IronOre);
+    f.staff(mine, 10, 5.0f);
+
+    // When
+    f.system.update(10.0f);
+
+    // Then
+    EXPECT_EQ(f.count(mine, world::items::IronOre), 0);
+    EXPECT_EQ(f.status(mine).reason, world::IdleReason::NoWorkers);
+}
+
 TEST(ProductionSystem, AMineProducesTheOreUnderItAtItsRate) {
     // Given
     Fixture f;
-    const core::EntityId iron = f.mine_on(world::TileType::IronOre);
-    const core::EntityId coal = f.mine_on(world::TileType::Coal);
+    const core::EntityId iron = f.staffed_mine_on(world::TileType::IronOre);
+    const core::EntityId coal = f.staffed_mine_on(world::TileType::Coal);
 
     // When
     f.system.update(4.0f);
@@ -91,7 +166,7 @@ TEST(ProductionSystem, AMineProducesTheOreUnderItAtItsRate) {
 TEST(ProductionSystem, PartialProgressCarriesOverToTheNextFrame) {
     // Given
     Fixture f;
-    const core::EntityId mine = f.mine_on(world::TileType::CopperOre);
+    const core::EntityId mine = f.staffed_mine_on(world::TileType::CopperOre);
 
     // When
     f.system.update(1.5f);
@@ -106,7 +181,7 @@ TEST(ProductionSystem, PartialProgressCarriesOverToTheNextFrame) {
 TEST(ProductionSystem, AConstructionSiteProducesNothing) {
     // Given
     Fixture f;
-    const core::EntityId mine = f.mine_on(world::TileType::IronOre);
+    const core::EntityId mine = f.staffed_mine_on(world::TileType::IronOre);
     f.registry.add(mine, world::ConstructionSite{0.0f, 300.0f});
 
     // When
@@ -149,7 +224,7 @@ TEST(ProductionSystem, AnInputIsConsumedForEachOutputAndItsLackStopsProduction) 
 TEST(ProductionSystem, AnUnpoweredBuildingIsIdleForLackOfPowerAndProducesNothing) {
     // Given
     Fixture f;
-    const core::EntityId mine = f.mine_on(world::TileType::IronOre);
+    const core::EntityId mine = f.staffed_mine_on(world::TileType::IronOre);
     f.registry.get<world::PowerConsumer>(mine)->powered = false;
 
     // When
@@ -164,7 +239,7 @@ TEST(ProductionSystem, AnUnpoweredBuildingIsIdleForLackOfPowerAndProducesNothing
 TEST(ProductionSystem, APoweredProducingBuildingIsWorking) {
     // Given: a mine idle last frame for lack of power, powered again
     Fixture f;
-    const core::EntityId mine = f.mine_on(world::TileType::IronOre);
+    const core::EntityId mine = f.staffed_mine_on(world::TileType::IronOre);
     f.registry.get<world::PowerConsumer>(mine)->powered = false;
     f.system.update(1.0f);
     f.registry.get<world::PowerConsumer>(mine)->powered = true;

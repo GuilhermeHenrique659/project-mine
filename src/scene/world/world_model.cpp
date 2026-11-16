@@ -8,6 +8,7 @@
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/events/building_events.hpp"
 #include "scene/world/core/events/item_transfer_requested.hpp"
+#include "scene/world/core/events/worker_events.hpp"
 #include "scene/world/core/systems/build_system.hpp"
 #include "scene/world/core/systems/inventory_transfer_system.hpp"
 #include "scene/world/core/systems/power_system.hpp"
@@ -17,6 +18,7 @@
 #include "scene/world/core/systems/player_input_system.hpp"
 #include "scene/world/core/systems/route_follow_system.hpp"
 #include "scene/world/core/systems/route_system.hpp"
+#include "scene/world/core/systems/worker_system.hpp"
 
 namespace scene::world {
 
@@ -42,6 +44,9 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
     // followers then steer along them, before movement reads their direction.
     systems_.push_back(
         std::make_unique<::world::RouteSystem>(registry_, bus_, terrain_, routes_));
+    // Workers spawn with the headquarters and take free construction sites, then follow
+    // the route to them.
+    systems_.push_back(std::make_unique<::world::WorkerSystem>(registry_, bus_, factory_));
     systems_.push_back(std::make_unique<::world::RouteFollowSystem>(registry_, routes_));
     systems_.push_back(std::make_unique<::world::CharacterMoveSystem>(registry_, bus_));
     // After movement, so the camera is on the player's new position.
@@ -166,6 +171,10 @@ void WorldModel::open_transfer(::world::TileCoord tile) {
 void WorldModel::request_transfer(core::EntityId from, core::EntityId to, ::world::Item item,
                                   int count) {
     bus_.publish(::world::ItemTransferRequested{from, to, item, count});
+}
+
+void WorldModel::request_workers(core::EntityId building, int count) {
+    bus_.publish(::world::WorkerAssignmentRequested{building, count});
 }
 
 void WorldModel::cancel() {

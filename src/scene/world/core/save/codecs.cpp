@@ -6,7 +6,10 @@
 #include <string>
 #include <string_view>
 
+#include "scene/world/core/components/builder.hpp"
 #include "scene/world/core/components/building.hpp"
+#include "scene/world/core/components/route_follower.hpp"
+#include "scene/world/core/components/worker.hpp"
 #include "scene/world/core/components/inventory.hpp"
 #include "scene/world/core/entities/building.hpp"
 #include "scene/world/core/components/player_controlled.hpp"
@@ -82,7 +85,64 @@ std::optional<ItemStack> parse_stack(std::string_view text) {
     return ItemStack{item, *count};
 }
 
+// "<prefix>.x" / "<prefix>.y" of a building's tile; nothing when `building` is not one.
+void write_tile(const core::Registry& registry, core::EntityId building, const std::string& prefix,
+                Fields& fields) {
+    const Building* found = registry.get<Building>(building);
+    if (found == nullptr) {
+        return;
+    }
+    fields[prefix + ".x"] = text::format(found->tile.x);
+    fields[prefix + ".y"] = text::format(found->tile.y);
+}
+
+std::optional<TileCoord> read_tile(const Fields& fields, const std::string& prefix) {
+    const auto x = fields.find(prefix + ".x");
+    const auto y = fields.find(prefix + ".y");
+    if (x == fields.end() || y == fields.end()) {
+        return std::nullopt;
+    }
+    const auto tx = text::parse<int>(x->second);
+    const auto ty = text::parse<int>(y->second);
+    if (!tx || !ty) {
+        return std::nullopt;
+    }
+    return TileCoord{*tx, *ty};
+}
+
 } // namespace
+
+void WorkerCodec::write(const core::Registry& registry, core::EntityId id, Fields& fields) const {
+    const Worker* worker = registry.get<Worker>(id);
+    if (worker == nullptr) {
+        return;
+    }
+    fields["worker.state"] = to_string(worker->state);
+    write_tile(registry, worker->workplace, "worker.workplace", fields);
+    if (const Builder* builder = registry.get<Builder>(id)) {
+        write_tile(registry, builder->site, "worker.site", fields);
+    }
+    if (const RouteFollower* follower = registry.get<RouteFollower>(id)) {
+        write_tile(registry, follower->route.to, "worker.route", fields);
+        fields["worker.route.forward"] = follower->forward ? "1" : "0";
+    }
+}
+
+void WorkerCodec::read(core::Registry& registry, core::EntityId id, const Fields& fields) const {
+    Worker* worker = registry.get<Worker>(id);
+    if (worker == nullptr) {
+        return;
+    }
+    const auto state = fields.find("worker.state");
+    worker->state = state != fields.end() && state->second == to_string(WorkerState::Working)
+                        ? WorkerState::Working
+                        : WorkerState::Idle;
+    PendingWorkerLinks links{read_tile(fields, "worker.workplace"), read_tile(fields, "worker.site"),
+                             read_tile(fields, "worker.route")};
+    const auto forward = fields.find("worker.route.forward");
+    links.forward = forward == fields.end() || forward->second != "0";
+    registry.add(id, links);
+}
 
 void PositionCodec::write(const core::Registry& registry, core::EntityId id,
                           Fields& fields) const {

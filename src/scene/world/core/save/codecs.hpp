@@ -57,4 +57,14 @@ public:
     void read(core::Registry& registry, core::EntityId id, const Fields& fields) const override;
 };
 
+// "worker.state" ("Idle" / "Working") and, by building tile, "worker.workplace.x/y",
+// "worker.site.x/y" and "worker.route.x/y" + "worker.route.forward" ("1" / "0") for the
+// route being walked. On read the tiles become a PendingWorkerLinks the WorkerSystem
+// resolves; a missing building then leaves the worker idle.
+class WorkerCodec : public ComponentCodec {
+public:
+    void write(const core::Registry& registry, core::EntityId id, Fields& fields) const override;
+    void read(core::Registry& registry, core::EntityId id, const Fields& fields) const override;
+};
+
 } // namespace world

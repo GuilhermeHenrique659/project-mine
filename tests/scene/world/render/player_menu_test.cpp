@@ -50,7 +50,7 @@ TEST(PlayerMenu, IsVisibleOnlyWhileOpenAndTheGameIsNotPaused) {
     EXPECT_FALSE(m.menu.visible());
 }
 
-TEST(PlayerMenu, OpensOnTheInventoryTabWithEnergyNextAndStatisticsAndLogisticsDisabled) {
+TEST(PlayerMenu, OpensOnTheInventoryTabWithEnergyAndWorkersNextAndStatisticsAndLogisticsDisabled) {
     // Given
     Menu m;
 
@@ -58,16 +58,18 @@ TEST(PlayerMenu, OpensOnTheInventoryTabWithEnergyNextAndStatisticsAndLogisticsDi
     const ui::TabBar& tabs = m.menu.tab_bar();
 
     // Then
-    ASSERT_EQ(tabs.tabs().size(), 4u);
+    ASSERT_EQ(tabs.tabs().size(), 5u);
     EXPECT_EQ(tabs.tabs()[0].title, "Inventory");
     EXPECT_EQ(tabs.tabs()[1].title, "Energy");
-    EXPECT_EQ(tabs.tabs()[2].title, "Statistics");
-    EXPECT_EQ(tabs.tabs()[3].title, "Logistics");
+    EXPECT_EQ(tabs.tabs()[2].title, "Workers");
+    EXPECT_EQ(tabs.tabs()[3].title, "Statistics");
+    EXPECT_EQ(tabs.tabs()[4].title, "Logistics");
     EXPECT_EQ(tabs.active(), 0u);
     EXPECT_TRUE(tabs.tabs()[0].enabled);
     EXPECT_TRUE(tabs.tabs()[1].enabled);
-    EXPECT_FALSE(tabs.tabs()[2].enabled);
+    EXPECT_TRUE(tabs.tabs()[2].enabled);
     EXPECT_FALSE(tabs.tabs()[3].enabled);
+    EXPECT_FALSE(tabs.tabs()[4].enabled);
 }
 
 TEST(PlayerMenu, CoversAlmostTheWholeScreenCentred) {
@@ -108,7 +110,7 @@ TEST(PlayerMenu, ClickingADisabledTabKeepsTheInventoryOpen) {
     Menu m;
     m.model.toggle_player_menu();
     m.menu.layout(m.canvas, Screen);
-    const ui::Rect statistics = m.menu.tab_bar().tab_bounds()[2];
+    const ui::Rect statistics = m.menu.tab_bar().tab_bounds()[3];
     m.pointer->at = {statistics.x + statistics.width / 2.0f, statistics.y + statistics.height / 2.0f};
     m.pointer->release = true;
 
@@ -173,4 +175,26 @@ TEST(PlayerMenu, ClickingTheEnergyTabShowsThePowerSummary) {
         if (text.text.starts_with("Produced:")) summary = true;
     }
     EXPECT_TRUE(summary);
+}
+
+TEST(PlayerMenu, ClickingTheWorkersTabShowsTheIdleWorkers) {
+    // Given
+    Menu m;
+    m.model.toggle_player_menu();
+    m.menu.layout(m.canvas, Screen);
+    const ui::Rect workers = m.menu.tab_bar().tab_bounds()[2];
+    m.pointer->at = {workers.x + workers.width / 2.0f, workers.y + workers.height / 2.0f};
+    m.pointer->release = true;
+
+    // When
+    m.menu.update();
+    m.menu.draw(m.canvas, Screen);
+
+    // Then
+    EXPECT_EQ(m.menu.tab_bar().active(), 2u);
+    bool idle = false;
+    for (const DrawnText& text : m.canvas.texts) {
+        if (text.text.starts_with("Idle workers:")) idle = true;
+    }
+    EXPECT_TRUE(idle);
 }

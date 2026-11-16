@@ -12,6 +12,8 @@
 #include "scene/world/core/components/character.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/entities/character.hpp"
+#include "scene/world/core/components/worker.hpp"
+#include "scene/world/core/entities/worker.hpp"
 
 namespace {
 
@@ -171,4 +173,26 @@ TEST(EntityRenderer, ABuildingIsABiggerCubeAndASiteShowsItsProgress) {
     EXPECT_GT(width_of(canvas, 1), width_of(canvas, 0));
     ASSERT_EQ(canvas.texts.size(), 2u);
     EXPECT_EQ(canvas.texts[1].text, "Mine (25%)");
+}
+
+TEST(EntityRenderer, AWorkerAtWorkInsideItsBuildingIsNotDrawn) {
+    // Given: a finished mine on (4, 0) with one worker at it and one still walking there
+    core::Registry registry;
+    const core::EntityId mine = registry.create("Mine");
+    registry.add(mine, world::Building{world::BuildingType::Mine, {4, 0}});
+    registry.add(mine, world::Position{{4.5f, 0.5f}});
+    const core::EntityId inside = world::spawn_worker(registry, "Worker", {4.5f, 0.5f});
+    const core::EntityId walking = world::spawn_worker(registry, "Worker", {0.5f, 0.5f});
+    *registry.get<world::Worker>(inside) = {world::WorkerState::Working, mine};
+    *registry.get<world::Worker>(walking) = {world::WorkerState::Working, mine};
+    const world::Camera camera;
+    const scene::world::EntityRenderer renderer(registry, camera);
+    FakeCanvas canvas;
+
+    // When
+    renderer.draw(canvas, Screen);
+
+    // Then: the mine and the walking worker only
+    EXPECT_EQ(canvas.triangles.size(), 2 * TrianglesPerCube);
+    EXPECT_EQ(canvas.texts.size(), 2u);
 }

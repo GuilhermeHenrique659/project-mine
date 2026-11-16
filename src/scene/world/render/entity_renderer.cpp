@@ -8,6 +8,8 @@
 #include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/character.hpp"
 #include "scene/world/core/components/position.hpp"
+#include "scene/world/core/components/worker.hpp"
+#include "scene/world/core/worker_report.hpp"
 #include "scene/world/core/isometric.hpp"
 #include "scene/world/render/cube.hpp"
 
@@ -36,12 +38,16 @@ void EntityRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
     std::vector<Marker> markers;
     for (const core::Entity& entity : registry_.entities()) {
         const auto* position = registry_.get<::world::Position>(entity.id);
-        if (position == nullptr) {
+        // A worker doing its job is inside the building: not drawn.
+        if (position == nullptr || ::world::is_at_work(registry_, entity.id)) {
             continue;
         }
         // Characters show their state next to the label: "Player (Moving)".
         std::string label = entity.label;
-        if (const auto* character = registry_.get<::world::Character>(entity.id)) {
+        // Workers show their job state instead: "Worker (Working)".
+        if (const auto* worker = registry_.get<::world::Worker>(entity.id)) {
+            label += std::string(" (") + ::world::to_string(worker->state) + ")";
+        } else if (const auto* character = registry_.get<::world::Character>(entity.id)) {
             label += std::string(" (") + ::world::to_string(character->state) + ")";
         }
         // Unfinished buildings show how far along they are: "Mine (25%)".

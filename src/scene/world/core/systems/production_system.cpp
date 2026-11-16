@@ -1,10 +1,13 @@
 #include "scene/world/core/systems/production_system.hpp"
 
 #include <algorithm>
+#include <unordered_map>
 
 #include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/inventory.hpp"
 #include "scene/world/core/components/power.hpp"
+#include "scene/world/core/components/worker.hpp"
+#include "scene/world/core/worker_report.hpp"
 
 namespace world {
 
@@ -40,16 +43,28 @@ IdleReason produce_one(Inventory& inventory, const std::optional<ItemStack>& inp
     return IdleReason::OutputFull;
 }
 
+// Share of the full rate the workers at a building give: present / needed, at most 1; 1
+// for a building without Staffing.
+float crew_share(const Staffing* staffing, int present) {
+    if (staffing == nullptr || staffing->needed <= 0) {
+        return 1.0f;
+    }
+    return std::min(1.0f, static_cast<float>(present) / static_cast<float>(staffing->needed));
+}
+
 // Advances one producer by dt; the reason it is idle, None while it works.
 IdleReason run(Producer& producer, Inventory& inventory, const std::optional<Item>& output,
-               const PowerConsumer* power, float delta_time) {
+               const PowerConsumer* power, float crew, float delta_time) {
     if (power != nullptr && !power->powered) {
         return IdleReason::NoPower;
     }
     if (!output) {
         return IdleReason::NoResource;
     }
-    producer.progress += producer.recipe.rate * delta_time;
+    if (crew <= 0.0f) {
+        return IdleReason::NoWorkers;
+    }
+    producer.progress += producer.recipe.rate * crew * delta_time;
     while (producer.progress >= 1.0f) {
         const IdleReason reason = produce_one(inventory, producer.recipe.input, *output);
         if (reason != IdleReason::None) {
@@ -68,6 +83,13 @@ ProductionSystem::ProductionSystem(core::Registry& registry, const Terrain& terr
     : registry_(registry), terrain_(terrain) {}
 
 void ProductionSystem::update(float delta_time) {
+    // Workers standing at their workplace (within BuildReach), per building.
+    std::unordered_map<core::EntityId, int> present;
+    registry_.each<Worker>([&](core::EntityId id, Worker& worker) {
+        if (worker.workplace != 0 && is_at_work(registry_, id)) {
+            ++present[worker.workplace];
+        }
+    });
     registry_.each<Building, Producer, Inventory>(
         [&](core::EntityId id, Building& building, Producer& producer, Inventory& inventory) {
             if (registry_.has<ConstructionSite>(id)) {
@@ -77,7 +99,9 @@ void ProductionSystem::update(float delta_time) {
                 producer.recipe.output ? producer.recipe.output
                                        : item_from_tile(terrain_.tile_at(building.tile));
             const IdleReason reason = run(producer, inventory, output,
-                                          registry_.get<PowerConsumer>(id), delta_time);
+                                          registry_.get<PowerConsumer>(id),
+                                          crew_share(registry_.get<Staffing>(id), present[id]),
+                                          delta_time);
             if (BuildingStatus* status = registry_.get<BuildingStatus>(id)) {
                 status->state =
                     reason == IdleReason::None ? BuildingState::Working : BuildingState::Idle;

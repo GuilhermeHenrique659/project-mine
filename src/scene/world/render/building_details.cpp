@@ -15,6 +15,7 @@ std::string state_text(const ::world::BuildingStatus& status) {
     switch (status.reason) {
         case ::world::IdleReason::NoPower: return "State: Idle (no power)";
         case ::world::IdleReason::NoResource: return "State: Idle (no ore)";
+        case ::world::IdleReason::NoWorkers: return "State: Idle (no workers)";
         case ::world::IdleReason::MissingInput: return "State: Idle (missing input)";
         case ::world::IdleReason::OutputFull: return "State: Idle (output full)";
         case ::world::IdleReason::None: break;

@@ -36,6 +36,7 @@ enum class IdleReason {
     None,         // working
     NoPower,      // its PowerConsumer is not powered
     NoResource,   // nothing to produce: a mine off ore
+    NoWorkers,    // its Staffing needs workers and none is at the building
     MissingInput, // the recipe's input is not in its inventory
     OutputFull,   // the output does not fit in its inventory
 };

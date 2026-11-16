@@ -52,6 +52,7 @@ WorldSerializer make_world_serializer(const EntityFactory& factory) {
     codecs.push_back(std::make_unique<CharacterCodec>());
     codecs.push_back(std::make_unique<PlayerControlledCodec>());
     codecs.push_back(std::make_unique<InventoryCodec>());
+    codecs.push_back(std::make_unique<WorkerCodec>());
     return WorldSerializer(factory, std::move(codecs));
 }
 

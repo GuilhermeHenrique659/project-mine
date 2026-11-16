@@ -3,6 +3,7 @@
 #include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/inventory.hpp"
 #include "scene/world/core/components/power.hpp"
+#include "scene/world/core/components/worker.hpp"
 
 namespace world {
 
@@ -39,7 +40,8 @@ const std::vector<ConstructionGroup>& construction_catalog() {
                .with(Inventory{10})
                .with(Producer{Recipe{std::nullopt, std::nullopt, 0.5f}})
                .with(PowerConsumer{100.0f})
-               .with(BuildingStatus{})}}},
+               .with(BuildingStatus{})
+               .with(Staffing{10})}}},
         {ConstructionCategory::Factory, "Factories", "icon_tab_factories",
          {{"Smelter", "icon_smelter"}, {"Assembler", "icon_assembler"}}},
         {ConstructionCategory::Military, "Military", "icon_tab_military",
