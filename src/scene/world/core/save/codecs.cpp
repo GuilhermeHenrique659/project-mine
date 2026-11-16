@@ -157,7 +157,9 @@ void PositionCodec::write(const core::Registry& registry, core::EntityId id,
 void PositionCodec::read(core::Registry& registry, core::EntityId id,
                          const Fields& fields) const {
     Position* position = registry.get<Position>(id);
-    if (position == nullptr) {
+    // A building's position is its footprint's centre (set by the BuildingCodec), never
+    // the saved one: saves from before footprints have it on the origin tile.
+    if (position == nullptr || registry.has<Building>(id)) {
         return;
     }
     const auto x = parse_float(fields, "position.x");

@@ -50,7 +50,7 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
     // the route to them.
     systems_.push_back(std::make_unique<::world::WorkerSystem>(registry_, bus_, factory_));
     systems_.push_back(std::make_unique<::world::RouteFollowSystem>(registry_, routes_));
-    systems_.push_back(std::make_unique<::world::CharacterMoveSystem>(registry_, bus_));
+    systems_.push_back(std::make_unique<::world::CharacterMoveSystem>(registry_, bus_, &terrain_));
     // After movement, so the camera is on the player's new position.
     systems_.push_back(std::make_unique<::world::CameraFollowSystem>(registry_, camera_));
     // Builds on BuildRequested (paid by the player), then advances the construction sites.

@@ -5,23 +5,82 @@
 
 #include "scene/world/core/components/character.hpp"
 #include "scene/world/core/components/mover.hpp"
-#include "scene/world/core/components/position.hpp"
+#include "scene/world/core/components/player_controlled.hpp"
 #include "scene/world/core/events/character_state_changed.hpp"
+#include "scene/world/core/occupancy.hpp"
 
 namespace world {
+
+namespace {
+
+bool tile_blocked(const core::Registry& registry, const Terrain& terrain, TileCoord tile) {
+    return terrain.tile_at(tile) == TileType::Water || building_at(registry, tile) != 0;
+}
+
+// Whether a body of PlayerRadius at `point` overlaps water or a building.
+bool blocked(const core::Registry& registry, const Terrain& terrain, WorldPoint point) {
+    for (const float dx : {-PlayerRadius, PlayerRadius}) {
+        for (const float dy : {-PlayerRadius, PlayerRadius}) {
+            if (tile_blocked(registry, terrain, tile_containing({point.x + dx, point.y + dy}))) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+} // namespace
+
+void CharacterMoveSystem::move(core::EntityId id, Position& position, WorldPoint step) const {
+    const WorldPoint from = position.point;
+    const WorldPoint to{from.x + step.x, from.y + step.y};
+    // A player already overlapping an obstacle (a building placed over it) moves freely
+    // so it can walk out.
+    if (terrain_ == nullptr || !registry_.has<PlayerControlled>(id) ||
+        !blocked(registry_, *terrain_, to) || blocked(registry_, *terrain_, from)) {
+        position.point = to;
+        return;
+    }
+    // Each axis on its own goes as far as it can, so the body ends touching the obstacle
+    // and a diagonal step slides along it.
+    WorldPoint at = from;
+    at.x = furthest(at, {step.x, 0.0f}).x;
+    at.y = furthest(at, {0.0f, step.y}).y;
+    position.point = at;
+}
+
+WorldPoint CharacterMoveSystem::furthest(WorldPoint from, WorldPoint step) const {
+    const auto along = [from, step](float fraction) {
+        return WorldPoint{from.x + step.x * fraction, from.y + step.y * fraction};
+    };
+    if (!blocked(registry_, *terrain_, along(1.0f))) {
+        return along(1.0f);
+    }
+    // Binary search for the largest free fraction of the step.
+    float free = 0.0f;
+    float hit = 1.0f;
+    for (int i = 0; i < ContactSearchSteps; ++i) {
+        const float middle = (free + hit) / 2.0f;
+        if (blocked(registry_, *terrain_, along(middle))) {
+            hit = middle;
+        } else {
+            free = middle;
+        }
+    }
+    return along(free);
+}
 
 void CharacterMoveSystem::update(float delta_time) {
     std::vector<core::EntityId> changed;
     registry_.each<Character, Position, Mover>(
-        [delta_time, &changed](core::EntityId id, Character& character, Position& position,
-                               Mover& mover) {
+        [this, delta_time, &changed](core::EntityId id, Character& character,
+                                     Position& position, Mover& mover) {
             const float length = std::hypot(mover.direction.x, mover.direction.y);
             const bool moving = length > 0.0f;
             if (moving) {
                 const float speed = mover.running ? mover.speed * RunSpeedMultiplier : mover.speed;
                 const float step = speed * delta_time / length;
-                position.point.x += mover.direction.x * step;
-                position.point.y += mover.direction.y * step;
+                move(id, position, {mover.direction.x * step, mover.direction.y * step});
             }
 
             CharacterState state = CharacterState::Idle;

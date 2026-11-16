@@ -1,6 +1,8 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
+#include <vector>
 
 // Math of the isometric world (2:1 diamond projection). Raylib-free.
 //
@@ -69,5 +71,18 @@ int depth_of(TileCoord tile);
 // Strict weak ordering for sorting tiles back to front. Tiles with the same
 // depth never overlap; they are ordered left to right to keep it stable.
 bool draws_before(TileCoord a, TileCoord b);
+
+// What an entity covers on the ground, in world space: a building's footprint, or a single
+// point (min == max) for a character.
+struct DepthBox {
+    WorldPoint min;
+    WorldPoint max;
+};
+
+// Painter's algorithm for boxes on the ground: the indices of `boxes` in drawing order (back
+// to front). A box entirely past another along world +x or +y is in front of it and drawn
+// later, so a character beside a big building is ordered by the building's edges, not its
+// centre. Boxes with no such relation keep their depth order.
+std::vector<std::size_t> painter_order(const std::vector<DepthBox>& boxes);
 
 } // namespace world

@@ -1,6 +1,5 @@
 #include "scene/world/render/entity_renderer.hpp"
 
-#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -16,7 +15,8 @@
 namespace scene::world {
 
 namespace {
-constexpr float CubeSize = 24.0f;
+// 24 px at the default zoom: the character's body, as wide as its collision.
+constexpr float CubeSize = ::world::CharacterSize * BuildingCubeSize;
 const ui::Color BuildingFront{70, 110, 170, 255};
 const ui::Color BuildingTop{120, 160, 220, 255};
 const ui::Color SiteFront{120, 120, 120, 255};
@@ -28,7 +28,6 @@ constexpr int LabelFontSize = 16;
 void EntityRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
     const ::world::IsoProjection projection = camera_.projection(screen.width, screen.height);
 
-    // Back to front: entities further down the screen are drawn later.
     struct Marker {
         ::world::WorldPoint point;
         std::string label;
@@ -61,11 +60,19 @@ void EntityRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
         markers.push_back({position->point, std::move(label), building != nullptr,
                            site != nullptr, building != nullptr ? building->size : ::world::TileSize{}});
     }
-    std::sort(markers.begin(), markers.end(), [](const Marker& a, const Marker& b) {
-        return ::world::depth_of(a.point) < ::world::depth_of(b.point);
-    });
-
+    // Painter's algorithm on what each entity covers: a building its footprint, anything
+    // else its point, so a character beside a big building is drawn on the right side of it.
+    std::vector<::world::DepthBox> boxes;
+    boxes.reserve(markers.size());
     for (const Marker& marker : markers) {
+        const float half_x = marker.building ? marker.footprint.width / 2.0f : 0.0f;
+        const float half_y = marker.building ? marker.footprint.height / 2.0f : 0.0f;
+        boxes.push_back({{marker.point.x - half_x, marker.point.y - half_y},
+                         {marker.point.x + half_x, marker.point.y + half_y}});
+    }
+
+    for (const std::size_t index : ::world::painter_order(boxes)) {
+        const Marker& marker = markers[index];
         const ::world::ScreenPoint center = projection.world_to_screen(marker.point);
         // The cube scales with the zoom, like the tiles.
         const float scale = projection.tile_width / ::world::IsoProjection{}.tile_width;

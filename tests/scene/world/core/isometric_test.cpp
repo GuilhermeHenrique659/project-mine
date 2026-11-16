@@ -199,3 +199,48 @@ TEST(ScreenDirectionToWorld, ScreenRightGoesStraightRightOnScreen) {
     EXPECT_FLOAT_EQ(moved.y, start.y);
     EXPECT_GT(moved.x, start.x);
 }
+
+TEST(IsoPainterOrder, CharacterInFrontOfABigBuildingIsDrawnAfterItDespiteALowerDepth) {
+    // Given: a 1x4 building (centre depth 2.5) and a character just past its +x edge, near
+    // its back corner (depth 1.3)
+    const std::vector<world::DepthBox> boxes{
+        {{1.1f, 0.2f}, {1.1f, 0.2f}},
+        {{0.0f, 0.0f}, {1.0f, 4.0f}},
+    };
+
+    // When
+    const std::vector<std::size_t> order = world::painter_order(boxes);
+
+    // Then
+    EXPECT_EQ(order, (std::vector<std::size_t>{1, 0}));
+}
+
+TEST(IsoPainterOrder, CharacterBehindABigBuildingIsDrawnBeforeItDespiteAHigherDepth) {
+    // Given: a 4x1 building (centre depth 2.5) and a character just behind its -y edge,
+    // near its right corner (depth 3.8)
+    const std::vector<world::DepthBox> boxes{
+        {{0.0f, 0.0f}, {4.0f, 1.0f}},
+        {{3.9f, -0.1f}, {3.9f, -0.1f}},
+    };
+
+    // When
+    const std::vector<std::size_t> order = world::painter_order(boxes);
+
+    // Then
+    EXPECT_EQ(order, (std::vector<std::size_t>{1, 0}));
+}
+
+TEST(IsoPainterOrder, SeparatePointsFollowTheirDepth) {
+    // Given
+    const std::vector<world::DepthBox> boxes{
+        {{5.0f, 5.0f}, {5.0f, 5.0f}},
+        {{1.0f, 1.0f}, {1.0f, 1.0f}},
+        {{3.0f, 3.0f}, {3.0f, 3.0f}},
+    };
+
+    // When
+    const std::vector<std::size_t> order = world::painter_order(boxes);
+
+    // Then
+    EXPECT_EQ(order, (std::vector<std::size_t>{1, 2, 0}));
+}

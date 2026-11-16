@@ -2,6 +2,10 @@
 
 namespace world {
 
+// Edge of a character's square body on the ground, in tiles (drawn as a cube this wide,
+// collides with this size).
+inline constexpr float CharacterSize = 0.375f;
+
 // What a character is doing right now.
 enum class CharacterState { Idle, Moving, Running };
 

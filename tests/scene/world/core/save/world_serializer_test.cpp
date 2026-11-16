@@ -337,3 +337,21 @@ TEST(WorldSerializer, AMineKeepsItsInventoryThroughASave) {
     ASSERT_TRUE(inventory->slots()[2].has_value());
     EXPECT_EQ(inventory->slots()[2]->count, 40);
 }
+
+TEST(WorldSerializer, ABuildingIsPlacedOnItsFootprintWhateverPositionWasSaved) {
+    // Given: a 5x5 headquarters saved by an older version with its origin tile's centre
+    Fixture f;
+    const std::vector<game::EntityRecord> records{
+        {"building", "Headquarters",
+         {{"building.type", "Headquarters"}, {"building.x", "0"}, {"building.y", "0"},
+          {"position.x", "0.5"}, {"position.y", "0.5"}}}};
+
+    // When
+    f.serializer.restore(f.registry, records);
+
+    // Then: it stands at the centre of the tiles it covers
+    ASSERT_EQ(f.registry.entities().size(), 1u);
+    const core::EntityId id = f.registry.entities()[0].id;
+    EXPECT_FLOAT_EQ(f.registry.get<world::Position>(id)->point.x, 2.5f);
+    EXPECT_FLOAT_EQ(f.registry.get<world::Position>(id)->point.y, 2.5f);
+}

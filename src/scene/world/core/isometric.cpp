@@ -55,4 +55,58 @@ bool draws_before(TileCoord a, TileCoord b) {
     return a.x < b.x;
 }
 
+namespace {
+
+float centre_depth(const DepthBox& box) {
+    return depth_of(WorldPoint{(box.min.x + box.max.x) / 2.0f, (box.min.y + box.max.y) / 2.0f});
+}
+
+// Whether `back` must be drawn before `front`: `front` is past it along one axis and not
+// behind it along the other (side by side boxes have no order).
+bool must_draw_before(const DepthBox& back, const DepthBox& front) {
+    const bool past_x = front.min.x >= back.max.x;
+    const bool past_y = front.min.y >= back.max.y;
+    const bool behind_x = back.min.x >= front.max.x;
+    const bool behind_y = back.min.y >= front.max.y;
+    return (past_x && !behind_y) || (past_y && !behind_x);
+}
+
+} // namespace
+
+std::vector<std::size_t> painter_order(const std::vector<DepthBox>& boxes) {
+    const std::size_t count = boxes.size();
+    // blockers[i] = how many boxes must still be drawn before box i.
+    std::vector<int> blockers(count, 0);
+    for (std::size_t i = 0; i < count; ++i) {
+        for (std::size_t j = 0; j < count; ++j) {
+            if (i != j && must_draw_before(boxes[j], boxes[i])) ++blockers[i];
+        }
+    }
+
+    std::vector<std::size_t> order;
+    order.reserve(count);
+    std::vector<bool> drawn(count, false);
+    while (order.size() < count) {
+        // The free box with the lowest depth; on a cycle (should not happen with
+        // non-overlapping boxes) the lowest depth overall, so drawing always goes on.
+        std::size_t next = count;
+        bool next_free = false;
+        for (std::size_t i = 0; i < count; ++i) {
+            if (drawn[i]) continue;
+            const bool free = blockers[i] == 0;
+            if (next == count || (free && !next_free) ||
+                (free == next_free && centre_depth(boxes[i]) < centre_depth(boxes[next]))) {
+                next = i;
+                next_free = free;
+            }
+        }
+        drawn[next] = true;
+        order.push_back(next);
+        for (std::size_t i = 0; i < count; ++i) {
+            if (!drawn[i] && must_draw_before(boxes[next], boxes[i])) --blockers[i];
+        }
+    }
+    return order;
+}
+
 } // namespace world
