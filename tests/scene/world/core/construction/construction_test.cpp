@@ -207,3 +207,34 @@ TEST(ConstructionCatalog, ElectronicFactoryHasGeneralSlotsAndOneSectionForCopper
     EXPECT_EQ(iron_left, 500);
     EXPECT_EQ(electronics_left, 1000);
 }
+
+TEST(ConstructionCatalog, HouseCosts100SteelTakes300WorkHouses50WorkersOn20Kw) {
+    // Given / When
+    const world::Construction* house = world::find_construction(world::BuildingType::House);
+
+    // Then
+    ASSERT_NE(house, nullptr);
+    EXPECT_EQ(house->name, "House");
+    ASSERT_EQ(house->cost.size(), 1u);
+    EXPECT_EQ(house->cost[0].item, world::items::Steel);
+    EXPECT_EQ(house->cost[0].count, 100);
+    EXPECT_FLOAT_EQ(house->effort, 300.0f);
+    const auto* housing = house->blueprint.find<world::Housing>();
+    ASSERT_NE(housing, nullptr);
+    EXPECT_EQ(housing->workers, 50);
+    const auto* power = house->blueprint.find<world::PowerConsumer>();
+    ASSERT_NE(power, nullptr);
+    EXPECT_FLOAT_EQ(power->demand_kw, 20.0f);
+}
+
+TEST(BuildingType, HouseRoundTripsThroughItsSaveKey) {
+    // Given
+    const std::string_view key = world::building_type_key(world::BuildingType::House);
+
+    // When
+    const auto parsed = world::parse_building_type(key);
+
+    // Then
+    EXPECT_EQ(key, "House");
+    EXPECT_EQ(parsed, world::BuildingType::House);
+}

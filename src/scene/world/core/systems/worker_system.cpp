@@ -81,7 +81,7 @@ WorkerSystem::WorkerSystem(core::Registry& registry, event::EventBus& bus,
           const core::EntityId id = building_at(registry_, placed.tile);
           const auto* building = registry_.get<Building>(id);
           if (building != nullptr && building->type == BuildingType::Headquarters) {
-              spawn_workers(id);
+              spawn_workers(id, HeadquartersWorkers);
           }
       })),
       assignment_subscription_(event::subscribe_scoped<WorkerAssignmentRequested>(
@@ -90,6 +90,12 @@ WorkerSystem::WorkerSystem(core::Registry& registry, event::EventBus& bus,
                   assign(request.building, request.count);
               } else {
                   release(request.building, -request.count);
+              }
+          })),
+      completion_subscription_(event::subscribe_scoped<BuildingCompleted>(
+          bus, [this](const BuildingCompleted& completed) {
+              if (const auto* housing = registry_.get<Housing>(completed.entity)) {
+                  spawn_workers(completed.entity, housing->workers);
               }
           })) {}
 
@@ -144,13 +150,13 @@ void WorkerSystem::release(core::EntityId building, int count) {
     });
 }
 
-void WorkerSystem::spawn_workers(core::EntityId headquarters) {
-    const auto* at = registry_.get<Position>(headquarters);
+void WorkerSystem::spawn_workers(core::EntityId building, int count) {
+    const auto* at = registry_.get<Position>(building);
     if (at == nullptr) {
         return;
     }
     const WorldPoint point = at->point;
-    for (int i = 0; i < HeadquartersWorkers; ++i) {
+    for (int i = 0; i < count; ++i) {
         const auto id = factory_.spawn(registry_, WorkerArchetype, "Worker");
         if (!id) {
             return;

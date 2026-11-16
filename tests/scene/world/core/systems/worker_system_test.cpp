@@ -372,3 +372,33 @@ TEST(WorkerAtWork, AWorkerAtItsWorkplaceOrSiteIsAtWorkButNotWhileWalkingOrIdle) 
     EXPECT_FALSE(world::is_at_work(f.registry, walking));
     EXPECT_FALSE(world::is_at_work(f.registry, idle));
 }
+
+TEST(WorkerSystem, CompletingAHouseSpawnsItsFiftyIdleWorkersOnIt) {
+    // Given
+    Fixture f;
+    const auto house = f.add_building(world::BuildingType::House, SiteTile);
+    f.registry.add(house, world::Housing{50});
+
+    // When
+    f.bus.publish(world::BuildingCompleted{house});
+
+    // Then
+    EXPECT_EQ(f.workers_in(world::WorkerState::Idle), 50);
+    f.registry.each<world::Worker, world::Position>(
+        [](core::EntityId, world::Worker&, world::Position& at) {
+            EXPECT_FLOAT_EQ(at.point.x, SiteTile.x + 0.5f);
+            EXPECT_FLOAT_EQ(at.point.y, SiteTile.y + 0.5f);
+        });
+}
+
+TEST(WorkerSystem, CompletingABuildingWithoutHousingSpawnsNoWorkers) {
+    // Given
+    Fixture f;
+    const auto mine = f.add_workplace(SiteTile, 10);
+
+    // When
+    f.bus.publish(world::BuildingCompleted{mine});
+
+    // Then
+    EXPECT_EQ(f.workers_in(world::WorkerState::Idle), 0);
+}

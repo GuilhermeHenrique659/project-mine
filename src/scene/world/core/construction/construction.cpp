@@ -13,6 +13,7 @@ std::string_view building_type_key(BuildingType type) {
         case BuildingType::Storage: return "Storage";
         case BuildingType::Steelworks: return "Steelworks";
         case BuildingType::ElectronicFactory: return "ElectronicFactory";
+        case BuildingType::House: return "House";
         case BuildingType::Headquarters: break;
     }
     return "Headquarters";
@@ -34,6 +35,9 @@ std::optional<BuildingType> parse_building_type(std::string_view key) {
     if (key == building_type_key(BuildingType::ElectronicFactory)) {
         return BuildingType::ElectronicFactory;
     }
+    if (key == building_type_key(BuildingType::House)) {
+        return BuildingType::House;
+    }
     return std::nullopt;
 }
 
@@ -48,6 +52,10 @@ const std::vector<ConstructionGroup>& construction_catalog() {
           {"Storage", "icon_storage", BuildingType::Storage, {{items::IronOre, 200}}, 600.0f,
            {std::make_shared<NeedsHeadquartersRule>()},
            Blueprint{}.with(Inventory{120}).with(PowerConsumer{20.0f}),
+           TileSize{2, 2}},
+          {"House", "icon_house", BuildingType::House, {{items::Steel, 100}}, 300.0f,
+           {std::make_shared<NeedsHeadquartersRule>()},
+           Blueprint{}.with(Housing{50}).with(PowerConsumer{20.0f}),
            TileSize{2, 2}}}},
         {ConstructionCategory::Mine, "Mines", "icon_tab_mines",
          {{"Mine", "icon_mine", BuildingType::Mine, {{items::IronOre, 100}}, 300.0f,

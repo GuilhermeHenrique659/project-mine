@@ -35,6 +35,12 @@ struct Staffing {
     int needed = 0;
 };
 
+// A building that brings `workers` new idle workers, spawned on it once its construction
+// is finished (BuildingCompleted). Loading a save spawns none: the workers are saved.
+struct Housing {
+    int workers = 0;
+};
+
 // A loaded worker's links to buildings, by tile (entity ids are not saved, and the building
 // may be loaded after the worker): its workplace, its construction site and the building at
 // the end of the route it walks (from the headquarters), with the walking direction. The

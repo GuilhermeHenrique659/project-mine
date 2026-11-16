@@ -9,6 +9,7 @@ namespace world {
 
 // Drives the workers:
 // - when a headquarters is placed (BuildingPlaced) it spawns HeadquartersWorkers on it;
+// - when a building with Housing is finished (BuildingCompleted) it spawns its workers on it;
 // - each update, an idle worker takes the first construction site with room (max_workers):
 //   it becomes Working, the site becomes its Builder's site and it follows the route
 //   headquarters -> site (the ConstructionWorkSystem builds once it is in reach);
@@ -25,7 +26,7 @@ public:
     void update(float delta_time) override;
 
 private:
-    void spawn_workers(core::EntityId headquarters);
+    void spawn_workers(core::EntityId building, int count);
     // Turns the PendingWorkerLinks of loaded workers into ids, routes included.
     void resolve_loaded(core::EntityId headquarters);
     void assign(core::EntityId building, int count);
@@ -37,6 +38,7 @@ private:
     const EntityFactory& factory_;
     event::ScopedSubscription subscription_;
     event::ScopedSubscription assignment_subscription_;
+    event::ScopedSubscription completion_subscription_;
 };
 
 } // namespace world

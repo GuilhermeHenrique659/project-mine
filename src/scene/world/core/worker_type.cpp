@@ -17,7 +17,8 @@ WorkerType type_at(BuildingType building) {
         case BuildingType::Steelworks: return WorkerType::Steelworker;
         case BuildingType::ElectronicFactory: return WorkerType::Technician;
         case BuildingType::Headquarters:
-        case BuildingType::Storage: break;
+        case BuildingType::Storage:
+        case BuildingType::House: break;
     }
     return WorkerType::None;
 }
