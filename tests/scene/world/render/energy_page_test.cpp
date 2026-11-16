@@ -57,10 +57,10 @@ TEST(EnergyPage, ShowsTheSummaryThenTheGeneratorsThenTheConsumers) {
                          "Produced: 1000 kW",
                          "Consumed: 200 kW",
                          "Generators (1)",
-                         "Headquarters - 1000 kW",
+                         "Headquarters #1 - 1000 kW",
                          "Consumers (2)",
-                         "Mine - 100 kW",
-                         "Mine - 100 kW",
+                         "Mine #2 - 100 kW",
+                         "Mine #3 - 100 kW",
                      }));
 }
 
@@ -79,7 +79,7 @@ TEST(EnergyPage, WarnsWhenOverloadedAndMarksTheConsumersWithoutPower) {
     ASSERT_GE(lines.size(), 5u);
     EXPECT_EQ(lines[1], "Consumed: 1100 kW");
     EXPECT_EQ(lines[2], "Overloaded: consumers are idle until production covers demand");
-    EXPECT_EQ(lines.back(), "Mine - 100 kW (no power)");
+    EXPECT_EQ(lines.back(), "Mine #12 - 100 kW (no power)");
 }
 
 TEST(EnergyPage, AnEmptyListShowsNone) {

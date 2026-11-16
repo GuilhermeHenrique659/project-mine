@@ -5,6 +5,7 @@
 #include <string>
 
 #include "text/parse.hpp"
+#include "scene/world/render/entity_name.hpp"
 #include "ui/theme.hpp"
 
 namespace scene::world {
@@ -22,7 +23,7 @@ constexpr const char* EmptyText = "No building needs workers";
 using Workplaces = std::vector<::world::WorkplaceEntry>;
 
 std::string row_text(const ::world::WorkplaceEntry& entry) {
-    return entry.name + " (" + text::format(entry.tile.x) + ", " + text::format(entry.tile.y) +
+    return entity_name(entry.name, entry.id) + " (" + text::format(entry.tile.x) + ", " + text::format(entry.tile.y) +
            ") - " + text::format(entry.assigned) + "/" + text::format(entry.needed) + " workers";
 }
 

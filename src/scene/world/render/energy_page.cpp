@@ -6,6 +6,7 @@
 
 #include "scene/world/core/power_report.hpp"
 #include "text/parse.hpp"
+#include "scene/world/render/entity_name.hpp"
 #include "ui/theme.hpp"
 
 namespace scene::world {
@@ -37,7 +38,7 @@ void add_section(std::vector<Line>& lines, const std::string& title,
         return;
     }
     for (const ::world::PowerEntry& entry : entries) {
-        std::string text = entry.name + " - " + kw(entry.kw);
+        std::string text = entity_name(entry.name, entry.id) + " - " + kw(entry.kw);
         if (!entry.active) {
             text += " " + inactive;
         }

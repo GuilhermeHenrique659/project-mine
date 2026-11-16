@@ -87,7 +87,7 @@ TEST(WorkersPage, ShowsTheIdleWorkersAndEachWorkplaceWithItsAssignedWorkers) {
 
     // Then
     EXPECT_TRUE(contains(texts, "Idle workers: 2"));
-    EXPECT_TRUE(contains(texts, "Mine (4, 2) - 1/10 workers"));
+    EXPECT_TRUE(contains(texts, "Mine #1 (4, 2) - 1/10 workers"));
 }
 
 TEST(WorkersPage, ClickingPlusAndMinusAsksToAssignAndReleaseOneWorker) {
@@ -134,8 +134,8 @@ TEST(WorkersPage, GroupsTheWorkplacesUnderAHeadingPerBuildingType) {
         if (text.starts_with("[") || text.ends_with("/10 workers")) lines.push_back(text);
     }
     const std::vector<std::string> expected{
-        "[-] Mine (2)", "Mine (3, 0) - 0/10 workers", "Mine (6, 0) - 0/10 workers",
-        "[-] Steelworks (1)", "Steelworks (0, 3) - 0/10 workers"};
+        "[-] Mine (2)", "Mine #1 (3, 0) - 0/10 workers", "Mine #3 (6, 0) - 0/10 workers",
+        "[-] Steelworks (1)", "Steelworks #2 (0, 3) - 0/10 workers"};
     EXPECT_EQ(lines, expected);
 }
 
@@ -179,8 +179,8 @@ TEST(WorkersPage, ClickingAGroupsHeadingHidesItsWorkplacesAndClickingAgainShowsT
 
     // Then: hidden, the mine row is gone and the steelworks group is untouched
     EXPECT_TRUE(contains(hidden, "[+] Mine (1)"));
-    EXPECT_FALSE(contains(hidden, "Mine (3, 0) - 0/10 workers"));
-    EXPECT_TRUE(contains(hidden, "Steelworks (0, 3) - 0/10 workers"));
+    EXPECT_FALSE(contains(hidden, "Mine #1 (3, 0) - 0/10 workers"));
+    EXPECT_TRUE(contains(hidden, "Steelworks #2 (0, 3) - 0/10 workers"));
     EXPECT_TRUE(contains(shown, "[-] Mine (1)"));
-    EXPECT_TRUE(contains(shown, "Mine (3, 0) - 0/10 workers"));
+    EXPECT_TRUE(contains(shown, "Mine #1 (3, 0) - 0/10 workers"));
 }

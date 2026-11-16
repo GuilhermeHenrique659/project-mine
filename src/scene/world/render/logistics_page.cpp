@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "scene/world/core/logistics_report.hpp"
+#include "scene/world/render/entity_name.hpp"
 #include "text/parse.hpp"
 #include "ui/theme.hpp"
 
@@ -21,15 +22,17 @@ constexpr float Indent = 24.0f;
 constexpr float ScrollbarWidth = 10.0f;
 constexpr const char* EmptyText = "No logistic routes: build a storage";
 
-// "Storage (0, 0)".
-std::string end_text(const ::world::LogisticEnd& end) {
-    return end.name + " (" + text::format(end.tile.x) + ", " + text::format(end.tile.y) + ")";
+// "Storage #3 (0, 0)".
+std::string end_text(const ::world::LogisticEnd& end, core::EntityId id) {
+    return entity_name(end.name, id) + " (" + text::format(end.tile.x) + ", " +
+           text::format(end.tile.y) + ")";
 }
 
 std::string row_text(const ::world::LogisticEntry& entry) {
     const std::string length =
         entry.length > 0 ? text::format(entry.length) + " tiles" : std::string{"unreachable"};
-    return end_text(entry.from) + " -> " + end_text(entry.to) + " - " + length + " - " +
+    return end_text(entry.from, entry.key.from) + " -> " + end_text(entry.to, entry.key.to) +
+           " - " + length + " - " +
            text::format(entry.haulers) + " workers";
 }
 

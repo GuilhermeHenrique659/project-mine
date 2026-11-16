@@ -117,7 +117,7 @@ TEST(LogisticsPage, ListsEachLogisticRouteWithItsEndsLengthAndHaulers) {
 
     // Then
     EXPECT_TRUE(contains(texts, "Logistic routes: 1"));
-    EXPECT_TRUE(contains(texts, "Storage (0, 0) -> Mine (3, 0) - 4 tiles - 1 workers"));
+    EXPECT_TRUE(contains(texts, "Storage #1 (0, 0) -> Mine #2 (3, 0) - 4 tiles - 1 workers"));
     EXPECT_FALSE(p.page.take_checkbox(0).checked());
     EXPECT_TRUE(p.page.put_checkbox(0).checked());
 }
@@ -240,8 +240,8 @@ TEST(LogisticsPage, GroupsTheRoutesUnderAHeadingPerDestinationBuildingType) {
         }
     }
     const std::vector<std::string> expected{
-        "[-] Mine (2)", "Storage (0, 0) -> Mine (3, 0)", "Storage (0, 0) -> Mine (6, 0)",
-        "[-] Steelworks (1)", "Storage (0, 0) -> Steelworks (0, 3)"};
+        "[-] Mine (2)", "Storage #1 (0, 0) -> Mine #2 (3, 0)", "Storage #1 (0, 0) -> Mine #4 (6, 0)",
+        "[-] Steelworks (1)", "Storage #1 (0, 0) -> Steelworks #3 (0, 3)"};
     EXPECT_EQ(lines, expected);
 }
 
@@ -304,7 +304,7 @@ TEST(LogisticsPage, ClickingAGroupsHeadingHidesItsRoutesAndClickingAgainShowsThe
     // Then: hidden, the mine route is gone and the steelworks group is untouched
     const auto mine_row = [](const std::vector<std::string>& texts) {
         for (const std::string& text : texts) {
-            if (text.starts_with("Storage (0, 0) -> Mine")) return true;
+            if (text.starts_with("Storage #1 (0, 0) -> Mine")) return true;
         }
         return false;
     };

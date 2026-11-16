@@ -130,7 +130,7 @@ TEST_F(BuildingPanel, ShowsTheBuildingNameAndDetailsAboveItsInventory) {
         ADD_FAILURE() << "not drawn: " << text;
         return 0.0f;
     };
-    const float name = y_of("Mine");
+    const float name = y_of("Mine #1");
     const float state = y_of("State: Working");
     const float power = y_of("Power: 100 kW");
     EXPECT_LT(name, state);

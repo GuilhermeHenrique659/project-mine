@@ -4,6 +4,7 @@
 
 #include "scene/world/core/components/inventory.hpp"
 #include "scene/world/render/building_details.hpp"
+#include "scene/world/render/entity_name.hpp"
 #include "ui/theme.hpp"
 
 namespace scene::world {
@@ -130,7 +131,8 @@ void BuildingPanel::draw(ui::Canvas& canvas, ui::Size screen) const {
     canvas.stroke_rect(panel_, ui::theme::Outline, BorderWidth);
     canvas.draw_text("Player", player_title_, TitleFontSize, ui::theme::Text);
     const core::Entity* building = model_.registry().find(model_.transfer_target());
-    canvas.draw_text(building != nullptr ? building->label : "", building_title_, TitleFontSize,
+    canvas.draw_text(building != nullptr ? entity_name(building->label, building->id) : "",
+                     building_title_, TitleFontSize,
                      ui::theme::Text);
     for (std::size_t i = 0; i < details_.size(); ++i) {
         const float line = static_cast<float>(DetailFontSize) + DetailGap;
