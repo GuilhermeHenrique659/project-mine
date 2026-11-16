@@ -10,6 +10,7 @@
 #include "scene/world/core/components/route_follower.hpp"
 #include "scene/world/core/components/worker.hpp"
 #include "scene/world/core/events/worker_events.hpp"
+#include "scene/world/core/occupancy.hpp"
 
 namespace world {
 
@@ -141,7 +142,39 @@ void HaulSystem::send_home(core::EntityId worker) {
     follow(registry_, worker, home);
 }
 
+void HaulSystem::resolve_loaded() {
+    std::vector<core::EntityId> loaded;
+    registry_.each<PendingHaulerLinks>(
+        [&](core::EntityId id, PendingHaulerLinks&) { loaded.push_back(id); });
+    const core::EntityId headquarters = find_headquarters(registry_);
+    for (const core::EntityId id : loaded) {
+        const PendingHaulerLinks links = *registry_.get<PendingHaulerLinks>(id);
+        registry_.remove<PendingHaulerLinks>(id);
+        const RouteKey route{building_at(registry_, links.from), building_at(registry_, links.to)};
+        const Route* found = network_.find(route);
+        Worker* worker = registry_.get<Worker>(id);
+        if (worker == nullptr) {
+            continue;
+        }
+        if (found == nullptr || found->kind != RouteKind::Logistic || headquarters == 0) {
+            worker->state = WorkerState::Idle;
+            worker->workplace = 0;
+            continue;
+        }
+        worker->state = WorkerState::Working;
+        registry_.add(id, Hauler{route, links.mode, links.joined});
+        if (links.joined) {
+            RouteFollower loop{route, RouteEnd::Loop};
+            loop.forward = links.forward;
+            follow(registry_, id, loop);
+            continue;
+        }
+        follow(registry_, id, RouteFollower{RouteKey{headquarters, route.from}});
+    }
+}
+
 void HaulSystem::update(float) {
+    resolve_loaded();
     std::vector<core::EntityId> haulers;
     registry_.each<Hauler>([&](core::EntityId id, Hauler&) { haulers.push_back(id); });
     for (const core::EntityId id : haulers) {

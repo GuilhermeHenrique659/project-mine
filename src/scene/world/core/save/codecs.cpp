@@ -8,6 +8,7 @@
 
 #include "scene/world/core/components/builder.hpp"
 #include "scene/world/core/components/building.hpp"
+#include "scene/world/core/components/hauler.hpp"
 #include "scene/world/core/components/route_follower.hpp"
 #include "scene/world/core/components/worker.hpp"
 #include "scene/world/core/components/inventory.hpp"
@@ -122,7 +123,8 @@ void WorkerCodec::write(const core::Registry& registry, core::EntityId id, Field
     if (const Builder* builder = registry.get<Builder>(id)) {
         write_tile(registry, builder->site, "worker.site", fields);
     }
-    if (const RouteFollower* follower = registry.get<RouteFollower>(id)) {
+    const RouteFollower* follower = registry.get<RouteFollower>(id);
+    if (follower != nullptr && !registry.has<Hauler>(id)) {
         write_tile(registry, follower->route.to, "worker.route", fields);
         fields["worker.route.forward"] = follower->forward ? "1" : "0";
     }
@@ -142,6 +144,37 @@ void WorkerCodec::read(core::Registry& registry, core::EntityId id, const Fields
     const auto forward = fields.find("worker.route.forward");
     links.forward = forward == fields.end() || forward->second != "0";
     registry.add(id, links);
+}
+
+void HaulerCodec::write(const core::Registry& registry, core::EntityId id, Fields& fields) const {
+    const Hauler* hauler = registry.get<Hauler>(id);
+    if (hauler == nullptr) {
+        return;
+    }
+    write_tile(registry, hauler->route.from, "hauler.from", fields);
+    write_tile(registry, hauler->route.to, "hauler.to", fields);
+    fields["hauler.mode"] = to_string(hauler->mode);
+    fields["hauler.joined"] = hauler->joined ? "1" : "0";
+    const RouteFollower* follower = registry.get<RouteFollower>(id);
+    fields["hauler.forward"] = follower == nullptr || follower->forward ? "1" : "0";
+}
+
+void HaulerCodec::read(core::Registry& registry, core::EntityId id, const Fields& fields) const {
+    const auto from = read_tile(fields, "hauler.from");
+    const auto to = read_tile(fields, "hauler.to");
+    if (!from || !to || !registry.has<Worker>(id)) {
+        return;
+    }
+    const auto flag = [&fields](const std::string& key) {
+        const auto found = fields.find(key);
+        return found != fields.end() && found->second == "1";
+    };
+    const auto mode = fields.find("hauler.mode");
+    const HaulMode parsed = mode != fields.end() && mode->second == to_string(HaulMode::Put)
+                                ? HaulMode::Put
+                                : HaulMode::Take;
+    registry.add(id, PendingHaulerLinks{*from, *to, parsed, flag("hauler.joined"),
+                                        flag("hauler.forward")});
 }
 
 void PositionCodec::write(const core::Registry& registry, core::EntityId id,

@@ -67,4 +67,14 @@ public:
     void read(core::Registry& registry, core::EntityId id, const Fields& fields) const override;
 };
 
+// A hauler's route by building tile, "hauler.from.x/y" (the storage) and "hauler.to.x/y",
+// with "hauler.mode" ("Take" / "Put"), "hauler.joined" and "hauler.forward" ("1" / "0").
+// On read they become a PendingHaulerLinks the HaulSystem resolves. (The WorkerCodec does
+// not save a hauler's walked route: the hauler fields restore it.)
+class HaulerCodec : public ComponentCodec {
+public:
+    void write(const core::Registry& registry, core::EntityId id, Fields& fields) const override;
+    void read(core::Registry& registry, core::EntityId id, const Fields& fields) const override;
+};
+
 } // namespace world

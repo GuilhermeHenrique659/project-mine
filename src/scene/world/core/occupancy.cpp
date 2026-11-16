@@ -45,15 +45,19 @@ std::uint64_t Occupancy::key_of(TileCoord tile) {
 
 void Occupancy::insert(core::EntityId id, const Building& building) {
     for (const TileCoord tile : footprint_tiles(building)) {
-        tiles_[key_of(tile)] = id;
+        tiles_[key_of(tile)].push_back(id);
     }
 }
 
 void Occupancy::erase(core::EntityId id, const Building& building) {
     for (const TileCoord tile : footprint_tiles(building)) {
         const auto found = tiles_.find(key_of(tile));
-        // Another building placed over it later owns the tile now.
-        if (found != tiles_.end() && found->second == id) {
+        if (found == tiles_.end()) {
+            continue;
+        }
+        auto& owners = found->second;
+        owners.erase(std::remove(owners.begin(), owners.end(), id), owners.end());
+        if (owners.empty()) {
             tiles_.erase(found);
         }
     }
@@ -61,7 +65,7 @@ void Occupancy::erase(core::EntityId id, const Building& building) {
 
 core::EntityId Occupancy::at(TileCoord tile) const {
     const auto found = tiles_.find(key_of(tile));
-    return found == tiles_.end() ? 0 : found->second;
+    return found == tiles_.end() ? 0 : found->second.back();
 }
 
 void track_buildings(core::Registry& registry) {

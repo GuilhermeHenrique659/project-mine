@@ -17,6 +17,8 @@ namespace world {
 //   the source end (the production building in Take mode, the storage in Put mode) an
 //   empty hauler fills its one slot with the first item there; at the other end it unloads
 //   what fits. A hauler whose route is gone turns idle and walks back to the headquarters.
+// - a loaded hauler (PendingHaulerLinks) gets its Hauler back on its next update: on the
+//   loop if it had joined the route, otherwise walking to the storage.
 // Runs after CharacterMoveSystem. Everything passed must outlive it.
 class HaulSystem : public System {
 public:
@@ -27,6 +29,8 @@ public:
 private:
     void assign(RouteKey route, HaulMode mode, int count);
     void release(RouteKey route, int count);
+    // Turns the PendingHaulerLinks of loaded workers into Haulers back on their path.
+    void resolve_loaded();
     // Takes the hauler off its route: idle, walking back to the headquarters.
     void send_home(core::EntityId worker);
 

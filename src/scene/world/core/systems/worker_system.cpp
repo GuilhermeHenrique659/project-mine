@@ -59,7 +59,9 @@ void WorkerSystem::resolve_loaded(core::EntityId headquarters) {
                 ? workplace
                 : 0;
         builder->site = registry_.has<ConstructionSite>(site) ? site : 0;
-        if (worker->workplace == 0 && builder->site == 0) {
+        // A loaded hauler stays Working: the HaulSystem restores its job.
+        if (worker->workplace == 0 && builder->site == 0 &&
+            !registry_.has<PendingHaulerLinks>(id)) {
             worker->state = WorkerState::Idle;
         }
         const core::EntityId route_end = building_on(registry_, links.route);

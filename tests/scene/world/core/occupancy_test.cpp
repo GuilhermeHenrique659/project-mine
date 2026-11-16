@@ -122,3 +122,20 @@ TEST(Occupancy, AMultiTileBuildingStandsAtTheCentreOfItsFootprint) {
     EXPECT_FLOAT_EQ(position->point.y, 0.5f);
     EXPECT_EQ(world::building_at(registry, {5, 1}), id);
 }
+
+TEST(Occupancy, ABuildingPassingOverAnotherLeavesItInTheIndex) {
+    // Given: a building on (0, 0); a second one is created there (as a loaded building
+    // is, before it is moved to its saved tile)
+    core::Registry registry;
+    world::track_buildings(registry);
+    const core::EntityId first = add(registry, {0, 0}, {2, 2});
+    const core::EntityId second = add(registry, {0, 0});
+
+    // When
+    registry.add(second, world::Building{world::BuildingType::Mine, {6, 0}});
+
+    // Then
+    EXPECT_EQ(world::building_at(registry, {0, 0}), first);
+    EXPECT_EQ(world::building_at(registry, {1, 1}), first);
+    EXPECT_EQ(world::building_at(registry, {6, 0}), second);
+}

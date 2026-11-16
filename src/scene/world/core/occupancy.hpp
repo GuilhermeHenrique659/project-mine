@@ -30,7 +30,10 @@ public:
 private:
     static std::uint64_t key_of(TileCoord tile);
 
-    std::unordered_map<std::uint64_t, core::EntityId> tiles_;
+    // Every building on each tile, latest last: at() is the latest. Keeping the others
+    // means one passing over a tile (a loaded building, created on (0, 0) before it is
+    // moved) does not hide the building that stands there.
+    std::unordered_map<std::uint64_t, std::vector<core::EntityId>> tiles_;
 };
 
 // Indexes the registry's buildings (those it has now and every later change). Calling it
