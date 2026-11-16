@@ -41,4 +41,10 @@ void track_buildings(core::Registry& registry);
 // (some tests) is scanned.
 core::EntityId building_at(const core::Registry& registry, TileCoord tile);
 
+// How far `point` is from entity `id`: from the nearest edge of its footprint when it is a
+// Building (0 inside it), otherwise from its Position. Reach checks use it so a big
+// building is reached from beside it, not only near its centre. Infinity when `id` has
+// neither.
+float distance_to_building(const core::Registry& registry, core::EntityId id, WorldPoint point);
+
 } // namespace world

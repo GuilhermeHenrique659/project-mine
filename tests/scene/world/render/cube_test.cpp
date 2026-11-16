@@ -27,6 +27,40 @@ TEST(Cube, TheTopFaceIsATwoToOneDiamondAsWideAsTheCube) {
     EXPECT_FLOAT_EQ(top[1].y, top[3].y);
 }
 
+TEST(Cube, AFootprintCubeCoversItsTilesAlongBothWorldAxes) {
+    // Given: 2 tiles along world x, 1 along world y, with 40-pixel-wide tiles
+    const scene::world::Cube cube = scene::world::Cube::footprint(40.0f, {2, 1});
+
+    // When
+    const scene::world::CubeFaces faces = cube.faces(Ground);
+
+    // Then: world +x runs down-right (20, 10 per tile), world +y down-left (-20, 10)
+    const auto& left = faces.left;  // top-outer, top-front, bottom-front, bottom-outer
+    const auto& right = faces.right;
+    EXPECT_FLOAT_EQ(left[2].x, Ground.x + 10.0f);  // front corner: +x/2 + y/2
+    EXPECT_FLOAT_EQ(left[2].y, Ground.y + 15.0f);
+    EXPECT_FLOAT_EQ(left[3].x, Ground.x - 30.0f);  // left corner: -x/2 + y/2
+    EXPECT_FLOAT_EQ(right[3].x, Ground.x + 30.0f); // right corner: +x/2 - y/2
+    const ui::Rect bounds = cube.bounds(Ground);
+    EXPECT_FLOAT_EQ(bounds.width, 60.0f);
+    EXPECT_FLOAT_EQ(bounds.y + bounds.height, Ground.y + 15.0f);
+}
+
+TEST(Cube, AFootprintBoxIsOneTileTallWhateverItsFootprint) {
+    // Given
+    const scene::world::Cube big = scene::world::Cube::footprint(40.0f, {5, 5});
+    const scene::world::Cube one_tile(40.0f);
+
+    // When
+    const float big_height = big.height();
+    const float tile_height = one_tile.height();
+
+    // Then: a 5x5x1 slab, not a 5x5x5 cube
+    EXPECT_FLOAT_EQ(big_height, tile_height);
+    const scene::world::CubeFaces faces = big.faces(Ground);
+    EXPECT_FLOAT_EQ(faces.left[3].y - faces.left[0].y, tile_height);
+}
+
 TEST(Cube, ItsBaseIsTheDiamondCentredOnTheGroundPoint) {
     // Given
     const scene::world::Cube cube(40.0f);

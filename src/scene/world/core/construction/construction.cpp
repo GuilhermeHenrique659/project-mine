@@ -31,17 +31,19 @@ const std::vector<ConstructionGroup>& construction_catalog() {
          {{"Headquarters", "icon_headquarters", BuildingType::Headquarters, {}, 0.0f,
            {std::make_shared<UniqueRule>()},
            Blueprint{}.with(
-               Generator{GeneratorSpec{GeneratorType::Solar, std::nullopt, 0.0f, 1000.0f}})},
+               Generator{GeneratorSpec{GeneratorType::Solar, std::nullopt, 0.0f, 1000.0f}}),
+           TileSize{5, 5}},
           {"Storage", "icon_storage"}}},
         {ConstructionCategory::Mine, "Mines", "icon_tab_mines",
          {{"Mine", "icon_mine", BuildingType::Mine, {{items::IronOre, 100}}, 300.0f,
            {std::make_shared<NeedsHeadquartersRule>(), std::make_shared<NeedsOreRule>()},
            Blueprint{}
                .with(Inventory{10})
-               .with(Producer{Recipe{std::nullopt, std::nullopt, 0.5f}})
+               .with(Producer{Recipe{std::nullopt, std::nullopt, 4.0f}})
                .with(PowerConsumer{100.0f})
                .with(BuildingStatus{})
-               .with(Staffing{10})}}},
+               .with(Staffing{10}),
+           TileSize{2, 2}}}},
         {ConstructionCategory::Factory, "Factories", "icon_tab_factories",
          {{"Smelter", "icon_smelter"}, {"Assembler", "icon_assembler"}}},
         {ConstructionCategory::Military, "Military", "icon_tab_military",

@@ -34,6 +34,7 @@ void EntityRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
         std::string label;
         bool building = false;
         bool site = false;
+        ::world::TileSize footprint;
     };
     std::vector<Marker> markers;
     for (const core::Entity& entity : registry_.entities()) {
@@ -56,8 +57,9 @@ void EntityRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
             const int percent = static_cast<int>(100.0f * site->progress / site->effort);
             label += " (" + std::to_string(percent) + "%)";
         }
-        markers.push_back({position->point, std::move(label),
-                           registry_.has<::world::Building>(entity.id), site != nullptr});
+        const auto* building = registry_.get<::world::Building>(entity.id);
+        markers.push_back({position->point, std::move(label), building != nullptr,
+                           site != nullptr, building != nullptr ? building->size : ::world::TileSize{}});
     }
     std::sort(markers.begin(), markers.end(), [](const Marker& a, const Marker& b) {
         return ::world::depth_of(a.point) < ::world::depth_of(b.point);
@@ -67,9 +69,12 @@ void EntityRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
         const ::world::ScreenPoint center = projection.world_to_screen(marker.point);
         // The cube scales with the zoom, like the tiles.
         const float scale = projection.tile_width / ::world::IsoProjection{}.tile_width;
+        // A building covers its whole footprint.
+        const float tile = BuildingCubeSize * scale;
         const Cube cube = !marker.building ? Cube(CubeSize * scale)
-                          : marker.site    ? Cube(BuildingCubeSize * scale, SiteFront, SiteTop)
-                                           : Cube(BuildingCubeSize * scale, BuildingFront, BuildingTop);
+                          : marker.site    ? Cube::footprint(tile, marker.footprint, SiteFront, SiteTop)
+                                           : Cube::footprint(tile, marker.footprint, BuildingFront,
+                                                             BuildingTop);
         cube.draw(canvas, center);
         const ui::Rect body = cube.bounds(center);
         const ui::Size text = canvas.measure_text(marker.label, LabelFontSize);

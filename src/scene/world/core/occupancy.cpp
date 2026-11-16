@@ -1,5 +1,11 @@
 #include "scene/world/core/occupancy.hpp"
 
+#include <algorithm>
+#include <cmath>
+#include <limits>
+
+#include "scene/world/core/components/position.hpp"
+
 namespace world {
 
 namespace {
@@ -87,6 +93,23 @@ core::EntityId building_at(const core::Registry& registry, TileCoord tile) {
         }
     }
     return 0;
+}
+
+float distance_to_building(const core::Registry& registry, core::EntityId id, WorldPoint point) {
+    if (const Building* building = registry.get<Building>(id)) {
+        const float left = static_cast<float>(building->tile.x);
+        const float top = static_cast<float>(building->tile.y);
+        const float right = left + static_cast<float>(building->size.width);
+        const float bottom = top + static_cast<float>(building->size.height);
+        const float dx = std::max({left - point.x, 0.0f, point.x - right});
+        const float dy = std::max({top - point.y, 0.0f, point.y - bottom});
+        return std::hypot(dx, dy);
+    }
+    const Position* position = registry.get<Position>(id);
+    if (position == nullptr) {
+        return std::numeric_limits<float>::infinity();
+    }
+    return std::hypot(position->point.x - point.x, position->point.y - point.y);
 }
 
 } // namespace world

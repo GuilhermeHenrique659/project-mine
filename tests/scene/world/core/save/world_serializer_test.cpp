@@ -275,7 +275,7 @@ TEST(WorldSerializer, AHeadquartersRoundTripsOnItsTile) {
     ASSERT_NE(building, nullptr);
     EXPECT_EQ(building->type, world::BuildingType::Headquarters);
     EXPECT_EQ(building->tile, (world::TileCoord{-3, 7}));
-    EXPECT_FLOAT_EQ(loaded.registry.get<world::Position>(hq)->point.x, -2.5f);
+    EXPECT_FLOAT_EQ(loaded.registry.get<world::Position>(hq)->point.x, -0.5f); // centre of its 5x5 footprint
     EXPECT_FALSE(loaded.registry.has<world::ConstructionSite>(hq));
     EXPECT_TRUE(world::has_headquarters(loaded.registry));
 }

@@ -5,6 +5,7 @@
 
 #include "logging/logger.hpp"
 #include "text/parse.hpp"
+#include "scene/world/core/occupancy.hpp"
 
 #include "scene/world/core/components/builder.hpp"
 #include "scene/world/core/components/building.hpp"
@@ -46,9 +47,7 @@ void ConstructionWorkSystem::update(float delta_time) {
         if (site == nullptr || site_at == nullptr) {
             return;
         }
-        const float distance =
-            std::hypot(site_at->point.x - at.point.x, site_at->point.y - at.point.y);
-        if (distance > BuildReach || site->progress >= site->effort) {
+        if (distance_to_building(registry_, builder.site, at.point) > BuildReach || site->progress >= site->effort) {
             return;
         }
         site->progress += builder.rate * delta_time;

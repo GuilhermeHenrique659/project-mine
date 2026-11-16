@@ -1,10 +1,11 @@
 #include "scene/world/core/systems/inventory_transfer_system.hpp"
 
-#include <cmath>
+#include <algorithm>
 
 #include "scene/world/core/components/inventory.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/events/item_transfer_requested.hpp"
+#include "scene/world/core/occupancy.hpp"
 
 namespace world {
 
@@ -27,8 +28,9 @@ bool within_transfer_reach(const core::Registry& registry, core::EntityId a, cor
     if (at_a == nullptr || at_b == nullptr) {
         return false;
     }
-    return std::hypot(at_a->point.x - at_b->point.x, at_a->point.y - at_b->point.y) <=
-           TransferReach;
+    // Either side may be a building: measure to the nearer footprint edge.
+    return std::min(distance_to_building(registry, b, at_a->point),
+                    distance_to_building(registry, a, at_b->point)) <= TransferReach;
 }
 
 } // namespace world

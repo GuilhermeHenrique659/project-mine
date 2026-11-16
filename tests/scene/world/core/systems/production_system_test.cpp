@@ -91,7 +91,7 @@ TEST(ProductionSystem, TheMineRecipeNeedsNoInputAndYieldsTheGroundAtHalfAnItemPe
     const world::Recipe* recipe = &producer->recipe;
     EXPECT_FALSE(recipe->input.has_value());
     EXPECT_FALSE(recipe->output.has_value());
-    EXPECT_FLOAT_EQ(recipe->rate, 0.5f);
+    EXPECT_FLOAT_EQ(recipe->rate, 4.0f);
 }
 
 TEST(ProductionSystem, AMineNeedsTenWorkersForItsFullRate) {
@@ -110,10 +110,10 @@ TEST(ProductionSystem, AMineWithHalfItsWorkersProducesAtHalfTheRate) {
     const core::EntityId mine = f.mine_on(world::TileType::IronOre);
     f.staff(mine, 5);
 
-    // When: 0.5/s at half rate = one ore every 4 s
-    f.system.update(3.9f);
+    // When: 4/s at half rate = one ore every 0.5 s
+    f.system.update(0.45f);
     const int before = f.count(mine, world::items::IronOre);
-    f.system.update(0.2f);
+    f.system.update(0.1f);
 
     // Then
     EXPECT_EQ(before, 0);
@@ -156,7 +156,7 @@ TEST(ProductionSystem, AMineProducesTheOreUnderItAtItsRate) {
     const core::EntityId coal = f.staffed_mine_on(world::TileType::Coal);
 
     // When
-    f.system.update(4.0f);
+    f.system.update(0.5f);
 
     // Then
     EXPECT_EQ(f.count(iron, world::items::IronOre), 2);
@@ -169,9 +169,9 @@ TEST(ProductionSystem, PartialProgressCarriesOverToTheNextFrame) {
     const core::EntityId mine = f.staffed_mine_on(world::TileType::CopperOre);
 
     // When
-    f.system.update(1.5f);
+    f.system.update(0.15f);
     const int after_first = f.count(mine, world::items::CopperOre);
-    f.system.update(0.5f);
+    f.system.update(0.2f);
 
     // Then
     EXPECT_EQ(after_first, 0);

@@ -60,8 +60,8 @@ TEST(BuildSystem, ARequestedHeadquartersStandsFinishedOnItsTile) {
     EXPECT_EQ(f.registry.get<world::Persistent>(hq.id)->archetype, "building");
     const world::Position* position = f.registry.get<world::Position>(hq.id);
     ASSERT_NE(position, nullptr);
-    EXPECT_FLOAT_EQ(position->point.x, 2.5f);
-    EXPECT_FLOAT_EQ(position->point.y, 3.5f);
+    EXPECT_FLOAT_EQ(position->point.x, 4.5f); // centre of its 5x5 footprint
+    EXPECT_FLOAT_EQ(position->point.y, 5.5f);
 }
 
 TEST(BuildSystem, ARefusedRequestBuildsNothing) {
@@ -112,7 +112,7 @@ TEST(Build, PaysTheCostAndStartsAConstructionSite) {
     // Given
     Fixture f;
     world::build(f.registry, f.factory, *world::find_construction(world::BuildingType::Headquarters),
-                 {0, 0}, f.terrain, f.player);
+                 {-3, -3}, f.terrain, f.player); // 5x5: clear of Grass
     world::Inventory* inventory = f.registry.get<world::Inventory>(f.player);
     inventory->add(world::items::IronOre, 15);
 
@@ -133,7 +133,7 @@ TEST(Build, WithoutEnoughResourcesTakesNothing) {
     // Given
     Fixture f;
     world::build(f.registry, f.factory, *world::find_construction(world::BuildingType::Headquarters),
-                 {0, 0}, f.terrain, f.player);
+                 {-3, -3}, f.terrain, f.player); // 5x5: clear of Grass
     world::Inventory* inventory = f.registry.get<world::Inventory>(f.player);
     inventory->add(world::items::IronOre, 9);
 
@@ -195,7 +195,7 @@ TEST(ConstructionWorkSystem, ASiteWithNobodyWorkingOnItDoesNotAdvance) {
 
 TEST(ConstructionWorkSystem, ABuilderOutOfReachDoesNotAdvanceTheSite) {
     // Given
-    WorkFixture f({5.5f + world::BuildReach + 0.1f, 5.5f});
+    WorkFixture f({6.0f + world::BuildReach + 0.1f, 5.5f}); // reach counts from the edge (x 6)
 
     // When
     f.system.update(1.0f);

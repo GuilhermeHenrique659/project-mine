@@ -34,6 +34,35 @@ TEST(Occupancy, EveryTileOfAMultiTileBuildingBelongsToIt) {
     EXPECT_EQ(outside, 0u);
 }
 
+TEST(Occupancy, ReachToABigBuildingIsMeasuredFromItsEdgeNotItsCentre) {
+    // Given: a 5x5 building covering x 0..5, y 0..5 (centre 2.5, 2.5)
+    core::Registry registry;
+    const core::EntityId big = add(registry, {0, 0}, {5, 5});
+
+    // When
+    const float beside = world::distance_to_building(registry, big, {-1.5f, 2.5f});
+    const float inside = world::distance_to_building(registry, big, {1.0f, 1.0f});
+    const float off_corner = world::distance_to_building(registry, big, {8.0f, 9.0f});
+
+    // Then
+    EXPECT_FLOAT_EQ(beside, 1.5f);
+    EXPECT_FLOAT_EQ(inside, 0.0f);
+    EXPECT_FLOAT_EQ(off_corner, 5.0f);
+}
+
+TEST(Occupancy, ReachToAnEntityWithoutABuildingIsMeasuredFromItsPosition) {
+    // Given
+    core::Registry registry;
+    const core::EntityId crate = registry.create("crate");
+    registry.add(crate, world::Position{{1.0f, 1.0f}});
+
+    // When
+    const float distance = world::distance_to_building(registry, crate, {4.0f, 5.0f});
+
+    // Then
+    EXPECT_FLOAT_EQ(distance, 5.0f);
+}
+
 TEST(Occupancy, TheIndexFollowsABuildingThatMovesOrIsDestroyed) {
     // Given
     core::Registry registry;

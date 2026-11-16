@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "graphics/sprite.hpp"
+#include "scene/world/core/occupancy.hpp"
 #include "scene/world/render/cube.hpp"
 #include "ui/theme.hpp"
 
@@ -117,13 +118,16 @@ void PlayerHud::draw_preview(ui::Canvas& canvas) const {
     }
     const ::world::IsoProjection projection =
         model_.camera().projection(screen_.width, screen_.height);
-    const ::world::ScreenPoint center = projection.world_to_screen(
-        {shown->tile.x + 0.5f, shown->tile.y + 0.5f});
-    const float size = BuildingCubeSize * projection.tile_width / ::world::IsoProjection{}.tile_width;
+    // The preview covers the selection's whole footprint, from the tile under the pointer.
+    const ::world::TileSize footprint = selected_->size;
+    const ::world::ScreenPoint center =
+        projection.world_to_screen(::world::footprint_centre(shown->tile, footprint));
+    const float tile = BuildingCubeSize * projection.tile_width / ::world::IsoProjection{}.tile_width;
     // Translucent green where it can be built, red where it cannot.
-    const Cube cube = shown->valid      ? Cube(size, PreviewValidFront, PreviewValidTop)
-                      : shown->rejected ? Cube(size, PreviewRejectedFront, PreviewRejectedTop)
-                                        : Cube(size, PreviewBlockedFront, PreviewBlockedTop);
+    const Cube cube =
+        shown->valid      ? Cube::footprint(tile, footprint, PreviewValidFront, PreviewValidTop)
+        : shown->rejected ? Cube::footprint(tile, footprint, PreviewRejectedFront, PreviewRejectedTop)
+                          : Cube::footprint(tile, footprint, PreviewBlockedFront, PreviewBlockedTop);
     cube.draw(canvas, center);
 }
 

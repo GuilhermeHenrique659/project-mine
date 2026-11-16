@@ -175,6 +175,24 @@ TEST(EntityRenderer, ABuildingIsABiggerCubeAndASiteShowsItsProgress) {
     EXPECT_EQ(canvas.texts[1].text, "Mine (25%)");
 }
 
+TEST(EntityRenderer, ABuildingIsDrawnAsWideAsItsFootprint) {
+    // Given: a finished 5x5 building centred on its footprint, with 64-pixel tiles
+    core::Registry registry;
+    const core::EntityId hq = registry.create("Headquarters");
+    registry.add(hq, world::Building{world::BuildingType::Headquarters, {0, 0}, {5, 5}});
+    registry.add(hq, world::Position{{2.5f, 2.5f}});
+    const world::Camera camera;
+    const scene::world::EntityRenderer renderer(registry, camera);
+    FakeCanvas canvas;
+
+    // When
+    renderer.draw(canvas, Screen);
+
+    // Then
+    ASSERT_EQ(canvas.triangles.size(), TrianglesPerCube);
+    EXPECT_FLOAT_EQ(width_of(canvas, 0), 5.0f * 64.0f);
+}
+
 TEST(EntityRenderer, AWorkerAtWorkInsideItsBuildingIsNotDrawn) {
     // Given: a finished mine on (4, 0) with one worker at it and one still walking there
     core::Registry registry;

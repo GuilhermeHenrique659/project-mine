@@ -26,18 +26,21 @@ void fill_quad(ui::Canvas& canvas, const std::array<::world::ScreenPoint, 4>& co
 }
 } // namespace
 
-float Cube::height() const { return size_ * HeightRatio; }
+float Cube::height() const { return tall_ * HeightRatio; }
 
 CubeFaces Cube::faces(::world::ScreenPoint ground) const {
-    const float half_width = size_ / 2.0f;
-    const float half_height = size_ / 4.0f;
+    // Half of the base's world-x edge runs (+x/4, +x/8) on screen, half its world-y edge
+    // (-y/4, +y/8); the corners are the ground point plus or minus each.
+    const float xx = along_x_ / 4.0f;
+    const float xy = along_x_ / 8.0f;
+    const float yx = along_y_ / 4.0f;
+    const float yy = along_y_ / 8.0f;
     const float rise = height();
-    // The base diamond, centred on the ground point.
-    const ::world::ScreenPoint left{ground.x - half_width, ground.y};
-    const ::world::ScreenPoint front{ground.x, ground.y + half_height};
-    const ::world::ScreenPoint right{ground.x + half_width, ground.y};
+    const ::world::ScreenPoint left{ground.x - xx - yx, ground.y - xy + yy};
+    const ::world::ScreenPoint front{ground.x + xx - yx, ground.y + xy + yy};
+    const ::world::ScreenPoint right{ground.x + xx + yx, ground.y + xy - yy};
     const auto up = [rise](::world::ScreenPoint p) { return ::world::ScreenPoint{p.x, p.y - rise}; };
-    const ::world::ScreenPoint back_top{ground.x, ground.y - half_height - rise};
+    const ::world::ScreenPoint back_top{ground.x - xx + yx, ground.y - xy - yy - rise};
     return {
         {back_top, up(right), up(front), up(left)},
         {up(left), up(front), front, left},
@@ -46,8 +49,10 @@ CubeFaces Cube::faces(::world::ScreenPoint ground) const {
 }
 
 ui::Rect Cube::bounds(::world::ScreenPoint ground) const {
-    const float top = ground.y - size_ / 4.0f - height();
-    return {ground.x - size_ / 2.0f, top, size_, size_ / 2.0f + height()};
+    const CubeFaces corners = faces(ground);
+    const float left = corners.left[3].x;
+    const float top = corners.top[0].y;
+    return {left, top, corners.right[3].x - left, corners.left[2].y - top};
 }
 
 void Cube::draw(ui::Canvas& canvas, ::world::ScreenPoint ground) const {

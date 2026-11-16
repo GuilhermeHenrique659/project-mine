@@ -6,6 +6,7 @@
 #include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/components/worker.hpp"
+#include "scene/world/core/occupancy.hpp"
 
 namespace world {
 
@@ -51,7 +52,7 @@ bool is_at_work(const core::Registry& registry, core::EntityId id) {
     if (job == 0 || job_at == nullptr) {
         return false;
     }
-    return std::hypot(job_at->point.x - at->point.x, job_at->point.y - at->point.y) <= BuildReach;
+    return distance_to_building(registry, job, at->point) <= BuildReach;
 }
 
 } // namespace world

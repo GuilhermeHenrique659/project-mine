@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
+
 #include <memory>
 #include <vector>
 
@@ -259,6 +261,28 @@ TEST_F(PlayerHud, PreviewsTheSelectionOnTheTileUnderThePointer) {
     ASSERT_TRUE(preview.has_value());
     EXPECT_EQ(preview->tile, expected);
     EXPECT_TRUE(preview->valid);
+}
+
+TEST_F(PlayerHud, ThePreviewCoversTheWholeFootprintOfTheSelection) {
+    // Given: the Headquarters (5x5) selected, the pointer over the world
+    click(centre_of(hud.tab_bounds(0)));
+    click(centre_of(hud.item_bounds(0)));
+    pointer->at = {Screen.width / 2.0f + 70.0f, Screen.height / 3.0f};
+    canvas.triangles.clear();
+
+    // When
+    hud.draw(canvas, Screen);
+
+    // Then: its cube is five tiles wide on screen
+    ASSERT_FALSE(canvas.triangles.empty());
+    float left = canvas.triangles.front().a.x;
+    float right = left;
+    for (const FilledTriangle& t : canvas.triangles) {
+        left = std::min({left, t.a.x, t.b.x, t.c.x});
+        right = std::max({right, t.a.x, t.b.x, t.c.x});
+    }
+    const float tile = model.camera().projection(Screen.width, Screen.height).tile_width;
+    EXPECT_FLOAT_EQ(right - left, 5.0f * tile);
 }
 
 TEST_F(PlayerHud, ThePreviewIsInvalidOnATileThatCannotBeBuilt) {
