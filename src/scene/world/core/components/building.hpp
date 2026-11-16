@@ -8,10 +8,20 @@
 
 namespace world {
 
-// A building standing (or being built) on one tile.
+// How many tiles a building covers along world x (width) and y (height).
+struct TileSize {
+    int width = 1;
+    int height = 1;
+
+    bool operator==(const TileSize&) const = default;
+};
+
+// A building standing (or being built) on the `size` tiles from `tile` (its origin, the
+// corner with the smallest x and y) towards +x and +y.
 struct Building {
     BuildingType type = BuildingType::Headquarters;
     TileCoord tile{};
+    TileSize size{};
 };
 
 // Present while a building is unfinished: work done so far and the work it needs.

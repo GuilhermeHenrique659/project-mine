@@ -5,6 +5,7 @@
 
 #include "logging/logger.hpp"
 #include "scene/world/core/components/building.hpp"
+#include "scene/world/core/occupancy.hpp"
 #include "text/parse.hpp"
 
 namespace world {
@@ -31,17 +32,6 @@ RouteNetwork::RouteNetwork(std::unique_ptr<RoutePlanner> planner, int max_search
     : planner_(std::move(planner)), max_search_nodes_(max_search_nodes) {}
 
 void RouteNetwork::rebuild(const core::Registry& registry, const Terrain& terrain) {
-    std::vector<TileCoord> building_tiles;
-    for (const core::Entity& entity : registry.entities()) {
-        if (const Building* building = registry.get<Building>(entity.id)) {
-            building_tiles.push_back(building->tile);
-        }
-    }
-    const BlockedFn is_blocked = [&](TileCoord tile) {
-        return terrain.tile_at(tile) == TileType::Water ||
-               std::find(building_tiles.begin(), building_tiles.end(), tile) != building_tiles.end();
-    };
-
     routes_.clear();
     for (const RouteKey key : planner_->plan(registry)) {
         const Building* from = registry.get<Building>(key.from);
@@ -49,6 +39,14 @@ void RouteNetwork::rebuild(const core::Registry& registry, const Terrain& terrai
         if (from == nullptr || to == nullptr) {
             continue;
         }
+        // The route's own buildings can be walked through (it starts and ends inside them).
+        const BlockedFn is_blocked = [&](TileCoord tile) {
+            const core::EntityId occupant = building_at(registry, tile);
+            if (occupant != 0) {
+                return occupant != key.from && occupant != key.to;
+            }
+            return terrain.tile_at(tile) == TileType::Water;
+        };
         auto path = find_path(from->tile, to->tile, is_blocked, max_search_nodes_);
         routes_.push_back({key, path ? std::move(*path) : std::vector<TileCoord>{}});
     }

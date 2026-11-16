@@ -186,3 +186,46 @@ TEST(BuildRules, AMineMustStandOnAnOreTile) {
     EXPECT_EQ(on_grass, world::BuildResult::NeedsOre);
     EXPECT_EQ(on_ore, world::BuildResult::Ok);
 }
+
+TEST(BuildRules, AMultiTileBuildingIsBlockedByABuildingUnderAnyOfItsTiles) {
+    // Given
+    core::Registry registry;
+    world::Terrain terrain(7);
+    place(registry, world::BuildingType::Headquarters, {Grass.x + 1, Grass.y + 1});
+    world::Construction big = headquarters();
+    big.rules.clear();
+    big.size = {2, 2};
+
+    // When
+    const auto overlapping = world::can_build(registry, big, Grass, terrain, nullptr);
+    const auto beside = world::can_build(registry, big, {Grass.x - 2, Grass.y}, terrain, nullptr);
+
+    // Then
+    EXPECT_EQ(overlapping, world::BuildResult::TileBlocked);
+    EXPECT_EQ(beside, world::BuildResult::Ok);
+}
+
+TEST(BuildRules, AMultiTileBuildingIsBlockedByWaterUnderAnyOfItsTiles) {
+    // Given
+    core::Registry registry;
+    world::Terrain terrain(7);
+    std::optional<world::TileCoord> origin;
+    for (int x = 0; x < 400 && !origin; ++x) {
+        for (int y = 0; y < 400 && !origin; ++y) {
+            if (terrain.tile_at({x, y}) == world::TileType::Grass &&
+                terrain.tile_at({x + 1, y + 1}) == world::TileType::Water) {
+                origin = world::TileCoord{x, y};
+            }
+        }
+    }
+    ASSERT_TRUE(origin);
+    world::Construction big = headquarters();
+    big.rules.clear();
+    big.size = {2, 2};
+
+    // When: the origin is dry, the footprint's far corner is water
+    const auto result = world::can_build(registry, big, *origin, terrain, nullptr);
+
+    // Then
+    EXPECT_EQ(result, world::BuildResult::TileBlocked);
+}

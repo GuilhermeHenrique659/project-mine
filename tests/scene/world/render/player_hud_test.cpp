@@ -194,8 +194,9 @@ TEST_F(PlayerHud, ClickingTheWorldWithASelectionBuildsItOnTheTileUnderThePointer
     const ::world::TileCoord expected =
         model.camera().projection(Screen.width, Screen.height).tile_at({target.x, target.y});
 
-    // When
+    // When: the request is applied on the next tick
     click(target);
+    model.update(scene::world::SimulationTick);
 
     // Then
     ASSERT_EQ(requests.size(), 1u);
@@ -208,6 +209,7 @@ TEST_F(PlayerHud, ClickingTheWorldWithASelectionBuildsItOnTheTileUnderThePointer
 TEST_F(PlayerHud, TheHeadquartersCannotBeSelectedOnceItExists) {
     // Given
     model.request_build(::world::BuildingType::Headquarters, {2, 2});
+    model.update(scene::world::SimulationTick);
     click(centre_of(hud.tab_bounds(0)));
 
     // When
@@ -265,6 +267,7 @@ TEST_F(PlayerHud, ThePreviewIsInvalidOnATileThatCannotBeBuilt) {
     click(centre_of(hud.item_bounds(0)));
     pointer->at = {Screen.width / 2.0f + 70.0f, Screen.height / 3.0f};
     model.request_build(::world::BuildingType::Headquarters, hud.preview()->tile);
+    model.update(scene::world::SimulationTick);
 
     // When
     const auto preview = hud.preview();
@@ -295,6 +298,7 @@ TEST_F(PlayerHud, ARefusedClickKeepsThePreviewAndMarksItRejected) {
     const ui::Point target{Screen.width / 2.0f + 70.0f, Screen.height / 3.0f};
     pointer->at = {target.x, target.y};
     model.request_build(::world::BuildingType::Headquarters, {-20, -20});
+    model.update(scene::world::SimulationTick);
     std::vector<::world::BuildRequested> requests;
     const auto subscription = event::subscribe_scoped<::world::BuildRequested>(
         bus, [&](const ::world::BuildRequested& request) { requests.push_back(request); });
@@ -315,6 +319,7 @@ TEST_F(PlayerHud, TheRejectedMarkClearsOnAnotherTile) {
     click(centre_of(hud.tab_bounds(0)));
     click(centre_of(hud.item_bounds(0)));
     model.request_build(::world::BuildingType::Headquarters, {-20, -20});
+    model.update(scene::world::SimulationTick);
     click({Screen.width / 2.0f + 70.0f, Screen.height / 3.0f});
 
     // When

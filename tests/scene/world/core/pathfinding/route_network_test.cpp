@@ -115,3 +115,44 @@ TEST(RouteNetwork, EachRebuildBumpsTheRevision) {
     // Then
     EXPECT_GT(f.network.revision(), before);
 }
+
+TEST(RouteNetwork, RoutesAvoidEveryTileOfAMultiTileBuildingInTheWay) {
+    // Given: a 1x5 wall-like building between the headquarters and the target
+    Fixture f;
+    const auto hq = f.add(world::BuildingType::Headquarters, {0, 0});
+    const core::EntityId wall = f.registry.create("wall");
+    f.registry.add(wall, world::Building{world::BuildingType::Mine, {2, -2}, {1, 5}});
+    const auto target = f.add(world::BuildingType::Mine, {4, 0});
+
+    // When
+    f.network.rebuild(f.registry, f.terrain);
+
+    // Then
+    const world::Route* route = f.network.find({hq, target});
+    ASSERT_NE(route, nullptr);
+    ASSERT_TRUE(route->reachable());
+    for (const TileCoord tile : route->tiles) {
+        EXPECT_FALSE(tile.x == 2 && tile.y >= -2 && tile.y <= 2);
+    }
+}
+
+TEST(RouteNetwork, ARouteLeavesAMultiTileBuildingFromAnyOfItsSides) {
+    // Given: a 3x3 headquarters whose origin corner is walled in by other buildings
+    Fixture f;
+    const core::EntityId hq = f.registry.create("hq");
+    f.registry.add(hq, world::Building{world::BuildingType::Headquarters, {0, 0}, {3, 3}});
+    f.add(world::BuildingType::Mine, {-1, -1});
+    f.add(world::BuildingType::Mine, {-1, 0});
+    f.add(world::BuildingType::Mine, {0, -1});
+    f.add(world::BuildingType::Mine, {1, -1});
+    f.add(world::BuildingType::Mine, {-1, 1});
+    const auto target = f.add(world::BuildingType::Mine, {6, 6});
+
+    // When
+    f.network.rebuild(f.registry, f.terrain);
+
+    // Then
+    const world::Route* route = f.network.find({hq, target});
+    ASSERT_NE(route, nullptr);
+    EXPECT_TRUE(route->reachable());
+}

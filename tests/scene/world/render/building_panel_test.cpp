@@ -86,6 +86,7 @@ TEST_F(BuildingPanel, ClickingAFilledBuildingSlotMovesItsStackToThePlayer) {
 
     // When
     click(centre_of(panel.building_slot_bounds(0)));
+    model.update(scene::world::SimulationTick);
 
     // Then
     EXPECT_EQ(count(mine, ::world::items::Coal), 0);
@@ -97,6 +98,7 @@ TEST_F(BuildingPanel, ClickingAFilledPlayerSlotMovesItsStackToTheBuilding) {
 
     // When
     click(centre_of(panel.player_slot_bounds(0)));
+    model.update(scene::world::SimulationTick);
 
     // Then
     EXPECT_EQ(count(mine, ::world::items::IronOre), 100);

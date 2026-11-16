@@ -63,6 +63,8 @@ raylib mouse ──────────────────────�
 - **Text entry.** A screen with a `ui::Input` uses `InputMap::text_entry_defaults()` and its controller forwards `Keyboard::next_char()` to the view each frame; `Action::Erase` (Backspace) erases and confirming the focused field calls its `on_submit`.
 - **Keyboard focus** is a `ui::FocusGroup`: add `Focusable` widgets (`Button`, `Input`, `Checkbox`, `Dropdown`), call `focus_next()/focus_previous()/activate_focused()`, and call `focus(widget)` on hover to sync mouse and keyboard (`ui::join_focus_group()` wires both for any control; `ButtonFactory` does it for buttons).
 - **Layout and drawing are separate from raylib.** Widgets measure and draw through `ui::Canvas`; `layout()` runs before `draw()` and hit-testing uses the bounds of the last layout.
+- **Fixed simulation tick.** `Game::run()` clamps each frame to `game::MaxFrameTime` (0.25 s, `clamp_frame_time()`). `WorldModel::update(dt)` feeds a `game::FixedStep` and runs whole ticks of `scene::world::SimulationTick` (1/60 s), carrying the remainder; systems always get exactly one tick, so results do not depend on the frame rate. Paused time is not banked.
+- **Player commands are queued.** `WorldModel::request_build/request_transfer/request_workers` queue their event; it is published at the start of the next tick, before the systems run. The registry only changes inside a tick; a frame with no complete tick applies nothing yet.
 - **Scene lifecycle.** `Game::change_scene()` applies at the start of the next `update()`. Per frame: `Scene::update()` runs `Controller::handle_input()`, `Model::update()` then `View::update()`; `Scene::draw()` runs `View::draw()`.
 
 ## Adding a screen

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <string>
 #include <vector>
 
 #include "core/registry.hpp"
@@ -105,4 +106,79 @@ TEST(Registry, RemovingAComponentKeepsTheEntityAndItsOtherComponents) {
     EXPECT_TRUE(registry.is_alive(id));
     EXPECT_FALSE(registry.has<Armor>(id));
     EXPECT_TRUE(registry.has<Health>(id));
+}
+
+TEST(Registry, EachVisitsInCreationOrderEvenWhenAnOlderEntityGetsTheComponentLater) {
+    // Given
+    core::Registry registry;
+    const core::EntityId older = registry.create("older");
+    const core::EntityId newer = registry.create("newer");
+    registry.add(newer, Health{1});
+    registry.add(older, Health{2});
+    std::vector<core::EntityId> visited;
+
+    // When
+    registry.each<Health>([&](core::EntityId id, Health&) { visited.push_back(id); });
+
+    // Then
+    EXPECT_EQ(visited, (std::vector<core::EntityId>{older, newer}));
+}
+
+TEST(Registry, EntitiesKeepCreationOrderAfterAnotherIsDestroyed) {
+    // Given
+    core::Registry registry;
+    const core::EntityId first = registry.create("first");
+    const core::EntityId middle = registry.create("middle");
+    const core::EntityId last = registry.create("last");
+
+    // When
+    registry.destroy(middle);
+
+    // Then
+    ASSERT_EQ(registry.entities().size(), 2u);
+    EXPECT_EQ(registry.entities()[0].id, first);
+    EXPECT_EQ(registry.entities()[1].id, last);
+    ASSERT_NE(registry.find(last), nullptr);
+    EXPECT_EQ(registry.find(last)->label, "last");
+}
+
+TEST(Registry, HooksSeeAddsReplacementsRemovalsAndDestruction) {
+    // Given
+    core::Registry registry;
+    std::vector<std::string> log;
+    registry.on_add<Health>([&](core::EntityId, const Health& health) {
+        log.push_back("add " + std::to_string(health.value));
+    });
+    registry.on_remove<Health>([&](core::EntityId, const Health& health) {
+        log.push_back("remove " + std::to_string(health.value));
+    });
+    const core::EntityId a = registry.create("a");
+    const core::EntityId b = registry.create("b");
+
+    // When
+    registry.add(a, Health{1});
+    registry.add(a, Health{2});
+    registry.add(b, Health{3});
+    registry.remove<Health>(a);
+    registry.destroy(b);
+
+    // Then
+    EXPECT_EQ(log, (std::vector<std::string>{"add 1", "remove 1", "add 2", "add 3", "remove 2",
+                                             "remove 3"}));
+}
+
+TEST(Registry, AContextObjectIsCreatedOnceAndFoundAfterwards) {
+    // Given
+    core::Registry registry;
+    const core::Registry& view = registry;
+    const Health* before = view.find_context<Health>();
+
+    // When
+    registry.context<Health>().value = 7;
+    registry.context<Health>().value += 1;
+
+    // Then
+    EXPECT_EQ(before, nullptr);
+    ASSERT_NE(view.find_context<Health>(), nullptr);
+    EXPECT_EQ(view.find_context<Health>()->value, 8);
 }

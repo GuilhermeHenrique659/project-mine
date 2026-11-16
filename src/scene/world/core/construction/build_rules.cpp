@@ -2,15 +2,17 @@
 
 #include "scene/world/core/components/building.hpp"
 #include "scene/world/core/entities/building.hpp"
+#include "scene/world/core/occupancy.hpp"
 
 namespace world {
 
 namespace {
 
-bool any_building(const core::Registry& registry, auto&& matches) {
-    for (const core::Entity& entity : registry.entities()) {
-        const Building* building = registry.get<Building>(entity.id);
-        if (building != nullptr && matches(*building)) {
+// Whether any tile the construction would cover on `origin` is water or taken.
+bool footprint_blocked(const core::Registry& registry, const Construction& construction,
+                       TileCoord origin, const Terrain& terrain) {
+    for (const TileCoord tile : footprint_tiles(Building{{}, origin, construction.size})) {
+        if (terrain.tile_at(tile) == TileType::Water || building_at(registry, tile) != 0) {
             return true;
         }
     }
@@ -47,8 +49,7 @@ BuildResult can_build(const core::Registry& registry, const Construction& constr
     if (unlocked != BuildResult::Ok) {
         return unlocked;
     }
-    if (terrain.tile_at(tile) == TileType::Water ||
-        any_building(registry, [tile](const Building& building) { return building.tile == tile; })) {
+    if (footprint_blocked(registry, construction, tile, terrain)) {
         return BuildResult::TileBlocked;
     }
     for (const auto& rule : construction.rules) {

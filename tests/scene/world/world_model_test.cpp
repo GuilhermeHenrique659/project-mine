@@ -361,6 +361,7 @@ TEST(WorldModel, ARequestedHeadquartersIsBuiltAndSurvivesASave) {
 
     // When
     model.request_build(::world::BuildingType::Headquarters, {3, 2});
+    model.update(scene::world::SimulationTick);
 
     // Then
     EXPECT_EQ(before, ::world::BuildResult::Ok);
@@ -429,6 +430,7 @@ TEST(WorldModel, ThePlayerBuildsTheSiteItWorksOnOnlyWhileWorking) {
     ASSERT_TRUE(ore);
     scene::world::WorldModel model(bus, input.handler, save_next_to(*ore));
     model.request_build(::world::BuildingType::Mine, *ore);
+    model.update(scene::world::SimulationTick);
     ASSERT_FLOAT_EQ(site_progress(model, *ore), 0.0f);
 
     // When
@@ -477,6 +479,7 @@ TEST(WorldModel, OpeningTheTransferOnAMineInReachLetsItemsMoveToThePlayer) {
     w.model.open_transfer(w.ore);
     const core::EntityId mine = w.model.transfer_target();
     w.model.request_transfer(mine, w.model.player_id(), ::world::items::Coal, 40);
+    w.model.update(scene::world::SimulationTick);
 
     // Then
     ASSERT_NE(mine, 0u);
@@ -522,4 +525,77 @@ TEST(WorldModel, CancelClosesTheTransferBeforePausing) {
     // Then
     EXPECT_EQ(w.model.transfer_target(), 0u);
     EXPECT_FALSE(w.model.is_paused());
+}
+
+TEST(WorldModel, AFrameShorterThanATickDoesNotAdvanceTheSimulation) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    input.keyboard.down = {input::Key::S, input::Key::D};
+
+    // When
+    model.update(scene::world::SimulationTick / 2.0f);
+
+    // Then
+    EXPECT_FLOAT_EQ(player_position(model).x, 0.0f);
+}
+
+TEST(WorldModel, ThePlayerWalksTheSameDistanceWhateverTheFrameRate) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel fast(bus, input.handler, game::SaveGame{"Alpha", {}});
+    scene::world::WorldModel slow(bus, input.handler, game::SaveGame{"Alpha", {}});
+    input.keyboard.down = {input::Key::S, input::Key::D};
+
+    // When: one second at 144 fps and at 7 fps
+    for (int frame = 0; frame < 144; ++frame) {
+        fast.update(1.0f / 144.0f);
+    }
+    for (int frame = 0; frame < 7; ++frame) {
+        slow.update(1.0f / 7.0f);
+    }
+
+    // Then: both ran exactly the same ticks
+    EXPECT_FLOAT_EQ(player_position(fast).x, player_position(slow).x);
+}
+
+TEST(WorldModel, ARequestedBuildIsAppliedOnTheNextTickNotWhenRequested) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    const ::world::Construction& hq =
+        *::world::find_construction(::world::BuildingType::Headquarters);
+
+    // When
+    model.request_build(::world::BuildingType::Headquarters, {3, 2});
+    const auto before_tick = model.build_status(hq);
+    model.update(scene::world::SimulationTick);
+
+    // Then
+    EXPECT_EQ(before_tick, ::world::BuildResult::Ok);
+    EXPECT_EQ(model.build_status(hq), ::world::BuildResult::AlreadyExists);
+}
+
+TEST(WorldModel, RequestsMadeWhilePausedWaitForTheSimulationToResume) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    const ::world::Construction& hq =
+        *::world::find_construction(::world::BuildingType::Headquarters);
+    model.toggle_pause();
+    model.request_build(::world::BuildingType::Headquarters, {3, 2});
+
+    // When
+    model.update(scene::world::SimulationTick);
+    const auto while_paused = model.build_status(hq);
+    model.toggle_pause();
+    model.update(scene::world::SimulationTick);
+
+    // Then
+    EXPECT_EQ(while_paused, ::world::BuildResult::Ok);
+    EXPECT_EQ(model.build_status(hq), ::world::BuildResult::AlreadyExists);
 }

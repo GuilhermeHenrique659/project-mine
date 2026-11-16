@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -7,6 +8,7 @@
 
 #include "core/registry.hpp"
 #include "event/event_bus.hpp"
+#include "game/fixed_step.hpp"
 #include "game/save_game.hpp"
 #include "input/input_handler.hpp"
 #include "scene/scene.hpp"
@@ -20,6 +22,9 @@
 #include "scene/world/core/terrain/terrain.hpp"
 
 namespace scene::world {
+
+// Length of one simulation tick: the systems always advance by exactly this much.
+inline constexpr float SimulationTick = 1.0f / 60.0f;
 
 // State of the game being played: the save it came from and the simulation (an ECS
 // registry with the player character). The simulation lives in core:: and ::world::
@@ -35,7 +40,9 @@ public:
     WorldModel(const WorldModel&) = delete;
     WorldModel& operator=(const WorldModel&) = delete;
 
-    // Runs the systems for one frame.
+    // Adds a frame's time and runs as many SimulationTicks as it completes (see
+    // game::FixedStep); each tick first applies the requests queued since the last one,
+    // then runs the systems in order.
     void update(float delta_time) override;
 
     // Opens or closes the pause. While paused update() does not run the simulation.
@@ -52,8 +59,8 @@ public:
     void toggle_build_bar();
     bool is_build_bar_open() const { return build_bar_open_; }
 
-    // Asks to place a building on a tile (::world::BuildRequested on the bus); the build
-    // system builds it when the rules allow, paid by the player.
+    // Asks to place a building on a tile (::world::BuildRequested, published at the start of
+    // the next tick); the build system builds it when the rules allow, paid by the player.
     void request_build(::world::BuildingType type, ::world::TileCoord tile);
 
     // Whether a construction can be built at all now (headquarters rule, uniqueness),
@@ -79,11 +86,11 @@ public:
     core::EntityId transfer_target() const { return transfer_target_; }
     void close_transfer() { transfer_target_ = 0; }
 
-    // Asks to move items between two inventories (::world::ItemTransferRequested).
+    // Asks to move items between two inventories (::world::ItemTransferRequested, next tick).
     void request_transfer(core::EntityId from, core::EntityId to, ::world::Item item, int count);
 
     // Asks to send `count` idle workers to a production building, or with a negative count
-    // to send that many of its workers back (::world::WorkerAssignmentRequested).
+    // to send that many of its workers back (::world::WorkerAssignmentRequested, next tick).
     void request_workers(core::EntityId building, int count);
 
     // The "back" action (Esc): closes the transfer or the player menu when one is open,
@@ -117,6 +124,14 @@ private:
     // The first PlayerControlled entity, or 0 when there is none (ids start at 1).
     core::EntityId find_player() const;
 
+    // Queues a player request; it is published on the bus at the start of the next tick, so
+    // the simulation only changes inside a tick, in system order.
+    template <typename E>
+    void enqueue(E request) {
+        pending_.push_back([request](event::EventBus& bus) { bus.publish(request); });
+    }
+    void run_tick();
+
     event::EventBus& bus_;
     // Header data only (name, creation time, seed); the entities live in registry_.
     game::SaveGame save_;
@@ -131,6 +146,8 @@ private:
     ::world::RouteNetwork routes_{std::make_unique<::world::HeadquartersRoutePlanner>()};
     // Declared after registry_ and bus_, which the systems refer to, so they are destroyed first.
     std::vector<std::unique_ptr<::world::System>> systems_;
+    game::FixedStep clock_{SimulationTick};
+    std::vector<std::function<void(event::EventBus&)>> pending_;
     bool paused_ = false;
     bool player_menu_open_ = false;
     bool build_bar_open_ = false;

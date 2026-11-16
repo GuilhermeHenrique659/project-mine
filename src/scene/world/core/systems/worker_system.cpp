@@ -12,6 +12,7 @@
 #include "scene/world/core/entities/worker.hpp"
 #include "scene/world/core/events/building_events.hpp"
 #include "scene/world/core/events/worker_events.hpp"
+#include "scene/world/core/occupancy.hpp"
 
 namespace world {
 
@@ -32,17 +33,8 @@ core::EntityId find_headquarters(const core::Registry& registry) {
     return 0;
 }
 
-core::EntityId building_at(const core::Registry& registry, std::optional<TileCoord> tile) {
-    if (!tile) {
-        return 0;
-    }
-    for (const core::Entity& entity : registry.entities()) {
-        const auto* building = registry.get<Building>(entity.id);
-        if (building != nullptr && building->tile == *tile) {
-            return entity.id;
-        }
-    }
-    return 0;
+core::EntityId building_on(const core::Registry& registry, std::optional<TileCoord> tile) {
+    return tile ? building_at(registry, *tile) : 0;
 }
 
 } // namespace
@@ -59,8 +51,8 @@ void WorkerSystem::resolve_loaded(core::EntityId headquarters) {
         if (worker == nullptr || builder == nullptr) {
             continue;
         }
-        const core::EntityId workplace = building_at(registry_, links.workplace);
-        const core::EntityId site = building_at(registry_, links.site);
+        const core::EntityId workplace = building_on(registry_, links.workplace);
+        const core::EntityId site = building_on(registry_, links.site);
         worker->workplace =
             registry_.has<Staffing>(workplace) && !registry_.has<ConstructionSite>(workplace)
                 ? workplace
@@ -69,7 +61,7 @@ void WorkerSystem::resolve_loaded(core::EntityId headquarters) {
         if (worker->workplace == 0 && builder->site == 0) {
             worker->state = WorkerState::Idle;
         }
-        const core::EntityId route_end = building_at(registry_, links.route);
+        const core::EntityId route_end = building_on(registry_, links.route);
         if (headquarters == 0 || route_end == 0) {
             continue;
         }
@@ -83,13 +75,10 @@ WorkerSystem::WorkerSystem(core::Registry& registry, event::EventBus& bus,
     : registry_(registry),
       factory_(factory),
       subscription_(event::subscribe_scoped<BuildingPlaced>(bus, [this](const BuildingPlaced& placed) {
-          for (const core::Entity& entity : registry_.entities()) {
-              const auto* building = registry_.get<Building>(entity.id);
-              if (building != nullptr && building->tile == placed.tile &&
-                  building->type == BuildingType::Headquarters) {
-                  spawn_workers(entity.id);
-                  return;
-              }
+          const core::EntityId id = building_at(registry_, placed.tile);
+          const auto* building = registry_.get<Building>(id);
+          if (building != nullptr && building->type == BuildingType::Headquarters) {
+              spawn_workers(id);
           }
       })),
       assignment_subscription_(event::subscribe_scoped<WorkerAssignmentRequested>(

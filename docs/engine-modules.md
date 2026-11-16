@@ -2,7 +2,7 @@
 
 ## core
 
-Generic ECS, header only, raylib-free. `entity.hpp`: `EntityId` and `Entity { id, label }`. `registry.hpp`: `Registry` creates/destroys entities (ids sequential, never reused), attaches components (`add<C>`, `get<C>`, `has<C>`, `remove<C>`) and runs systems over them with `each<Cs...>(fn)`.
+Generic ECS, header only, raylib-free. `entity.hpp`: `EntityId` and `Entity { id, label }`. `registry.hpp`: `Registry` creates/destroys entities (ids sequential, never reused), attaches components (`add<C>`, `get<C>`, `has<C>`, `remove<C>`) and runs systems over them with `each<Cs...>(fn)` (creation order; walks a snapshot of the smallest requested pool, so `fn` may add or remove components). Lookups are O(1): ids index vectors, each pool keeps its owners sorted by id; a component's address is stable until it is removed or replaced. `on_add<C>(hook)` / `on_remove<C>(hook)` run after an add (a replacement too) and before a removal, replacement or `destroy` (not when the registry itself dies). `context<T>()` stores one object of type T with the registry (created on first use; `find_context<T>()` is the const lookup), used for indexes such as `world::Occupancy`. Not copyable.
 
 ## event
 

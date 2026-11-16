@@ -7,6 +7,7 @@
 
 #include "scene/world/core/construction/blueprint.hpp"
 #include "scene/world/core/construction/build_rule.hpp"
+#include "scene/world/core/components/building.hpp"
 #include "scene/world/core/construction/building_type.hpp"
 #include "scene/world/core/items/item.hpp"
 
@@ -30,6 +31,8 @@ struct Construction {
     float effort = 0.0f;
     std::vector<std::shared_ptr<const BuildRule>> rules = {};
     Blueprint blueprint = {};
+    // The tiles it covers from the tile it is placed on (see Building).
+    TileSize size = {};
 };
 
 // The constructions of one category, with the category's own name and icon.

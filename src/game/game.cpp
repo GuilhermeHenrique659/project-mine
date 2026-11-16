@@ -2,6 +2,7 @@
 
 #include <raylib.h>
 
+#include "game/fixed_step.hpp"
 #include "game/game_events.hpp"
 #include "graphics/raylib_texture_loader.hpp"
 #include "graphics/texture_manager.hpp"
@@ -10,7 +11,6 @@
 #include "scene/menu/title_scene.hpp"
 #include "scene/new_game/new_game_scene.hpp"
 #include "scene/settings/settings_scene.hpp"
-#include "scene/world/render/entity_renderer.hpp"
 #include "scene/world/world_scene.hpp"
 
 namespace game {
@@ -78,7 +78,7 @@ void Game::start_up() {
 
 void Game::run() {
     while (running_ && !WindowShouldClose()) {
-        update(GetFrameTime());
+        update(clamp_frame_time(GetFrameTime()));
         draw();
     }
     // Textures live on the GPU, so they go before the window.

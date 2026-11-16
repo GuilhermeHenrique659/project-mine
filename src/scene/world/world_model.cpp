@@ -9,6 +9,7 @@
 #include "scene/world/core/events/building_events.hpp"
 #include "scene/world/core/events/item_transfer_requested.hpp"
 #include "scene/world/core/events/worker_events.hpp"
+#include "scene/world/core/occupancy.hpp"
 #include "scene/world/core/systems/build_system.hpp"
 #include "scene/world/core/systems/inventory_transfer_system.hpp"
 #include "scene/world/core/systems/power_system.hpp"
@@ -29,6 +30,7 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
       terrain_(save_.seed),
       factory_(::world::make_entity_factory()),
       serializer_(::world::make_world_serializer(factory_)) {
+    ::world::track_buildings(registry_);
     serializer_.restore(registry_, save_.entities);
     save_.entities.clear();
     player_ = find_player();
@@ -80,14 +82,28 @@ game::SaveGame WorldModel::save_game() const {
 }
 
 void WorldModel::update(float delta_time) {
+    // Paused time is not banked: resuming does not run the ticks it would have made.
     if (paused_) {
         return;
     }
-    for (const auto& system : systems_) {
-        system->update(delta_time);
+    const int ticks = clock_.advance(delta_time);
+    for (int tick = 0; tick < ticks; ++tick) {
+        run_tick();
     }
     if (transfer_target_ != 0 && !::world::within_transfer_reach(registry_, player_, transfer_target_)) {
         close_transfer();
+    }
+}
+
+void WorldModel::run_tick() {
+    // Requests published by a handler (a request made from a subscriber) wait a tick.
+    auto requests = std::move(pending_);
+    pending_.clear();
+    for (const auto& publish : requests) {
+        publish(bus_);
+    }
+    for (const auto& system : systems_) {
+        system->update(SimulationTick);
     }
 }
 
@@ -120,7 +136,7 @@ void WorldModel::toggle_build_bar() {
 }
 
 void WorldModel::request_build(::world::BuildingType type, ::world::TileCoord tile) {
-    bus_.publish(::world::BuildRequested{type, tile});
+    enqueue(::world::BuildRequested{type, tile});
 }
 
 ::world::BuildResult WorldModel::build_status(const ::world::Construction& construction) const {
@@ -142,39 +158,29 @@ void WorldModel::work_on(std::optional<::world::TileCoord> tile) {
     if (!tile) {
         return;
     }
-    for (const core::Entity& entity : registry_.entities()) {
-        const auto* building = registry_.get<::world::Building>(entity.id);
-        if (building != nullptr && building->tile == *tile &&
-            registry_.has<::world::ConstructionSite>(entity.id)) {
-            builder->site = entity.id;
-            return;
-        }
+    const core::EntityId building = ::world::building_at(registry_, *tile);
+    if (registry_.has<::world::ConstructionSite>(building)) {
+        builder->site = building;
     }
 }
 
 void WorldModel::open_transfer(::world::TileCoord tile) {
-    for (const core::Entity& entity : registry_.entities()) {
-        const auto* building = registry_.get<::world::Building>(entity.id);
-        if (building == nullptr || building->tile != tile) {
-            continue;
-        }
-        if (registry_.has<::world::ConstructionSite>(entity.id) ||
-            !registry_.has<::world::Inventory>(entity.id) ||
-            !::world::within_transfer_reach(registry_, player_, entity.id)) {
-            return;
-        }
-        transfer_target_ = entity.id;
+    const core::EntityId building = ::world::building_at(registry_, tile);
+    if (building == 0 || registry_.has<::world::ConstructionSite>(building) ||
+        !registry_.has<::world::Inventory>(building) ||
+        !::world::within_transfer_reach(registry_, player_, building)) {
         return;
     }
+    transfer_target_ = building;
 }
 
 void WorldModel::request_transfer(core::EntityId from, core::EntityId to, ::world::Item item,
                                   int count) {
-    bus_.publish(::world::ItemTransferRequested{from, to, item, count});
+    enqueue(::world::ItemTransferRequested{from, to, item, count});
 }
 
 void WorldModel::request_workers(core::EntityId building, int count) {
-    bus_.publish(::world::WorkerAssignmentRequested{building, count});
+    enqueue(::world::WorkerAssignmentRequested{building, count});
 }
 
 void WorldModel::cancel() {
