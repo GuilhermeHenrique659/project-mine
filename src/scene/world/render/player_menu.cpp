@@ -33,14 +33,16 @@ PlayerMenu::PlayerMenu(WorldModel& model, std::shared_ptr<const input::Pointer> 
         model.registry(),
         [&model](core::EntityId building, int count) { model.request_workers(building, count); }));
     pages_.push_back(nullptr); // Statistics: not available yet
-    pages_.push_back(std::make_unique<LogisticsPage>(
+    auto logistics = std::make_unique<LogisticsPage>(
         model.registry(), model.routes(),
         [&model](::world::RouteKey route, ::world::HaulMode mode, int count) {
             model.request_haulers(route, mode, count);
         },
         [&model](::world::RouteKey route, ::world::HaulMode mode) {
             model.request_haul_mode(route, mode);
-        }));
+        });
+    logistics_ = logistics.get();
+    pages_.push_back(std::move(logistics));
 }
 
 bool PlayerMenu::visible() const { return model_.is_player_menu_open() && !model_.is_paused(); }
@@ -52,6 +54,10 @@ void PlayerMenu::update() {
     tab_bar_->handle_pointer(position, released);
     if (const auto& page = pages_[tab_bar_->active()]) {
         page->handle_pointer(position, released);
+        // The mouse wheel over the Logistics page scrolls its routes.
+        if (page.get() == logistics_ && page->bounds().contains(position)) {
+            logistics_->scroll(pointer_->scroll());
+        }
     }
     // Last: a click on it closes the menu.
     close_button_->handle_pointer(position, released);

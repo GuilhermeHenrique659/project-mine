@@ -7,6 +7,7 @@
 
 #include "core/registry.hpp"
 #include "scene/world/core/components/hauler.hpp"
+#include "scene/world/core/construction/building_type.hpp"
 #include "scene/world/core/isometric.hpp"
 #include "scene/world/core/pathfinding/route_network.hpp"
 
@@ -26,9 +27,11 @@ struct LogisticEntry {
     std::size_t length = 0; // tiles; 0 = unreachable
     int haulers = 0;
     std::optional<HaulMode> mode = std::nullopt;
+    BuildingType to_type = BuildingType::Headquarters; // the destination's type
 };
 
-// Every Logistic route of the network, in network order.
+// Every Logistic route of the network, grouped by destination type (in BuildingType
+// order), in network order within a group.
 std::vector<LogisticEntry> logistics_report(const core::Registry& registry,
                                             const RouteNetwork& network);
 

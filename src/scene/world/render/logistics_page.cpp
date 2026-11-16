@@ -1,6 +1,7 @@
 #include "scene/world/render/logistics_page.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <string>
 #include <vector>
 
@@ -17,6 +18,7 @@ constexpr float RowGap = 12.0f;
 constexpr float SectionGap = 16.0f;
 constexpr float ButtonGap = 8.0f;
 constexpr float Indent = 24.0f;
+constexpr float ScrollbarWidth = 10.0f;
 constexpr const char* EmptyText = "No logistic routes: build a storage";
 
 // "Storage (0, 0)".
@@ -32,6 +34,23 @@ std::string row_text(const ::world::LogisticEntry& entry) {
 }
 
 std::string count_text(std::size_t count) { return "Logistic routes: " + text::format(count); }
+
+// Whether entry i starts a new destination-type group of the (grouped) report.
+bool starts_group(const std::vector<::world::LogisticEntry>& report, std::size_t i) {
+    return i == 0 || report[i].to_type != report[i - 1].to_type;
+}
+
+// "[-] Mine (2)" ("[+]" while hidden): the group's building name and its route count.
+std::string heading_text(const std::vector<::world::LogisticEntry>& report, std::size_t first,
+                         bool hidden) {
+    std::size_t count = 0;
+    for (std::size_t i = first; i < report.size() && report[i].to_type == report[first].to_type;
+         ++i) {
+        ++count;
+    }
+    return std::string{hidden ? "[+] " : "[-] "} + report[first].to.name + " (" +
+           text::format(count) + ")";
+}
 
 std::pair<core::EntityId, core::EntityId> key_of(::world::RouteKey route) {
     return {route.from, route.to};
@@ -65,8 +84,16 @@ ui::Size LogisticsPage::preferred_size(const ui::Canvas& canvas) const {
     const auto report = ::world::logistics_report(registry_, network_);
     ui::Size size = canvas.measure_text(count_text(report.size()), FontSize);
     size.height += SectionGap;
-    for (const auto& entry : report) {
-        const ui::Size text = canvas.measure_text(row_text(entry), FontSize);
+    for (std::size_t i = 0; i < report.size(); ++i) {
+        const bool hidden = hidden_.contains(report[i].to_type);
+        if (starts_group(report, i)) {
+            const auto heading = ui::button(heading_text(report, i, hidden)).build();
+            size.height += heading->preferred_size(canvas).height + RowGap;
+        }
+        if (hidden) {
+            continue;
+        }
+        const ui::Size text = canvas.measure_text(row_text(report[i]), FontSize);
         size.width = std::max(size.width, Indent + text.width);
         size.height += text.height + RowGap;
     }
@@ -77,16 +104,60 @@ void LogisticsPage::layout(ui::Rect bounds, const ui::Canvas& canvas) {
     ui::Widget::layout(bounds, canvas);
     const auto report = ::world::logistics_report(registry_, network_);
     rows_.clear();
+    headings_.clear();
     // Buttons sit right of the widest row text, so they line up in columns.
     float text_width = 0.0f;
     for (const auto& entry : report) {
         text_width = std::max(text_width, canvas.measure_text(row_text(entry), FontSize).width);
     }
-    float y = bounds.y + static_cast<float>(FontSize) + SectionGap + RowGap;
-    for (const auto& entry : report) {
-        const ::world::RouteKey route = entry.key;
+    // Every line top to bottom: a group's heading, then its rows unless the group is hidden.
+    struct Line {
+        std::size_t entry;
+        bool heading;
+    };
+    std::vector<Line> lines;
+    for (std::size_t i = 0; i < report.size(); ++i) {
+        if (starts_group(report, i)) {
+            lines.push_back({i, true});
+        }
+        if (!hidden_.contains(report[i].to_type)) {
+            lines.push_back({i, false});
+        }
+    }
+    // Lines all have the height of a button; as many as fit below the title are shown.
+    line_height_ = std::max(static_cast<float>(FontSize),
+                            ui::button("Take").build()->preferred_size(canvas).height) +
+                   RowGap;
+    list_top_ = bounds.y + static_cast<float>(FontSize) + SectionGap + RowGap;
+    const float room = bounds.y + bounds.height - list_top_;
+    shown_lines_ = bounds.height <= 0.0f
+                       ? lines.size()
+                       : std::min(lines.size(), static_cast<std::size_t>(std::max(
+                                                    1.0f, std::floor(room / line_height_))));
+    last_first_line_ = lines.size() - shown_lines_;
+    first_line_ = std::min(first_line_, last_first_line_);
+
+    for (std::size_t n = first_line_; n < first_line_ + shown_lines_; ++n) {
+        const std::size_t i = lines[n].entry;
+        const float y = list_top_ + static_cast<float>(n - first_line_) * line_height_;
+        const ::world::BuildingType type = report[i].to_type;
+        if (lines[n].heading) {
+            auto heading = ui::button(heading_text(report, i, hidden_.contains(type)))
+                               .on_click([this, type] {
+                                   if (!hidden_.erase(type)) {
+                                       hidden_.insert(type);
+                                   }
+                               })
+                               .build();
+            const ui::Size size = heading->preferred_size(canvas);
+            heading->layout({bounds.x, y, size.width, size.height}, canvas);
+            headings_.push_back(std::move(heading));
+            continue;
+        }
+        const ::world::RouteKey route = report[i].key;
         const ::world::HaulMode mode = chosen_mode(route);
-        Row row{ui::button(::world::to_string(mode))
+        Row row{i,
+                ui::button(::world::to_string(mode))
                     .on_click([this, route, mode] {
                         const ::world::HaulMode next = other(mode);
                         modes_[key_of(route)] = next;
@@ -100,16 +171,36 @@ void LogisticsPage::layout(ui::Rect bounds, const ui::Canvas& canvas) {
                     .on_click([this, route] { on_assign_(route, chosen_mode(route), 1); })
                     .build()};
         float x = bounds.x + Indent + text_width + ButtonGap;
-        float height = static_cast<float>(FontSize);
         for (ui::Button* button : {row.mode.get(), row.remove.get(), row.add.get()}) {
             const ui::Size size = button->preferred_size(canvas);
             button->layout({x, y, size.width, size.height}, canvas);
             x += size.width + ButtonGap;
-            height = std::max(height, size.height);
         }
-        y += height + RowGap;
         rows_.push_back(std::move(row));
     }
+}
+
+void LogisticsPage::scroll(float notches) {
+    const auto lines = static_cast<long long>(std::lround(notches));
+    const auto target = static_cast<long long>(first_line_) - lines;
+    first_line_ = static_cast<std::size_t>(
+        std::clamp<long long>(target, 0, static_cast<long long>(last_first_line_)));
+}
+
+void LogisticsPage::draw_scrollbar(ui::Canvas& canvas) const {
+    if (last_first_line_ == 0) {
+        return;
+    }
+    const float height = static_cast<float>(shown_lines_) * line_height_ - RowGap;
+    const ui::Rect track{bounds_.x + bounds_.width - ScrollbarWidth, list_top_, ScrollbarWidth,
+                         height};
+    canvas.fill_rect(track, ui::theme::Outline);
+    // The thumb's share of the track is the share of lines shown.
+    const auto total = static_cast<float>(shown_lines_ + last_first_line_);
+    const float thumb_height = track.height * static_cast<float>(shown_lines_) / total;
+    const float offset = (track.height - thumb_height) * static_cast<float>(first_line_) /
+                         static_cast<float>(last_first_line_);
+    canvas.fill_rect({track.x, track.y + offset, track.width, thumb_height}, ui::theme::Accent);
 }
 
 void LogisticsPage::draw(ui::Canvas& canvas) const {
@@ -122,18 +213,33 @@ void LogisticsPage::draw(ui::Canvas& canvas) const {
         return;
     }
     // The rows follow the layout; a route added since then shows on the next layout.
-    const std::size_t count = std::min(rows_.size(), report.size());
-    for (std::size_t i = 0; i < count; ++i) {
-        const ui::Rect& button = rows_[i].mode->bounds();
-        canvas.draw_text(row_text(report[i]), {bounds_.x + Indent, button.y}, FontSize,
+    // Top to bottom: each heading before the rows below it.
+    std::size_t next_heading = 0;
+    for (const Row& row : rows_) {
+        while (next_heading < headings_.size() &&
+               headings_[next_heading]->bounds().y < row.mode->bounds().y) {
+            headings_[next_heading++]->draw(canvas);
+        }
+        if (row.entry >= report.size()) {
+            continue;
+        }
+        const ui::Rect& button = row.mode->bounds();
+        canvas.draw_text(row_text(report[row.entry]), {bounds_.x + Indent, button.y}, FontSize,
                          ui::theme::Text);
-        rows_[i].mode->draw(canvas);
-        rows_[i].remove->draw(canvas);
-        rows_[i].add->draw(canvas);
+        row.mode->draw(canvas);
+        row.remove->draw(canvas);
+        row.add->draw(canvas);
     }
+    while (next_heading < headings_.size()) {
+        headings_[next_heading++]->draw(canvas);
+    }
+    draw_scrollbar(canvas);
 }
 
 void LogisticsPage::handle_pointer(ui::Point position, bool released) {
+    for (const auto& heading : headings_) {
+        heading->handle_pointer(position, released);
+    }
     for (const Row& row : rows_) {
         row.mode->handle_pointer(position, released);
         row.remove->handle_pointer(position, released);

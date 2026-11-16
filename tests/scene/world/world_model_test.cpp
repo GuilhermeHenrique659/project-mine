@@ -241,6 +241,21 @@ TEST(WorldModel, ZoomingIsIgnoredWhilePaused) {
     EXPECT_FLOAT_EQ(model.camera().zoom, 1.0f);
 }
 
+TEST(WorldModel, ZoomingIsIgnoredWhileThePlayerMenuIsOpen) {
+    // Given: the wheel scrolls the menu's pages instead
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    model.toggle_player_menu();
+
+    // When
+    model.zoom_camera(2.0f);
+
+    // Then
+    ASSERT_TRUE(model.is_player_menu_open());
+    EXPECT_FLOAT_EQ(model.camera().zoom, 1.0f);
+}
+
 TEST(WorldModel, TogglingThePlayerMenuOpensAndClosesIt) {
     // Given
     event::EventBus bus;

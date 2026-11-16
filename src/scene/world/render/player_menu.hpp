@@ -12,6 +12,8 @@
 
 namespace scene::world {
 
+class LogisticsPage;
+
 // The player menu (Tab): a panel covering almost the whole screen with a tab bar on top
 // (Inventory, active; Energy; Workers; Statistics, disabled until it exists; Logistics) and
 // the active tab's page below it (Inventory: the player's inventory grid; Energy: the
@@ -50,6 +52,8 @@ private:
     std::unique_ptr<ui::Button> close_button_;
     // One page per tab, null for the tabs without content yet.
     std::vector<std::unique_ptr<ui::Widget>> pages_;
+    // The Logistics page in pages_ (not owning), for the mouse wheel.
+    LogisticsPage* logistics_ = nullptr;
     mutable ui::Rect panel_;
 };
 

@@ -112,8 +112,8 @@ void WorldModel::run_tick() {
 }
 
 void WorldModel::zoom_camera(float steps) {
-    // While a transfer is open the wheel scrolls its panel instead.
-    if (paused_ || transfer_target() != 0) {
+    // While a transfer or the player menu is open the wheel scrolls its panel instead.
+    if (paused_ || transfer_target() != 0 || player_menu_open_) {
         return;
     }
     camera_.zoom_by(steps);

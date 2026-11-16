@@ -1,5 +1,7 @@
 #include "scene/world/core/logistics_report.hpp"
 
+#include <algorithm>
+
 #include "scene/world/core/components/building.hpp"
 #include "scene/world/core/construction/construction.hpp"
 
@@ -27,6 +29,9 @@ std::vector<LogisticEntry> logistics_report(const core::Registry& registry,
         }
         LogisticEntry entry{route.key, end_of(registry, route.key.from),
                             end_of(registry, route.key.to), route.tiles.size()};
+        if (const Building* to = registry.get<Building>(route.key.to)) {
+            entry.to_type = to->type;
+        }
         // The registry is const here, so walk the entities instead of each<Hauler>().
         for (const core::Entity& entity : registry.entities()) {
             const Hauler* hauler = registry.get<Hauler>(entity.id);
@@ -40,6 +45,10 @@ std::vector<LogisticEntry> logistics_report(const core::Registry& registry,
         }
         entries.push_back(entry);
     }
+    std::stable_sort(entries.begin(), entries.end(),
+                     [](const LogisticEntry& a, const LogisticEntry& b) {
+                         return a.to_type < b.to_type;
+                     });
     return entries;
 }
 
