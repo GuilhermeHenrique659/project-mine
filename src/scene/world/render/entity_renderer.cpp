@@ -8,6 +8,7 @@
 #include "scene/world/core/components/character.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/components/worker.hpp"
+#include "scene/world/core/worker_type.hpp"
 #include "scene/world/core/worker_report.hpp"
 #include "scene/world/core/isometric.hpp"
 #include "scene/world/render/cube.hpp"
@@ -44,9 +45,10 @@ void EntityRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
         }
         // Characters show their state next to the label: "Player (Moving)".
         std::string label = entity.label;
-        // Workers show their job state instead: "Worker (Working)".
-        if (const auto* worker = registry_.get<::world::Worker>(entity.id)) {
-            label += std::string(" (") + ::world::to_string(worker->state) + ")";
+        // Workers show the work they do instead: "Worker (Miner)", "Worker (Idle)".
+        if (registry_.has<::world::Worker>(entity.id)) {
+            label += std::string(" (") +
+                     ::world::to_string(::world::worker_type(registry_, entity.id)) + ")";
         } else if (const auto* character = registry_.get<::world::Character>(entity.id)) {
             label += std::string(" (") + ::world::to_string(character->state) + ")";
         }

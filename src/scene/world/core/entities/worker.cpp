@@ -2,12 +2,12 @@
 
 #include "scene/world/core/components/inventory.hpp"
 #include "scene/world/core/components/worker.hpp"
-#include "scene/world/core/entities/character.hpp"
+#include "scene/world/core/entities/unit.hpp"
 
 namespace world {
 
 core::EntityId spawn_worker(core::Registry& registry, std::string label, WorldPoint position) {
-    const core::EntityId id = spawn_character(registry, std::move(label), position);
+    const core::EntityId id = spawn_unit(registry, std::move(label), position);
     registry.add(id, Worker{});
     registry.add(id, Inventory{WorkerInventorySlots});
     return id;

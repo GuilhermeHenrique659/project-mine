@@ -214,3 +214,30 @@ TEST(EntityRenderer, AWorkerAtWorkInsideItsBuildingIsNotDrawn) {
     EXPECT_EQ(canvas.triangles.size(), 2 * TrianglesPerCube);
     EXPECT_EQ(canvas.texts.size(), 2u);
 }
+
+TEST(EntityRenderer, AWorkerIsLabelledWithTheWorkItDoes) {
+    // Given: a worker walking to its mine and an idle one
+    core::Registry registry;
+    const core::EntityId mine = registry.create("Mine");
+    registry.add(mine, world::Building{world::BuildingType::Mine, {8, 0}});
+    registry.add(mine, world::Position{{8.5f, 0.5f}});
+    const core::EntityId miner = world::spawn_worker(registry, "Worker", {0.5f, 0.5f});
+    world::spawn_worker(registry, "Worker", {0.5f, 2.5f});
+    *registry.get<world::Worker>(miner) = {world::WorkerState::Working, mine};
+    const world::Camera camera;
+    const scene::world::EntityRenderer renderer(registry, camera);
+    FakeCanvas canvas;
+
+    // When
+    renderer.draw(canvas, Screen);
+
+    // Then
+    bool miner_label = false;
+    bool idle_label = false;
+    for (const DrawnText& text : canvas.texts) {
+        miner_label = miner_label || text.text == "Worker (Miner)";
+        idle_label = idle_label || text.text == "Worker (Idle)";
+    }
+    EXPECT_TRUE(miner_label);
+    EXPECT_TRUE(idle_label);
+}
