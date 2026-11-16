@@ -172,9 +172,12 @@ void HaulerCodec::read(core::Registry& registry, core::EntityId id, const Fields
         return found != fields.end() && found->second == "1";
     };
     const auto mode = fields.find("hauler.mode");
-    const HaulMode parsed = mode != fields.end() && mode->second == to_string(HaulMode::Put)
-                                ? HaulMode::Put
-                                : HaulMode::Take;
+    HaulMode parsed = HaulMode::Take;
+    for (const HaulMode known : {HaulMode::Put, HaulMode::Both}) {
+        if (mode != fields.end() && mode->second == to_string(known)) {
+            parsed = known;
+        }
+    }
     registry.add(id, PendingHaulerLinks{*from, *to, parsed, flag("hauler.joined"),
                                         flag("hauler.forward")});
 }

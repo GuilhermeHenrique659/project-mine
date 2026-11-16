@@ -94,6 +94,21 @@ struct Fixture {
 
 } // namespace
 
+TEST(HaulerSave, ATakeAndPutHaulerKeepsBothModesThroughASave) {
+    // Given
+    Fixture f;
+    f.make_hauler(world::HaulMode::Both, true);
+
+    // When
+    f.save();
+    f.load_systems();
+
+    // Then
+    const auto* hauler = f.loaded.get<world::Hauler>(f.loaded_worker());
+    ASSERT_NE(hauler, nullptr);
+    EXPECT_EQ(hauler->mode, world::HaulMode::Both);
+}
+
 TEST(HaulerSave, AHaulerOnItsRouteLoadsLoopingOnItInItsMode) {
     // Given
     Fixture f;

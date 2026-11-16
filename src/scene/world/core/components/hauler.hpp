@@ -1,12 +1,32 @@
 #pragma once
 
+#include <optional>
+
 #include "scene/world/core/pathfinding/route_network.hpp"
 
 namespace world {
 
 // Which way a logistic route carries items: Take = from its production building into its
-// storage; Put = from its storage into its production building.
-enum class HaulMode { Take, Put };
+// storage; Put = from its storage into its production building; Both = each trip puts
+// the inputs and takes the output back.
+enum class HaulMode { Take, Put, Both };
+
+constexpr bool takes(HaulMode mode) { return mode != HaulMode::Put; }
+constexpr bool puts(HaulMode mode) { return mode != HaulMode::Take; }
+
+// The mode carrying the given directions; nullopt when neither is.
+constexpr std::optional<HaulMode> haul_mode(bool take, bool put) {
+    if (take && put) {
+        return HaulMode::Both;
+    }
+    if (take) {
+        return HaulMode::Take;
+    }
+    if (put) {
+        return HaulMode::Put;
+    }
+    return std::nullopt;
+}
 
 // A worker assigned (by the player, HaulersRequested) to a logistic route (from = the
 // storage, to = the production building). It walks the headquarters' route to the storage,
@@ -30,6 +50,14 @@ struct PendingHaulerLinks {
     bool forward = true;
 };
 
-constexpr const char* to_string(HaulMode mode) { return mode == HaulMode::Put ? "Put" : "Take"; }
+// Also the save-file key of the mode.
+constexpr const char* to_string(HaulMode mode) {
+    switch (mode) {
+        case HaulMode::Put: return "Put";
+        case HaulMode::Both: return "Both";
+        case HaulMode::Take: break;
+    }
+    return "Take";
+}
 
 } // namespace world

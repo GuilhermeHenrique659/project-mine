@@ -13,6 +13,7 @@
 #include "scene/world/core/construction/building_type.hpp"
 #include "scene/world/core/pathfinding/route_network.hpp"
 #include "ui/button.hpp"
+#include "ui/checkbox.hpp"
 #include "ui/widget.hpp"
 
 namespace scene::world {
@@ -24,8 +25,9 @@ namespace scene::world {
 // Lines that do not fit the page's height are scrolled to with scroll(), with a
 // scrollbar on the right while some are hidden (like InventoryGrid). Each row reads
 // "<from> (x, y) -> <to> (x, y) - N tiles - a workers" ("unreachable" without a path) with
-// three buttons: the route's mode ("Take" / "Put"; a click asks to switch it through
-// `on_mode`), "-" and "+" (ask to release / assign one hauler in that mode through
+// two checkbox columns "Take" and "Put" (each click asks for the mode with that direction
+// switched through `on_mode`: both checked = Both; the last checked box cannot be
+// unchecked), then "-" and "+" (ask to release / assign one hauler in that mode through
 // `on_assign`). A route with haulers shows their mode; one without shows the mode last
 // chosen here (Take at first). A hint to build a storage when there is no route. The
 // registry and the network must outlive it.
@@ -52,14 +54,16 @@ public:
     const ui::Button& heading_button(std::size_t group) const { return *headings_[group]; }
 
     // The buttons of the i-th shown route's row (valid after layout()).
-    const ui::Button& mode_button(std::size_t row) const { return *rows_[row].mode; }
+    const ui::Checkbox& take_checkbox(std::size_t row) const { return *rows_[row].take; }
+    const ui::Checkbox& put_checkbox(std::size_t row) const { return *rows_[row].put; }
     const ui::Button& remove_button(std::size_t row) const { return *rows_[row].remove; }
     const ui::Button& add_button(std::size_t row) const { return *rows_[row].add; }
 
 private:
     struct Row {
         std::size_t entry = 0; // index in the report
-        std::unique_ptr<ui::Button> mode;
+        std::unique_ptr<ui::Checkbox> take;
+        std::unique_ptr<ui::Checkbox> put;
         std::unique_ptr<ui::Button> remove;
         std::unique_ptr<ui::Button> add;
     };

@@ -392,3 +392,41 @@ TEST(HaulSystem, PutModeLeavesAnInputInTheStorageWhileTheProducersSectionIsFull)
     EXPECT_EQ(f.inventory(f.storage).count(world::items::CopperOre), 80);
     EXPECT_TRUE(f.inventory(worker).is_empty());
 }
+
+TEST(HaulSystem, TakeAndPutBringsTheInputsAndCarriesTheOutputBack) {
+    // Given: iron and coal in the storage, steel in a steelworks-like producer
+    Fixture f;
+    f.add_worker();
+    f.inventory(f.storage).add(world::items::IronOre, 50);
+    f.inventory(f.storage).add(world::items::Coal, 50);
+    world::Inventory producer{2};
+    producer.append(1, world::ItemType::IronOre).append(1, world::ItemType::Coal);
+    producer.add(world::items::Steel, 150);
+    f.inventory(f.mine) = producer;
+    f.bus.publish(world::HaulersRequested{f.route, world::HaulMode::Both, 1});
+
+    // When
+    f.run(1200);
+
+    // Then
+    EXPECT_EQ(f.inventory(f.mine).count(world::items::IronOre), 50);
+    EXPECT_EQ(f.inventory(f.mine).count(world::items::Coal), 50);
+    EXPECT_EQ(f.inventory(f.mine).count(world::items::Steel), 0);
+    EXPECT_EQ(f.inventory(f.storage).count(world::items::Steel), 150);
+}
+
+TEST(HaulSystem, TakeModeNeverUnloadsIntoTheProducer) {
+    // Given: a Take hauler still carrying steel (the storage was full)
+    Fixture f;
+    const auto worker = f.add_worker();
+    f.inventory(f.storage) = world::Inventory{0};
+    f.inventory(f.mine).add(world::items::Steel, 40);
+    f.bus.publish(world::HaulersRequested{f.route, world::HaulMode::Take, 1});
+
+    // When
+    f.run(600);
+
+    // Then: it keeps the steel instead of dropping it back
+    EXPECT_EQ(f.inventory(worker).count(world::items::Steel), 40);
+    EXPECT_EQ(f.inventory(f.mine).count(world::items::Steel), 0);
+}

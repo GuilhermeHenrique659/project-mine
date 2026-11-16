@@ -14,9 +14,11 @@ namespace world {
 //   storage; with a negative count it sends that many of the route's haulers back idle;
 // - on HaulModeRequested it switches every hauler of the route to the mode;
 // - each update, a hauler that reached the storage joins the logistic route in a loop; at
-//   the source end (the production building in Take mode, the storage in Put mode) an
-//   empty hauler fills its one slot with the first item there; at the other end it unloads
-//   what fits. A hauler whose route is gone turns idle and walks back to the headquarters.
+//   each end it first unloads what fits if that end receives (the storage when the mode
+//   takes, the production building when it puts), then, if that end sends, an empty
+//   hauler fills its one slot with the first item there the other end wants. Both = puts
+//   the inputs and takes the output on each trip. A hauler whose route is gone turns idle
+//   and walks back to the headquarters.
 // - a loaded hauler (PendingHaulerLinks) gets its Hauler back on its next update: on the
 //   loop if it had joined the route, otherwise walking to the storage.
 // Runs after CharacterMoveSystem. Everything passed must outlive it.

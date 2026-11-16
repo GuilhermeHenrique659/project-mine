@@ -56,10 +56,6 @@ std::pair<core::EntityId, core::EntityId> key_of(::world::RouteKey route) {
     return {route.from, route.to};
 }
 
-::world::HaulMode other(::world::HaulMode mode) {
-    return mode == ::world::HaulMode::Take ? ::world::HaulMode::Put : ::world::HaulMode::Take;
-}
-
 } // namespace
 
 LogisticsPage::LogisticsPage(const core::Registry& registry, const ::world::RouteNetwork& network,
@@ -156,13 +152,24 @@ void LogisticsPage::layout(ui::Rect bounds, const ui::Canvas& canvas) {
         }
         const ::world::RouteKey route = report[i].key;
         const ::world::HaulMode mode = chosen_mode(route);
+        // Each box asks for the mode with its direction switched; unchecking the last
+        // checked one is refused (a route always carries one way at least).
+        const auto change = [this, route, mode](bool take, bool put) {
+            const auto next = ::world::haul_mode(take, put);
+            if (!next) {
+                return;
+            }
+            modes_[key_of(route)] = *next;
+            on_mode_(route, *next);
+        };
         Row row{i,
-                ui::button(::world::to_string(mode))
-                    .on_click([this, route, mode] {
-                        const ::world::HaulMode next = other(mode);
-                        modes_[key_of(route)] = next;
-                        on_mode_(route, next);
-                    })
+                ui::checkbox("Take")
+                    .checked(::world::takes(mode))
+                    .on_change([change, mode](bool take) { change(take, ::world::puts(mode)); })
+                    .build(),
+                ui::checkbox("Put")
+                    .checked(::world::puts(mode))
+                    .on_change([change, mode](bool put) { change(::world::takes(mode), put); })
                     .build(),
                 ui::button("-")
                     .on_click([this, route] { on_assign_(route, chosen_mode(route), -1); })
@@ -171,7 +178,8 @@ void LogisticsPage::layout(ui::Rect bounds, const ui::Canvas& canvas) {
                     .on_click([this, route] { on_assign_(route, chosen_mode(route), 1); })
                     .build()};
         float x = bounds.x + Indent + text_width + ButtonGap;
-        for (ui::Button* button : {row.mode.get(), row.remove.get(), row.add.get()}) {
+        for (ui::Widget* button : std::initializer_list<ui::Widget*>{
+                 row.take.get(), row.put.get(), row.remove.get(), row.add.get()}) {
             const ui::Size size = button->preferred_size(canvas);
             button->layout({x, y, size.width, size.height}, canvas);
             x += size.width + ButtonGap;
@@ -217,16 +225,17 @@ void LogisticsPage::draw(ui::Canvas& canvas) const {
     std::size_t next_heading = 0;
     for (const Row& row : rows_) {
         while (next_heading < headings_.size() &&
-               headings_[next_heading]->bounds().y < row.mode->bounds().y) {
+               headings_[next_heading]->bounds().y < row.take->bounds().y) {
             headings_[next_heading++]->draw(canvas);
         }
         if (row.entry >= report.size()) {
             continue;
         }
-        const ui::Rect& button = row.mode->bounds();
+        const ui::Rect& button = row.take->bounds();
         canvas.draw_text(row_text(report[row.entry]), {bounds_.x + Indent, button.y}, FontSize,
                          ui::theme::Text);
-        row.mode->draw(canvas);
+        row.take->draw(canvas);
+        row.put->draw(canvas);
         row.remove->draw(canvas);
         row.add->draw(canvas);
     }
@@ -241,7 +250,8 @@ void LogisticsPage::handle_pointer(ui::Point position, bool released) {
         heading->handle_pointer(position, released);
     }
     for (const Row& row : rows_) {
-        row.mode->handle_pointer(position, released);
+        row.take->handle_pointer(position, released);
+        row.put->handle_pointer(position, released);
         row.remove->handle_pointer(position, released);
         row.add->handle_pointer(position, released);
     }

@@ -225,16 +225,21 @@ void HaulSystem::update(float) {
         }
         Inventory* here =
             registry_.get<Inventory>(at_storage ? hauler.route.from : hauler.route.to);
-        if (here == nullptr) {
-            continue;
-        }
-        const bool at_source = (hauler.mode == HaulMode::Take) == at_producer;
         const Inventory* there =
             registry_.get<Inventory>(at_storage ? hauler.route.to : hauler.route.from);
-        if (at_source && there != nullptr) {
-            load(*carried, *here, *there);
-        } else {
+        if (here == nullptr || there == nullptr) {
+            continue;
+        }
+        // Drop what this end receives, then pick up what it sends: at the producer, inputs
+        // in (Put) then output out (Take); at the storage, output in (Take) then inputs out
+        // (Put). With Both, every trip carries one way and the other.
+        const bool receives = at_producer ? puts(hauler.mode) : takes(hauler.mode);
+        const bool sends = at_producer ? takes(hauler.mode) : puts(hauler.mode);
+        if (receives) {
             unload(*carried, *here);
+        }
+        if (sends) {
+            load(*carried, *here, *there);
         }
     }
 }

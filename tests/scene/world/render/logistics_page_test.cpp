@@ -118,7 +118,8 @@ TEST(LogisticsPage, ListsEachLogisticRouteWithItsEndsLengthAndHaulers) {
     // Then
     EXPECT_TRUE(contains(texts, "Logistic routes: 1"));
     EXPECT_TRUE(contains(texts, "Storage (0, 0) -> Mine (3, 0) - 4 tiles - 1 workers"));
-    EXPECT_TRUE(contains(texts, "Put"));
+    EXPECT_FALSE(p.page.take_checkbox(0).checked());
+    EXPECT_TRUE(p.page.put_checkbox(0).checked());
 }
 
 TEST(LogisticsPage, SaysSoWhenThereIsNoLogisticRoute) {
@@ -140,10 +141,11 @@ TEST(LogisticsPage, ARouteWithoutHaulersStartsInTakeMode) {
     p.add_route();
 
     // When
-    const std::vector<std::string> texts = p.draw();
+    p.draw();
 
     // Then
-    EXPECT_TRUE(contains(texts, "Take"));
+    EXPECT_TRUE(p.page.take_checkbox(0).checked());
+    EXPECT_FALSE(p.page.put_checkbox(0).checked());
 }
 
 TEST(LogisticsPage, PlusAndMinusAskToAssignAndReleaseOneHaulerInTheRoutesMode) {
@@ -164,24 +166,56 @@ TEST(LogisticsPage, PlusAndMinusAskToAssignAndReleaseOneHaulerInTheRoutesMode) {
     EXPECT_EQ(p.assigns[1].count, -1);
 }
 
-TEST(LogisticsPage, TheModeButtonSwitchesTheRouteBetweenTakeAndPut) {
+TEST(LogisticsPage, CheckingPutOnATakeRouteMakesItTakeAndPut) {
     // Given
     Page p;
     const auto route = p.add_route();
     p.draw();
 
-    // When: switch, then assign one
-    p.click(p.page.mode_button(0).bounds());
-    const std::vector<std::string> texts = p.draw();
+    // When: check Put, then assign one
+    p.click(p.page.put_checkbox(0).bounds());
+    p.draw();
     p.click(p.page.add_button(0).bounds());
 
     // Then
     ASSERT_EQ(p.modes.size(), 1u);
     EXPECT_EQ(p.modes[0].route, route);
-    EXPECT_EQ(p.modes[0].mode, world::HaulMode::Put);
-    EXPECT_TRUE(contains(texts, "Put"));
+    EXPECT_EQ(p.modes[0].mode, world::HaulMode::Both);
+    EXPECT_TRUE(p.page.take_checkbox(0).checked());
+    EXPECT_TRUE(p.page.put_checkbox(0).checked());
     ASSERT_EQ(p.assigns.size(), 1u);
-    EXPECT_EQ(p.assigns[0].mode, world::HaulMode::Put);
+    EXPECT_EQ(p.assigns[0].mode, world::HaulMode::Both);
+}
+
+TEST(LogisticsPage, UncheckingTakeOnATakeAndPutRouteLeavesItPutOnly) {
+    // Given
+    Page p;
+    const auto route = p.add_route();
+    p.add_hauler(route, world::HaulMode::Both);
+    p.draw();
+
+    // When
+    p.click(p.page.take_checkbox(0).bounds());
+    p.draw();
+
+    // Then
+    ASSERT_EQ(p.modes.size(), 1u);
+    EXPECT_EQ(p.modes[0].mode, world::HaulMode::Put);
+}
+
+TEST(LogisticsPage, TheLastCheckedBoxCannotBeUnchecked) {
+    // Given: a Take-only route
+    Page p;
+    p.add_route();
+    p.draw();
+
+    // When
+    p.click(p.page.take_checkbox(0).bounds());
+    p.draw();
+
+    // Then: a route always carries one way at least
+    EXPECT_TRUE(p.modes.empty());
+    EXPECT_TRUE(p.page.take_checkbox(0).checked());
 }
 
 TEST(LogisticsPage, GroupsTheRoutesUnderAHeadingPerDestinationBuildingType) {
