@@ -1,8 +1,9 @@
-#include "scene/world/render/transfer_panel.hpp"
+#include "scene/world/render/building_panel.hpp"
 
 #include <algorithm>
 
 #include "scene/world/core/components/inventory.hpp"
+#include "scene/world/render/building_details.hpp"
 #include "ui/theme.hpp"
 
 namespace scene::world {
@@ -13,6 +14,8 @@ constexpr float TitleGap = 8.0f;
 constexpr float SectionGap = 24.0f;
 constexpr float BorderWidth = 2.0f;
 constexpr int TitleFontSize = 20;
+constexpr int DetailFontSize = 16;
+constexpr float DetailGap = 4.0f;
 
 ui::Rect slot_or_empty(const InventoryGrid& grid, std::size_t index) {
     const auto& slots = grid.slot_bounds();
@@ -20,7 +23,7 @@ ui::Rect slot_or_empty(const InventoryGrid& grid, std::size_t index) {
 }
 } // namespace
 
-TransferPanel::TransferPanel(WorldModel& model, std::shared_ptr<const input::Pointer> pointer)
+BuildingPanel::BuildingPanel(WorldModel& model, std::shared_ptr<const input::Pointer> pointer)
     : model_(model),
       pointer_(std::move(pointer)),
       player_grid_(std::make_unique<InventoryGrid>(model.registry(), model.player_id())),
@@ -28,9 +31,9 @@ TransferPanel::TransferPanel(WorldModel& model, std::shared_ptr<const input::Poi
     close_button_->set_on_click([&model] { model.close_transfer(); });
 }
 
-bool TransferPanel::visible() const { return model_.transfer_target() != 0 && !model_.is_paused(); }
+bool BuildingPanel::visible() const { return model_.transfer_target() != 0 && !model_.is_paused(); }
 
-InventoryGrid& TransferPanel::building_grid() const {
+InventoryGrid& BuildingPanel::building_grid() const {
     const core::EntityId target = model_.transfer_target();
     if (!building_grid_ || building_ != target) {
         building_grid_ = std::make_unique<InventoryGrid>(model_.registry(), target);
@@ -39,15 +42,15 @@ InventoryGrid& TransferPanel::building_grid() const {
     return *building_grid_;
 }
 
-ui::Rect TransferPanel::player_slot_bounds(std::size_t index) const {
+ui::Rect BuildingPanel::player_slot_bounds(std::size_t index) const {
     return slot_or_empty(*player_grid_, index);
 }
 
-ui::Rect TransferPanel::building_slot_bounds(std::size_t index) const {
+ui::Rect BuildingPanel::building_slot_bounds(std::size_t index) const {
     return slot_or_empty(building_grid(), index);
 }
 
-void TransferPanel::move_stack(core::EntityId from, core::EntityId to, std::size_t slot) const {
+void BuildingPanel::move_stack(core::EntityId from, core::EntityId to, std::size_t slot) const {
     const auto* inventory = model_.registry().get<::world::Inventory>(from);
     if (inventory == nullptr || slot >= inventory->capacity() || !inventory->slots()[slot]) {
         return;
@@ -56,7 +59,7 @@ void TransferPanel::move_stack(core::EntityId from, core::EntityId to, std::size
     model_.request_transfer(from, to, stack.item, stack.count);
 }
 
-void TransferPanel::update() {
+void BuildingPanel::update() {
     const input::PointerPosition at = pointer_->position();
     const ui::Point position{at.x, at.y};
     const bool released = pointer_->released();
@@ -85,16 +88,20 @@ void TransferPanel::update() {
     close_button_->handle_pointer(position, released);
 }
 
-void TransferPanel::layout(const ui::Canvas& canvas, ui::Size screen) const {
+void BuildingPanel::layout(const ui::Canvas& canvas, ui::Size screen) const {
     InventoryGrid& building = building_grid();
     const ui::Size player_size = player_grid_->preferred_size(canvas);
     const ui::Size building_size = building.preferred_size(canvas);
     const ui::Size close = close_button_->preferred_size(canvas);
     const float title = static_cast<float>(TitleFontSize);
+    details_ = building_details(model_.registry(), model_.transfer_target());
+    const float detail_line = static_cast<float>(DetailFontSize) + DetailGap;
+    const float details_height = static_cast<float>(details_.size()) * detail_line;
     const float width =
         std::max(player_size.width, building_size.width) + 2.0f * Padding;
     const float height = 2.0f * Padding + std::max(title, close.height) + TitleGap +
-                         player_size.height + SectionGap + title + TitleGap + building_size.height;
+                         player_size.height + SectionGap + title + TitleGap + details_height +
+                         building_size.height;
     panel_ = {(screen.width - width) / 2.0f, (screen.height - height) / 2.0f, width, height};
 
     close_button_->layout({panel_.x + width - Padding - close.width, panel_.y + Padding,
@@ -107,10 +114,12 @@ void TransferPanel::layout(const ui::Canvas& canvas, ui::Size screen) const {
     y += player_size.height + SectionGap;
     building_title_ = {panel_.x + Padding, y};
     y += title + TitleGap;
+    details_top_ = y;
+    y += details_height;
     building.layout({panel_.x + Padding, y, building_size.width, building_size.height}, canvas);
 }
 
-void TransferPanel::draw(ui::Canvas& canvas, ui::Size screen) const {
+void BuildingPanel::draw(ui::Canvas& canvas, ui::Size screen) const {
     layout(canvas, screen);
     canvas.fill_rect(panel_, ui::theme::Panel);
     canvas.stroke_rect(panel_, ui::theme::Outline, BorderWidth);
@@ -118,6 +127,12 @@ void TransferPanel::draw(ui::Canvas& canvas, ui::Size screen) const {
     const core::Entity* building = model_.registry().find(model_.transfer_target());
     canvas.draw_text(building != nullptr ? building->label : "", building_title_, TitleFontSize,
                      ui::theme::Text);
+    for (std::size_t i = 0; i < details_.size(); ++i) {
+        const float line = static_cast<float>(DetailFontSize) + DetailGap;
+        canvas.draw_text(details_[i],
+                         {building_title_.x, details_top_ + static_cast<float>(i) * line},
+                         DetailFontSize, ui::theme::Text);
+    }
     player_grid_->draw(canvas);
     building_grid().draw(canvas);
     close_button_->draw(canvas);

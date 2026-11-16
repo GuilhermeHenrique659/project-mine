@@ -15,7 +15,9 @@
   - Mine: 100 iron ore, effort 300, only on an ore tile, only once a Headquarters exists.
   With a selection, a translucent cube previews it under the mouse (green = buildable, red = not); clicking places it; a refused click keeps the selection and shows a stronger red. Buildings are tile-wide cubes: blue when finished, grey with a % while a construction site.
 - **Building**: holding the left button over a site within 2 tiles builds it at 10 effort/s (a mine takes 30 s).
-- **Mines** produce the ore under them (iron, copper or coal) at 0.5/s into a 10-slot inventory (saved; stops while full). Clicking a finished mine within 2 tiles opens a transfer panel (player inventory above the mine's); clicking a filled slot moves its stack across. X, Esc or walking away closes it.
+- **Mines** produce the ore under them (iron, copper or coal) at 0.5/s into a 10-slot inventory (saved; stops while full). Each finished mine consumes 100 kW.
+- **Power**: the Headquarters generates 1000 kW of solar power (no input). When the total demand of finished consumers exceeds the supply, all of them lose power and their buildings go idle (reason: no power) and stop producing until the supply covers the demand again (10 mines run, the 11th idles them all).
+- **Building panel**: clicking a finished mine within 2 tiles opens it: the player's inventory above the mine's name, state (with the idle reason), power consumption and inventory; clicking a filled slot moves its stack across. X, Esc or walking away closes it.
 - **Terrain**: flat, seed-generated: grass (green), water (blue), iron (grey), copper (orange), coal (black). Three medium ore nodes near the spawn, bigger ones further out. Recreated from the seed on load.
 - All icons are the placeholder (fallback) texture. There is no other gameplay yet.
 

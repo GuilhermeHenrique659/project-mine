@@ -1,5 +1,9 @@
 #include "scene/world/core/construction/construction.hpp"
 
+#include "scene/world/core/components/building.hpp"
+#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/power.hpp"
+
 namespace world {
 
 std::string_view building_type_key(BuildingType type) {
@@ -23,11 +27,19 @@ std::optional<BuildingType> parse_building_type(std::string_view key) {
 const std::vector<ConstructionGroup>& construction_catalog() {
     static const std::vector<ConstructionGroup> catalog{
         {ConstructionCategory::Special, "Special", "icon_tab_special",
-         {{"Headquarters", "icon_headquarters", BuildingType::Headquarters, {}, 0.0f, true, false},
+         {{"Headquarters", "icon_headquarters", BuildingType::Headquarters, {}, 0.0f,
+           {std::make_shared<UniqueRule>()},
+           Blueprint{}.with(
+               Generator{GeneratorSpec{GeneratorType::Solar, std::nullopt, 0.0f, 1000.0f}})},
           {"Storage", "icon_storage"}}},
         {ConstructionCategory::Mine, "Mines", "icon_tab_mines",
-         {{"Mine", "icon_mine", BuildingType::Mine, {{items::IronOre, 100}}, 300.0f, false, true,
-           true, 10, Recipe{std::nullopt, std::nullopt, 0.5f}}}},
+         {{"Mine", "icon_mine", BuildingType::Mine, {{items::IronOre, 100}}, 300.0f,
+           {std::make_shared<NeedsHeadquartersRule>(), std::make_shared<NeedsOreRule>()},
+           Blueprint{}
+               .with(Inventory{10})
+               .with(Producer{Recipe{std::nullopt, std::nullopt, 0.5f}})
+               .with(PowerConsumer{100.0f})
+               .with(BuildingStatus{})}}},
         {ConstructionCategory::Factory, "Factories", "icon_tab_factories",
          {{"Smelter", "icon_smelter"}, {"Assembler", "icon_assembler"}}},
         {ConstructionCategory::Military, "Military", "icon_tab_military",

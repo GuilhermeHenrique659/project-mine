@@ -20,7 +20,7 @@ constexpr world::TileCoord Grass{2, 3}; // inside the spawn clearing: always gra
 // type exists yet, so it borrows it.
 world::Construction mine() {
     return {"Test Mine", "icon_test", world::BuildingType::Headquarters,
-            {{world::items::IronOre, 10}}, 4.0f, false, true};
+            {{world::items::IronOre, 10}}, 4.0f, {std::make_shared<world::NeedsHeadquartersRule>()}};
 }
 
 struct Fixture {

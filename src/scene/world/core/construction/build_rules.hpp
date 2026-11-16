@@ -2,6 +2,7 @@
 
 #include "core/registry.hpp"
 #include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/construction/build_rule.hpp"
 #include "scene/world/core/construction/construction.hpp"
 #include "scene/world/core/entities/entity_factory.hpp"
 #include "scene/world/core/isometric.hpp"
@@ -9,25 +10,13 @@
 
 namespace world {
 
-enum class BuildResult {
-    Ok,
-    NotBuildable,       // a catalog entry without a type
-    NeedsHeadquarters,  // everything but the headquarters needs one first
-    AlreadyExists,      // a unique building that is already built (or being built)
-    TileBlocked,        // water or another building
-    NeedsOre,           // a mine off an ore tile
-    NotEnoughResources, // the payer's inventory lacks part of the cost
-};
-
-// True when a headquarters exists (finished or still a construction site).
-bool has_headquarters(const core::Registry& registry);
-
-// The rules that do not depend on where or who: NotBuildable, NeedsHeadquarters,
-// AlreadyExists, else Ok. The build bar uses it to disable entries.
+// The rules that do not depend on where or who: NotBuildable, then the check_unlocked()
+// of each of the construction's rules in order, else Ok. The build bar uses it to disable entries.
 BuildResult check_unlocked(const core::Registry& registry, const Construction& construction);
 
 // Every rule, for placing `construction` on `tile` paid from `payer` (null = pays nothing,
-// so only an empty cost passes).
+// so only an empty cost passes), in order: check_unlocked(), TileBlocked, the
+// check_site() of each of its rules, NotEnoughResources.
 BuildResult can_build(const core::Registry& registry, const Construction& construction,
                       TileCoord tile, const Terrain& terrain, const Inventory* payer);
 

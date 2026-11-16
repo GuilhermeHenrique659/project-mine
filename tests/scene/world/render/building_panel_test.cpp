@@ -5,7 +5,7 @@
 #include "event/event_bus.hpp"
 #include "graphics/texture_manager.hpp"
 #include "scene/world/core/components/inventory.hpp"
-#include "scene/world/render/transfer_panel.hpp"
+#include "scene/world/render/building_panel.hpp"
 #include "support/fake_canvas.hpp"
 #include "support/fake_input.hpp"
 #include "support/fake_pointer.hpp"
@@ -31,9 +31,9 @@ game::SaveGame save_with_mine() {
     return save;
 }
 
-class TransferPanel : public testing::Test {
+class BuildingPanel : public testing::Test {
 protected:
-    TransferPanel() : model(bus, input.handler, save_with_mine()), panel(model, pointer) {
+    BuildingPanel() : model(bus, input.handler, save_with_mine()), panel(model, pointer) {
         mine = model.registry().entities().front().id;
     }
 
@@ -62,13 +62,13 @@ protected:
     FakeCanvas canvas;
     std::shared_ptr<FakePointer> pointer = std::make_shared<FakePointer>();
     scene::world::WorldModel model;
-    scene::world::TransferPanel panel;
+    scene::world::BuildingPanel panel;
     core::EntityId mine = 0;
 };
 
 } // namespace
 
-TEST_F(TransferPanel, IsVisibleOnlyWhileATransferIsOpen) {
+TEST_F(BuildingPanel, IsVisibleOnlyWhileATransferIsOpen) {
     // Given
     const bool visible_when_open = panel.visible();
 
@@ -80,7 +80,7 @@ TEST_F(TransferPanel, IsVisibleOnlyWhileATransferIsOpen) {
     EXPECT_FALSE(panel.visible());
 }
 
-TEST_F(TransferPanel, ClickingAFilledBuildingSlotMovesItsStackToThePlayer) {
+TEST_F(BuildingPanel, ClickingAFilledBuildingSlotMovesItsStackToThePlayer) {
     // Given
     ASSERT_EQ(model.transfer_target(), mine);
 
@@ -92,7 +92,7 @@ TEST_F(TransferPanel, ClickingAFilledBuildingSlotMovesItsStackToThePlayer) {
     EXPECT_EQ(count(model.player_id(), ::world::items::Coal), 40);
 }
 
-TEST_F(TransferPanel, ClickingAFilledPlayerSlotMovesItsStackToTheBuilding) {
+TEST_F(BuildingPanel, ClickingAFilledPlayerSlotMovesItsStackToTheBuilding) {
     // Given: the starting iron ore fills the player's first two slots (100 each)
 
     // When
@@ -103,10 +103,35 @@ TEST_F(TransferPanel, ClickingAFilledPlayerSlotMovesItsStackToTheBuilding) {
     EXPECT_EQ(count(model.player_id(), ::world::items::IronOre), 100);
 }
 
-TEST_F(TransferPanel, TheCloseButtonClosesTheTransfer) {
+TEST_F(BuildingPanel, TheCloseButtonClosesTheTransfer) {
     // Given / When
     click(centre_of(panel.close_bounds()));
 
     // Then
     EXPECT_EQ(model.transfer_target(), 0u);
+}
+
+TEST_F(BuildingPanel, ShowsTheBuildingNameAndDetailsAboveItsInventory) {
+    // Given
+    FakeCanvas drawn;
+
+    // When
+    panel.draw(drawn, Screen);
+
+    // Then: name, then state and power, top to bottom, all above the mine's first slot
+    const auto y_of = [&](const std::string& text) {
+        for (const DrawnText& drawn_text : drawn.texts) {
+            if (drawn_text.text == text) {
+                return drawn_text.position.y;
+            }
+        }
+        ADD_FAILURE() << "not drawn: " << text;
+        return 0.0f;
+    };
+    const float name = y_of("Mine");
+    const float state = y_of("State: Working");
+    const float power = y_of("Power: 100 kW");
+    EXPECT_LT(name, state);
+    EXPECT_LT(state, power);
+    EXPECT_LT(power + 16.0f, panel.building_slot_bounds(0).y);
 }

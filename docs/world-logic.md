@@ -11,13 +11,15 @@ The ECS content of the world, built on the generic `core/` ECS. It lives under `
 3. `CameraFollowSystem(registry, camera)`: centres the camera on the `PlayerControlled` entity.
 4. `BuildSystem`: builds on `BuildRequested`, paid by the player. `ConstructionWorkSystem`: each `Builder` within `BuildReach` of its site adds `rate * dt`; at the effort the site is removed, its builders stop and `BuildingCompleted` is published.
 5. `InventoryTransferSystem`: on `ItemTransferRequested{from, to, item, count}` runs `transfer_items()` when both have an `Inventory` and are within `TransferReach` (2 tiles; `within_transfer_reach()`).
-6. `ProductionSystem(registry, terrain)`: finished buildings with `Producer` + `Inventory`: progress += rate * dt, each whole unit makes one output into the building's inventory; waits with at most one unit banked while the input is missing or the output does not fit. `item_from_tile()`. Production progress is not saved.
+6. `PowerSystem(registry)`: one global power network. Supply = `power_kw` of every finished `Generator` (one with an `input` burns `input.count` from its `Inventory` every 1/`rate` s and supplies nothing without it, keeping at most one burn pending); demand = `demand_kw` of every finished `PowerConsumer`. When demand > supply every consumer gets `powered = false`, otherwise `true` (equal is enough). `supply_kw()` / `demand_kw()` of the last update. Generator progress and `powered` are not saved (recomputed next frame).
+7. `ProductionSystem(registry, terrain)`: finished buildings with `Producer` + `Inventory` (and no unpowered `PowerConsumer`): progress += rate * dt, each whole unit makes one output into the building's inventory; waits with at most one unit banked while the input is missing or the output does not fit. Sets the `BuildingStatus` (when present) to `Working`, or `Idle` with the first reason: `NoPower`, `NoResource` (no output, a mine off ore), `MissingInput`, `OutputFull`. `item_from_tile()`. Production progress is not saved.
 
 ## Components
 
 - `Character` (marks a character, holds its `CharacterState`: `Idle` or `Moving`), `Position` (a `WorldPoint`), `Mover` (speed in tiles/s + direction intent), `PlayerControlled`.
 - `Inventory` (`inventory.hpp` + `.cpp`): a fixed number of `ItemStack` slots; `add()` returns what did not fit and tops up same-type stacks before using empty slots; `remove()` returns what it took, from the last slots first; `count()`, `free_slots()`. `transfer_items(from, to, item, count)` moves as much as the source holds and the target fits and returns how many moved.
-- `building.hpp`: `Building { type, tile }`, `ConstructionSite { progress, effort }` (present while unfinished), `Producer { recipe, progress }` (its own copy of the recipe so the rate can change per building).
+- `building.hpp`: `Building { type, tile }`, `ConstructionSite { progress, effort }` (present while unfinished), `Producer { recipe, progress }` (its own copy of the recipe so the rate can change per building), `BuildingStatus { state, reason }` with `BuildingState` (`Working`, `Idle`) and `IdleReason` (`None`, `NoPower`, `NoResource`, `MissingInput`, `OutputFull`); set by the building's systems every frame, not saved.
+- `power.hpp`: `Generator { spec, progress }`, `PowerConsumer { demand_kw, powered }` (only whether power arrives; whether the building works is its `BuildingStatus`).
 - `builder.hpp`: `Builder { rate, site }` (`CharacterBuildRate` 10/s, `BuildReach` 2 tiles; every character has one).
 - `persistent.hpp`: `Persistent{archetype}`; only entities with it are saved.
 
@@ -28,7 +30,7 @@ The ECS content of the world, built on the generic `core/` ECS. It lives under `
 ## Entities
 
 - `entities/character.hpp`: `spawn_character()` (`"character"` archetype): `Character` + `Position` + `Mover` at `CharacterSpeed` + an `Inventory` of `CharacterInventorySlots` (40) + a `Builder`. A new game's player gets `StartingIronOre` (200).
-- `entities/building.hpp`: `spawn_building()` (`"building"` archetype) and `make_building()`: `Building` + `Position` at the tile centre + a site when effort > 0 + an `Inventory` of `inventory_slots` when > 0 + a `Producer` when it has a recipe.
+- `entities/building.hpp`: `spawn_building()` (`"building"` archetype) and `make_building()`: `Building` + `Position` at the tile centre + `blueprint.apply()` + a site when effort > 0. It knows no building feature: those come from the blueprint.
 - `entities/entity_factory.hpp`: `EntityFactory` (archetype name → spawn function, injected; `make_entity_factory()` registers them; `spawn()` adds `Persistent`). `WorldModel` spawns the new-game player through it too.
 
 ## Events
@@ -37,10 +39,13 @@ The ECS content of the world, built on the generic `core/` ECS. It lives under `
 
 ## Construction
 
-- `construction/construction.hpp`: `ConstructionCategory` (`Special`, `Mine`, `Factory`, `Military`); `BuildingType` (`Headquarters`, `Mine`; one value per implemented building; `building_type_key()` / `parse_building_type()` for saves); `Construction { name, icon, type, cost, effort, unique, needs_headquarters, needs_ore, inventory_slots, recipe }` where `type` empty = listed but not buildable yet, `cost` = item stacks paid from the player's inventory, `effort` = work units, 0 = finished at once; `Recipe { input, output, rate }` (every 1/`rate` s consumes the optional `input` stack and adds one `output`; empty `output` = the ore under the building); `ConstructionGroup`; `construction_catalog()` (by category, in build bar order) and `find_construction(type)`.
-  - Headquarters: free, effort 0, unique, the only entry that does not need a headquarters.
-  - Mine: 100 iron ore, effort 300, needs an ore tile, 10-slot inventory, recipe: no input, the ore below, 0.5/s.
-- `construction/build_rules.hpp`: `BuildResult`; `has_headquarters()`, `check_unlocked()` (NotBuildable / NeedsHeadquarters / AlreadyExists), `can_build()` (+ TileBlocked: water or another building, NeedsOre, NotEnoughResources), `build()` (applies them, pays the cost, spawns through the factory).
+- `construction/building_type.hpp`: `BuildingType` (`Headquarters`, `Mine`; one value per implemented building; `building_type_key()` / `parse_building_type()` for saves).
+- `construction/blueprint.hpp`: `Blueprint`, the prefab of a building: `with(component)` (any component type, chainable), `apply(registry, id)` (adds a copy of each; one the entity already has is kept, so a loaded inventory survives), `find<C>()` (the blueprint's data of C or null). A new building feature = a component + a `.with()` in the catalog; `Construction` and `make_building()` do not change.
+- `construction/build_rule.hpp`: `BuildResult`, `has_headquarters()`, the `BuildRule` interface (`check_unlocked(registry, type)` before a tile is chosen, `check_site(terrain, tile)` once the tile is free; both default Ok) and the rules `UniqueRule` (AlreadyExists), `NeedsHeadquartersRule` (NeedsHeadquarters), `NeedsOreRule` (NeedsOre). A new placement condition = a new subclass.
+- `construction/construction.hpp`: `ConstructionCategory` (`Special`, `Mine`, `Factory`, `Military`); `Construction { name, icon, type, cost, effort, rules, blueprint }` where `type` empty = listed but not buildable yet, `cost` = item stacks paid from the player's inventory, `effort` = work units, 0 = finished at once, `rules` = its `BuildRule`s in order, `blueprint` = its components; `ConstructionGroup`; `construction_catalog()` (by category, in build bar order) and `find_construction(type)`. `Recipe { input, output, rate }` lives with `Producer` in `components/building.hpp` (every 1/`rate` s consumes the optional `input` stack and adds one `output`; empty `output` = the ore under the building); `GeneratorSpec { type, input, rate, power_kw }` / `GeneratorType` (`Solar`) live with `Generator` in `components/power.hpp`.
+  - Headquarters: free, effort 0; rules: Unique (the only entry without NeedsHeadquarters); blueprint: solar `Generator`, 1000 kW.
+  - Mine: 100 iron ore, effort 300; rules: NeedsHeadquarters, NeedsOre; blueprint: `Inventory` 10 slots, `Producer` (no input, the ore below, 0.5/s), `PowerConsumer` 100 kW, `BuildingStatus`.
+- `construction/build_rules.hpp`: `check_unlocked()` (NotBuildable, then each rule's `check_unlocked()`), `can_build()` (+ TileBlocked: water or another building, each rule's `check_site()`, NotEnoughResources), `build()` (applies them, pays the cost, spawns through the factory).
 
 ## Terrain
 

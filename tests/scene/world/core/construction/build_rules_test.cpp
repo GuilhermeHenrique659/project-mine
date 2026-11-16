@@ -16,10 +16,10 @@ world::Construction headquarters() {
 }
 
 // A construction that needs a headquarters and costs 10 iron ore. Only one building type
-// exists yet, so it borrows it; uniqueness and the headquarters rule come from its flags.
+// exists yet, so it borrows it; it is not unique and needs a headquarters (its rules).
 world::Construction mine() {
     return {"Test Mine", "icon_test", world::BuildingType::Headquarters,
-            {{world::items::IronOre, 10}}, 5.0f, false, true};
+            {{world::items::IronOre, 10}}, 5.0f, {std::make_shared<world::NeedsHeadquartersRule>()}};
 }
 
 std::optional<world::TileCoord> find_water(const world::Terrain& terrain) {
@@ -40,14 +40,13 @@ void place(core::Registry& registry, world::BuildingType type, world::TileCoord 
 
 } // namespace
 
-TEST(BuildRules, TheHeadquartersIsFreeInstantAndUnique) {
+TEST(BuildRules, TheHeadquartersIsFreeAndInstant) {
     // Given / When
     const world::Construction hq = headquarters();
 
     // Then
     EXPECT_TRUE(hq.cost.empty());
     EXPECT_FLOAT_EQ(hq.effort, 0.0f);
-    EXPECT_TRUE(hq.unique);
 }
 
 TEST(BuildRules, TheFirstHeadquartersCanBeBuiltWithoutPaying) {
@@ -167,7 +166,6 @@ TEST(BuildRules, AMineCosts100IronOreAnd300Effort) {
     EXPECT_EQ(mine.cost[0].item, world::items::IronOre);
     EXPECT_EQ(mine.cost[0].count, 100);
     EXPECT_FLOAT_EQ(mine.effort, 300.0f);
-    EXPECT_TRUE(mine.needs_headquarters);
 }
 
 TEST(BuildRules, AMineMustStandOnAnOreTile) {

@@ -333,7 +333,7 @@ TEST(WorldSerializer, AMineKeepsItsInventoryThroughASave) {
     const core::EntityId mine = loaded.registry.entities().front().id;
     const world::Inventory* inventory = loaded.registry.get<world::Inventory>(mine);
     ASSERT_NE(inventory, nullptr);
-    EXPECT_EQ(inventory->capacity(), world::find_construction(world::BuildingType::Mine)->inventory_slots);
+    EXPECT_EQ(inventory->capacity(), 10u);
     ASSERT_TRUE(inventory->slots()[2].has_value());
     EXPECT_EQ(inventory->slots()[2]->count, 40);
 }

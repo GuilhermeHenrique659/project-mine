@@ -28,23 +28,15 @@ bool can_pay(const std::vector<ItemStack>& cost, const Inventory* payer) {
 
 } // namespace
 
-bool has_headquarters(const core::Registry& registry) {
-    return any_building(registry, [](const Building& building) {
-        return building.type == BuildingType::Headquarters;
-    });
-}
-
 BuildResult check_unlocked(const core::Registry& registry, const Construction& construction) {
     if (!construction.type) {
         return BuildResult::NotBuildable;
     }
-    if (construction.needs_headquarters && !has_headquarters(registry)) {
-        return BuildResult::NeedsHeadquarters;
-    }
-    const BuildingType type = *construction.type;
-    if (construction.unique &&
-        any_building(registry, [type](const Building& building) { return building.type == type; })) {
-        return BuildResult::AlreadyExists;
+    for (const auto& rule : construction.rules) {
+        const BuildResult result = rule->check_unlocked(registry, *construction.type);
+        if (result != BuildResult::Ok) {
+            return result;
+        }
     }
     return BuildResult::Ok;
 }
@@ -59,8 +51,11 @@ BuildResult can_build(const core::Registry& registry, const Construction& constr
         any_building(registry, [tile](const Building& building) { return building.tile == tile; })) {
         return BuildResult::TileBlocked;
     }
-    if (construction.needs_ore && !is_ore(terrain.tile_at(tile))) {
-        return BuildResult::NeedsOre;
+    for (const auto& rule : construction.rules) {
+        const BuildResult result = rule->check_site(terrain, tile);
+        if (result != BuildResult::Ok) {
+            return result;
+        }
     }
     if (!can_pay(construction.cost, payer)) {
         return BuildResult::NotEnoughResources;

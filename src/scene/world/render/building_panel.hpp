@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "input/pointer.hpp"
 #include "scene/world/render/inventory_grid.hpp"
@@ -11,14 +13,15 @@
 namespace scene::world {
 
 // The item transfer with a building (WorldModel::transfer_target()): a panel in the
-// middle of the screen with the player's inventory on top and the building's below it.
+// middle of the screen with the player's inventory on top and, below it, the building's
+// name, its details (state, power; see building_details()) and its inventory.
 // Clicking a filled slot moves that whole stack to the other inventory (as much as fits,
 // through WorldModel::request_transfer()); the red X closes it. Visible while a transfer
 // is open and the game is not paused. It reads the mouse itself in update(), using the
 // bounds of the last layout. The model must outlive it.
-class TransferPanel : public Renderer {
+class BuildingPanel : public Renderer {
 public:
-    TransferPanel(WorldModel& model, std::shared_ptr<const input::Pointer> pointer);
+    BuildingPanel(WorldModel& model, std::shared_ptr<const input::Pointer> pointer);
 
     bool visible() const override;
     void update() override;
@@ -47,6 +50,9 @@ private:
     mutable ui::Rect panel_;
     mutable ui::Point player_title_;
     mutable ui::Point building_title_;
+    // The building's detail lines (see building_details()) and where the first one goes.
+    mutable std::vector<std::string> details_;
+    mutable float details_top_ = 0.0f;
 };
 
 } // namespace scene::world

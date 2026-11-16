@@ -4,6 +4,7 @@
 
 #include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/power.hpp"
 
 namespace world {
 
@@ -20,23 +21,45 @@ std::optional<Item> item_from_tile(TileType type) {
 
 namespace {
 
-// Makes one output when the input is there and the output fits; false otherwise (nothing
-// changes then).
-bool produce_one(Inventory& inventory, const std::optional<ItemStack>& input, Item output) {
+// Makes one output when the input is there and the output fits; otherwise nothing changes
+// and the reason is returned (None = made one).
+IdleReason produce_one(Inventory& inventory, const std::optional<ItemStack>& input, Item output) {
     if (input && inventory.count(input->item) < input->count) {
-        return false;
+        return IdleReason::MissingInput;
     }
     if (input) {
         inventory.remove(input->item, input->count);
     }
     if (inventory.add(output, 1) == 0) {
-        return true;
+        return IdleReason::None;
     }
     // No room: undo the input.
     if (input) {
         inventory.add(input->item, input->count);
     }
-    return false;
+    return IdleReason::OutputFull;
+}
+
+// Advances one producer by dt; the reason it is idle, None while it works.
+IdleReason run(Producer& producer, Inventory& inventory, const std::optional<Item>& output,
+               const PowerConsumer* power, float delta_time) {
+    if (power != nullptr && !power->powered) {
+        return IdleReason::NoPower;
+    }
+    if (!output) {
+        return IdleReason::NoResource;
+    }
+    producer.progress += producer.recipe.rate * delta_time;
+    while (producer.progress >= 1.0f) {
+        const IdleReason reason = produce_one(inventory, producer.recipe.input, *output);
+        if (reason != IdleReason::None) {
+            // Waiting: keep one output ready, do not bank more.
+            producer.progress = 1.0f;
+            return reason;
+        }
+        producer.progress -= 1.0f;
+    }
+    return IdleReason::None;
 }
 
 } // namespace
@@ -53,17 +76,12 @@ void ProductionSystem::update(float delta_time) {
             const std::optional<Item> output =
                 producer.recipe.output ? producer.recipe.output
                                        : item_from_tile(terrain_.tile_at(building.tile));
-            if (!output) {
-                return;
-            }
-            producer.progress += producer.recipe.rate * delta_time;
-            while (producer.progress >= 1.0f) {
-                if (!produce_one(inventory, producer.recipe.input, *output)) {
-                    // Waiting: keep one output ready, do not bank more.
-                    producer.progress = 1.0f;
-                    return;
-                }
-                producer.progress -= 1.0f;
+            const IdleReason reason = run(producer, inventory, output,
+                                          registry_.get<PowerConsumer>(id), delta_time);
+            if (BuildingStatus* status = registry_.get<BuildingStatus>(id)) {
+                status->state =
+                    reason == IdleReason::None ? BuildingState::Working : BuildingState::Idle;
+                status->reason = reason;
             }
         });
 }

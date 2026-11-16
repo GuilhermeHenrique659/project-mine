@@ -5,6 +5,7 @@
 #include "core/registry.hpp"
 #include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/power.hpp"
 #include "scene/world/core/entities/building.hpp"
 #include "scene/world/core/systems/production_system.hpp"
 
@@ -43,7 +44,14 @@ struct Fixture {
         registry.add(id, world::Building{world::BuildingType::Mine, {1, 1}});
         registry.add(id, world::Inventory{slots});
         registry.add(id, world::Producer{recipe});
+        registry.add(id, world::BuildingStatus{});
         return id;
+    }
+
+    world::BuildingStatus status(core::EntityId id) const {
+        const world::BuildingStatus* status = registry.get<world::BuildingStatus>(id);
+        EXPECT_NE(status, nullptr);
+        return status != nullptr ? *status : world::BuildingStatus{};
     }
 
     int count(core::EntityId id, world::Item item) const {
@@ -55,10 +63,12 @@ struct Fixture {
 
 TEST(ProductionSystem, TheMineRecipeNeedsNoInputAndYieldsTheGroundAtHalfAnItemPerSecond) {
     // Given / When
-    const auto& recipe = world::find_construction(world::BuildingType::Mine)->recipe;
+    const auto* producer =
+        world::find_construction(world::BuildingType::Mine)->blueprint.find<world::Producer>();
 
     // Then
-    ASSERT_TRUE(recipe.has_value());
+    ASSERT_NE(producer, nullptr);
+    const world::Recipe* recipe = &producer->recipe;
     EXPECT_FALSE(recipe->input.has_value());
     EXPECT_FALSE(recipe->output.has_value());
     EXPECT_FLOAT_EQ(recipe->rate, 0.5f);
@@ -134,4 +144,79 @@ TEST(ProductionSystem, AnInputIsConsumedForEachOutputAndItsLackStopsProduction) 
     // Then
     EXPECT_EQ(f.count(id, world::items::Coal), 1);
     EXPECT_EQ(f.count(id, world::items::IronOre), 1);
+}
+
+TEST(ProductionSystem, AnUnpoweredBuildingIsIdleForLackOfPowerAndProducesNothing) {
+    // Given
+    Fixture f;
+    const core::EntityId mine = f.mine_on(world::TileType::IronOre);
+    f.registry.get<world::PowerConsumer>(mine)->powered = false;
+
+    // When
+    f.system.update(4.0f);
+
+    // Then
+    EXPECT_EQ(f.count(mine, world::items::IronOre), 0);
+    EXPECT_EQ(f.status(mine).state, world::BuildingState::Idle);
+    EXPECT_EQ(f.status(mine).reason, world::IdleReason::NoPower);
+}
+
+TEST(ProductionSystem, APoweredProducingBuildingIsWorking) {
+    // Given: a mine idle last frame for lack of power, powered again
+    Fixture f;
+    const core::EntityId mine = f.mine_on(world::TileType::IronOre);
+    f.registry.get<world::PowerConsumer>(mine)->powered = false;
+    f.system.update(1.0f);
+    f.registry.get<world::PowerConsumer>(mine)->powered = true;
+
+    // When
+    f.system.update(1.0f);
+
+    // Then
+    EXPECT_EQ(f.status(mine).state, world::BuildingState::Working);
+    EXPECT_EQ(f.status(mine).reason, world::IdleReason::None);
+}
+
+TEST(ProductionSystem, ABuildingWithoutItsInputIsIdleForMissingInput) {
+    // Given: 2 iron ore -> 1 coal, with no iron
+    Fixture f;
+    const core::EntityId id =
+        f.producer({world::ItemStack{world::items::IronOre, 2}, world::items::Coal, 1.0f}, 4);
+
+    // When
+    f.system.update(1.0f);
+
+    // Then
+    EXPECT_EQ(f.status(id).state, world::BuildingState::Idle);
+    EXPECT_EQ(f.status(id).reason, world::IdleReason::MissingInput);
+}
+
+TEST(ProductionSystem, ABuildingWhoseOutputDoesNotFitIsIdleForFullOutput) {
+    // Given: one slot, already full of iron ore
+    Fixture f;
+    const core::EntityId id = f.producer({std::nullopt, world::items::IronOre, 1.0f}, 1);
+    f.registry.get<world::Inventory>(id)->add(world::items::IronOre, 100);
+
+    // When
+    f.system.update(1.0f);
+
+    // Then
+    EXPECT_EQ(f.status(id).state, world::BuildingState::Idle);
+    EXPECT_EQ(f.status(id).reason, world::IdleReason::OutputFull);
+}
+
+TEST(ProductionSystem, AMineOffOreIsIdleForLackOfResource) {
+    // Given: a catalog mine on grass
+    Fixture f;
+    const core::EntityId mine = f.registry.create("Mine");
+    world::make_building(f.registry, mine, *world::find_construction(world::BuildingType::Mine),
+                         {1, 1});
+    f.registry.remove<world::ConstructionSite>(mine);
+
+    // When
+    f.system.update(1.0f);
+
+    // Then
+    EXPECT_EQ(f.status(mine).state, world::BuildingState::Idle);
+    EXPECT_EQ(f.status(mine).reason, world::IdleReason::NoResource);
 }
