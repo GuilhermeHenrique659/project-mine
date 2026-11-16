@@ -150,23 +150,79 @@ TEST(PowerSystem, ConstructionSitesNeitherGenerateNorConsume) {
     EXPECT_TRUE(f.powered(mine));
 }
 
-TEST(PowerSystem, AFuelGeneratorBurnsItsInputAtItsRateAndStopsWithoutIt) {
-    // Given: 1 coal per second for 500 kW, with 2 coal
+namespace {
+
+world::GeneratorSpec coal_spec() {
+    return {world::GeneratorType::Coal, world::ItemStack{world::items::Coal, 1}, 1.0f, 1000.0f};
+}
+
+// Runs the system for `seconds` in 0.1 s frames, handing the generator one coal every
+// `coal_every` seconds (0 = none).
+void run(Fixture& f, core::EntityId generator, float seconds, float coal_every) {
+    float until_coal = 0.0f;
+    for (int frame = 0; frame < static_cast<int>(seconds * 10.0f + 0.5f); ++frame) {
+        if (coal_every > 0.0f && until_coal <= 0.0f) {
+            f.registry.get<world::Inventory>(generator)->add(world::items::Coal, 1);
+            until_coal += coal_every;
+        }
+        until_coal -= 0.1f;
+        f.system.update(0.1f);
+    }
+}
+
+} // namespace
+
+TEST(PowerSystem, AFullyFuelledCoalGeneratorBurnsOneCoalPerSecondFor1000Kw) {
+    // Given
     Fixture f;
-    const core::EntityId id = f.generator(
-        {world::GeneratorType::Solar, world::ItemStack{world::items::Coal, 1}, 1.0f, 500.0f});
-    f.registry.get<world::Inventory>(id)->add(world::items::Coal, 2);
+    const core::EntityId id = f.generator(coal_spec());
+    f.registry.get<world::Inventory>(id)->add(world::items::Coal, 100);
+
+    // When
+    run(f, id, 60.0f, 0.0f);
+
+    // Then
+    EXPECT_NEAR(f.system.supply_kw(), 1000.0f, 5.0f); // still finishing its warm-up
+    EXPECT_NEAR(f.registry.get<world::Inventory>(id)->count(world::items::Coal), 40, 1);
+}
+
+TEST(PowerSystem, ACoalGeneratorFedHalfItsCoalRateProducesAboutHalfItsPower) {
+    // Given: one coal every 2 s instead of every second
+    Fixture f;
+    const core::EntityId id = f.generator(coal_spec());
+
+    // When
+    run(f, id, 120.0f, 2.0f);
+
+    // Then
+    EXPECT_NEAR(f.system.supply_kw(), 500.0f, 100.0f);
+}
+
+TEST(PowerSystem, ACoalGeneratorWithoutCoalProducesNothing) {
+    // Given
+    Fixture f;
+    const core::EntityId id = f.generator(coal_spec());
     const core::EntityId mine = f.consumer(100.0f);
 
     // When
     f.system.update(1.0f);
-    f.system.update(1.0f);
-    const float supply_while_fuelled = f.system.supply_kw();
-    f.system.update(1.0f);
 
     // Then
-    EXPECT_FLOAT_EQ(supply_while_fuelled, 500.0f);
-    EXPECT_EQ(f.registry.get<world::Inventory>(id)->count(world::items::Coal), 0);
     EXPECT_FLOAT_EQ(f.system.supply_kw(), 0.0f);
+    EXPECT_FALSE(f.registry.get<world::Generator>(id)->running);
     EXPECT_FALSE(f.powered(mine));
+}
+
+TEST(PowerSystem, ACoalGeneratorThatRunsOutOfCoalFadesToNothing) {
+    // Given: 10 s of coal
+    Fixture f;
+    const core::EntityId id = f.generator(coal_spec());
+    f.registry.get<world::Inventory>(id)->add(world::items::Coal, 10);
+
+    // When
+    run(f, id, 60.0f, 0.0f);
+
+    // Then
+    EXPECT_EQ(f.registry.get<world::Inventory>(id)->count(world::items::Coal), 0);
+    EXPECT_LT(f.system.supply_kw(), 50.0f);
 }

@@ -5,6 +5,7 @@
 
 #include "core/registry.hpp"
 #include "scene/world/core/components/building.hpp"
+#include "scene/world/core/components/power.hpp"
 #include "scene/world/core/pathfinding/route_network.hpp"
 #include "scene/world/core/terrain/terrain.hpp"
 
@@ -58,6 +59,26 @@ TEST(LogisticRoutes, EveryStorageGetsALogisticRouteToEveryProductionBuilding) {
     EXPECT_EQ(to_a->kind, world::RouteKind::Logistic);
     EXPECT_EQ(to_b->kind, world::RouteKind::Logistic);
     EXPECT_EQ(to_a->tiles.back(), (TileCoord{5, 0}));
+}
+
+TEST(LogisticRoutes, StoragesGetALogisticRouteToFuelledGeneratorsButNotToSolarOnes) {
+    // Given
+    Fixture f;
+    const auto storage = f.add(world::BuildingType::Storage, {0, 0});
+    const auto coal = f.add(world::BuildingType::CoalGenerator, {5, 0});
+    f.registry.add(coal, world::Generator{{world::GeneratorType::Coal,
+                                           world::ItemStack{world::items::Coal, 1}, 1.0f,
+                                           1000.0f}});
+    const auto solar = f.add(world::BuildingType::Headquarters, {0, 6});
+    f.registry.add(solar, world::Generator{});
+
+    // When
+    f.network.rebuild(f.registry, f.terrain);
+
+    // Then
+    ASSERT_NE(f.network.find({storage, coal}), nullptr);
+    EXPECT_EQ(f.network.find({storage, coal})->kind, world::RouteKind::Logistic);
+    EXPECT_EQ(f.network.find({storage, solar}), nullptr);
 }
 
 TEST(LogisticRoutes, BuildingsThatDoNotProduceGetNoLogisticRoute) {

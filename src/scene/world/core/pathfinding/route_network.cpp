@@ -5,6 +5,7 @@
 
 #include "logging/logger.hpp"
 #include "scene/world/core/components/building.hpp"
+#include "scene/world/core/components/power.hpp"
 #include "scene/world/core/occupancy.hpp"
 #include "text/parse.hpp"
 
@@ -36,7 +37,10 @@ std::vector<RouteRequest> LogisticRoutePlanner::plan(const core::Registry& regis
             continue;
         }
         for (const core::Entity& producer : registry.entities()) {
-            if (registry.has<Building>(producer.id) && registry.has<Producer>(producer.id)) {
+            const Generator* generator = registry.get<Generator>(producer.id);
+            const bool fuelled = generator != nullptr && generator->spec.input.has_value();
+            if (registry.has<Building>(producer.id) &&
+                (registry.has<Producer>(producer.id) || fuelled)) {
                 requests.push_back({{storage.id, producer.id}, RouteKind::Logistic});
             }
         }

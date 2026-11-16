@@ -138,6 +138,57 @@ TEST(ConstructionCatalog, SteelworksHasGeneralSlotsAndOneSectionForIronOreAndOne
     EXPECT_EQ(steel_left, 1000);
 }
 
+TEST(ConstructionCatalog, CoalGeneratorCosts200Steel100CopperOreTakes1200WorkMakes1000KwFromOneCoalPerSecond) {
+    // Given / When
+    const world::Construction* generator =
+        world::find_construction(world::BuildingType::CoalGenerator);
+
+    // Then
+    ASSERT_NE(generator, nullptr);
+    EXPECT_EQ(generator->name, "Coal Generator");
+    ASSERT_EQ(generator->cost.size(), 2u);
+    EXPECT_EQ(generator->cost[0].item, world::items::Steel);
+    EXPECT_EQ(generator->cost[0].count, 200);
+    EXPECT_EQ(generator->cost[1].item, world::items::CopperOre);
+    EXPECT_EQ(generator->cost[1].count, 100);
+    EXPECT_FLOAT_EQ(generator->effort, 1200.0f);
+    const auto* spec = generator->blueprint.find<world::Generator>();
+    ASSERT_NE(spec, nullptr);
+    EXPECT_EQ(spec->spec.type, world::GeneratorType::Coal);
+    ASSERT_TRUE(spec->spec.input.has_value());
+    EXPECT_EQ(spec->spec.input->item, world::items::Coal);
+    EXPECT_EQ(spec->spec.input->count, 1);
+    EXPECT_FLOAT_EQ(spec->spec.rate, 1.0f);
+    EXPECT_FLOAT_EQ(spec->spec.power_kw, 1000.0f);
+}
+
+TEST(ConstructionCatalog, CoalGeneratorStoresOnlyCoalInFiveSlots) {
+    // Given
+    world::Inventory inventory = *world::find_construction(world::BuildingType::CoalGenerator)
+                                      ->blueprint.find<world::Inventory>();
+
+    // When
+    const int coal_left = inventory.add(world::items::Coal, 1000);
+    const int iron_left = inventory.add(world::items::IronOre, 10);
+
+    // Then
+    EXPECT_EQ(inventory.capacity(), 5u);
+    EXPECT_EQ(coal_left, 500);
+    EXPECT_EQ(iron_left, 10);
+}
+
+TEST(BuildingType, CoalGeneratorRoundTripsThroughItsSaveKey) {
+    // Given
+    const std::string_view key = world::building_type_key(world::BuildingType::CoalGenerator);
+
+    // When
+    const auto parsed = world::parse_building_type(key);
+
+    // Then
+    EXPECT_EQ(key, "CoalGenerator");
+    EXPECT_EQ(parsed, world::BuildingType::CoalGenerator);
+}
+
 TEST(ConstructionCatalog, ElectronicFactoryCosts200SteelTakes1200WorkNeeds50WorkersOn200Kw) {
     // Given / When
     const world::Construction* factory =

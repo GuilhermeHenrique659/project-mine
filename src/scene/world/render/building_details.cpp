@@ -1,5 +1,7 @@
 #include "scene/world/render/building_details.hpp"
 
+#include <cmath>
+
 #include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/power.hpp"
 #include "text/parse.hpp"
@@ -34,7 +36,15 @@ std::vector<std::string> building_details(const core::Registry& registry, core::
         lines.push_back("Power: " + text::format(consumer->demand_kw) + " kW");
     }
     if (const auto* generator = registry.get<::world::Generator>(id)) {
-        lines.push_back("Generates: " + text::format(generator->spec.power_kw) + " kW");
+        if (!generator->spec.input) {
+            lines.push_back("Generates: " + text::format(generator->spec.power_kw) + " kW");
+        } else {
+            const auto output = static_cast<int>(std::lround(generator->output_kw));
+            const auto percent = static_cast<int>(std::lround(generator->efficiency * 100.0f));
+            lines.push_back("Generates: " + text::format(output) + " / " +
+                            text::format(generator->spec.power_kw) + " kW (" +
+                            text::format(percent) + "% efficiency)");
+        }
     }
     return lines;
 }

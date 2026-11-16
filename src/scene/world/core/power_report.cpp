@@ -13,10 +13,8 @@ PowerReport power_report(const core::Registry& registry) {
         }
         if (const Generator* generator = registry.get<Generator>(entity.id)) {
             report.generators.push_back(
-                {entity.id, entity.label, generator->spec.power_kw, generator->running});
-            if (generator->running) {
-                report.produced_kw += generator->spec.power_kw;
-            }
+                {entity.id, entity.label, generator->output_kw, generator->running});
+            report.produced_kw += generator->output_kw;
         }
         if (const PowerConsumer* consumer = registry.get<PowerConsumer>(entity.id)) {
             report.consumers.push_back(

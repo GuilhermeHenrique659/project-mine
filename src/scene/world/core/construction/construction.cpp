@@ -14,6 +14,7 @@ std::string_view building_type_key(BuildingType type) {
         case BuildingType::Steelworks: return "Steelworks";
         case BuildingType::ElectronicFactory: return "ElectronicFactory";
         case BuildingType::House: return "House";
+        case BuildingType::CoalGenerator: return "CoalGenerator";
         case BuildingType::Headquarters: break;
     }
     return "Headquarters";
@@ -38,6 +39,9 @@ std::optional<BuildingType> parse_building_type(std::string_view key) {
     if (key == building_type_key(BuildingType::House)) {
         return BuildingType::House;
     }
+    if (key == building_type_key(BuildingType::CoalGenerator)) {
+        return BuildingType::CoalGenerator;
+    }
     return std::nullopt;
 }
 
@@ -56,7 +60,15 @@ const std::vector<ConstructionGroup>& construction_catalog() {
           {"House", "icon_house", BuildingType::House, {{items::Steel, 100}}, 300.0f,
            {std::make_shared<NeedsHeadquartersRule>()},
            Blueprint{}.with(Housing{50}).with(PowerConsumer{20.0f}),
-           TileSize{2, 2}}}},
+           TileSize{2, 2}},
+          {"Coal Generator", "icon_coal_generator", BuildingType::CoalGenerator,
+           {{items::Steel, 200}, {items::CopperOre, 100}}, 1200.0f,
+           {std::make_shared<NeedsHeadquartersRule>()},
+           Blueprint{}
+               .with(Inventory{0}.append(5, ItemType::Coal))
+               .with(Generator{GeneratorSpec{GeneratorType::Coal,
+                                             ItemStack{items::Coal, 1}, 1.0f, 1000.0f}}),
+           TileSize{3, 3}}}},
         {ConstructionCategory::Mine, "Mines", "icon_tab_mines",
          {{"Mine", "icon_mine", BuildingType::Mine, {{items::IronOre, 100}}, 300.0f,
            {std::make_shared<NeedsHeadquartersRule>(), std::make_shared<NeedsOreRule>()},
