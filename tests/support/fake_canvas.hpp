@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -51,6 +52,10 @@ struct FakeCanvas : ui::Canvas {
                 static_cast<float>(font_size)};
     }
 
+    // Every clip applied, in order (empty = clipping turned off).
+    void apply_clip(const std::optional<ui::Rect>& clip) override { clips.push_back(clip); }
+
+    std::vector<std::optional<ui::Rect>> clips;
     std::vector<FilledRect> fills;
     std::vector<FilledTriangle> triangles;
     std::vector<DrawnText> texts;

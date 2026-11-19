@@ -90,3 +90,26 @@ TEST(LoadGameView, WithSavesThereIsNoEmptyMessage) {
     EXPECT_EQ(view.empty_message(), nullptr);
     EXPECT_EQ(view.save_buttons().size(), 1u);
 }
+
+TEST(LoadGameView, AlongListOfSavesScrollsAndKeepsBackOnScreen) {
+    // Given: twenty saves
+    event::EventBus bus;
+    std::vector<game::SaveGame> saves;
+    for (int i = 0; i < 20; ++i) {
+        saves.push_back({"Save" + std::to_string(i), 0});
+    }
+    scene::load_game::LoadGameView view(bus, saves);
+    FakeCanvas canvas;
+    view.layout(canvas, ScreenWidth);
+    const ui::Rect first = view.save_buttons().front()->bounds();
+
+    // When
+    const bool scrolled = view.handle_scroll(center_of(first), -1.0f);
+    view.layout(canvas, ScreenWidth);
+
+    // Then: the list took the wheel and Back stays within a 720-pixel screen
+    EXPECT_TRUE(scrolled);
+    EXPECT_LT(view.save_buttons().front()->bounds().y, first.y);
+    const ui::Rect back = view.back_button().bounds();
+    EXPECT_LE(back.y + back.height, 720.0f);
+}

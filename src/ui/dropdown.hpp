@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include "ui/box.hpp"
+#include "ui/button.hpp"
 #include "ui/focus_group.hpp"
 #include "ui/theme.hpp"
 #include "ui/widget.hpp"
@@ -17,19 +19,17 @@ namespace ui {
 // options right below. Clicking an option selects it (notifying on_change with its index)
 // and closes the list; clicking anywhere else just closes it. From the keyboard,
 // activating it cycles to the next option, wrapping around.
-// The list is a popup: it is drawn through draw_overlay() and, while open, blocks_pointer().
+// The list is a popup: a ui::column() of option buttons right below the header (each as big
+// as the header), drawn through draw_overlay(); while open, blocks_pointer().
 class Dropdown : public Widget, public Focusable {
 public:
     using ChangeHandler = std::function<void(std::size_t)>;
 
     Dropdown(std::vector<std::string> options, std::size_t selected, Style style,
-             ChangeHandler on_change)
-        : Widget(std::move(style)),
-          options_(std::move(options)),
-          selected_(selected),
-          on_change_(std::move(on_change)) {}
+             ChangeHandler on_change);
 
     Size preferred_size(const Canvas& canvas) const override;
+    void layout(Rect bounds, const Canvas& canvas) override;
     void draw(Canvas& canvas) const override;
     void draw_overlay(Canvas& canvas) const override;
     bool blocks_pointer() const override { return open_; }
@@ -42,6 +42,7 @@ public:
     // Selects an option; notifies only when it differs from the current one.
     void select(std::size_t index);
     // Bounds of an option in the popup, stacked below the header; from the last layout.
+    // Empty for an index past the options.
     Rect option_bounds(std::size_t index) const;
 
     // Option under the pointer while the list is open.
@@ -51,8 +52,13 @@ public:
     std::size_t option_count() const { return options_.size(); }
 
 private:
+    // The option buttons show the one under the pointer, or the selected one, as focused.
+    void highlight() const;
+
     std::vector<std::string> options_;
     std::size_t selected_;
+    std::unique_ptr<Box> list_;
+    std::vector<Button*> option_buttons_; // owned by list_
     ChangeHandler on_change_;
     std::optional<std::size_t> hovered_option_;
     bool open_ = false;

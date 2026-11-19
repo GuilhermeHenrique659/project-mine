@@ -4,6 +4,17 @@ namespace ui {
 
 void Widget::layout(Rect bounds, const Canvas&) { bounds_ = bounds; }
 
+Size Widget::measure(const Canvas& canvas) const {
+    if (!LayoutPass::active()) {
+        return preferred_size(canvas);
+    }
+    if (measured_pass_ != LayoutPass::generation()) {
+        measured_ = preferred_size(canvas);
+        measured_pass_ = LayoutPass::generation();
+    }
+    return measured_;
+}
+
 void Widget::click() {
     if (on_click_) on_click_();
 }
@@ -22,9 +33,23 @@ void Widget::handle_pointer(Point position, bool released) {
     }
 }
 
+namespace {
+float clamp_to(float value, const std::optional<float>& min, const std::optional<float>& max) {
+    if (max && value > *max) {
+        value = *max;
+    }
+    if (min && value < *min) {
+        value = *min;
+    }
+    return value;
+}
+} // namespace
+
 Size Widget::resolve_size(Size content) const {
-    return {style_.width.value_or(content.width + style_.padding.horizontal()),
-            style_.height.value_or(content.height + style_.padding.vertical())};
+    return {clamp_to(style_.width.value_or(content.width + style_.padding.horizontal()),
+                     style_.min_width, style_.max_width),
+            clamp_to(style_.height.value_or(content.height + style_.padding.vertical()),
+                     style_.min_height, style_.max_height)};
 }
 
 void Widget::draw_box(Canvas& canvas, Color background, Color border) const {

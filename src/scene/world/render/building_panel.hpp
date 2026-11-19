@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 #include "input/pointer.hpp"
 #include "scene/world/render/inventory_grid.hpp"
@@ -8,6 +9,8 @@
 #include "scene/world/world_model.hpp"
 #include "ui/box.hpp"
 #include "ui/button.hpp"
+#include "ui/label.hpp"
+#include "ui/scroll_box.hpp"
 
 namespace scene::world {
 
@@ -27,6 +30,8 @@ public:
 
     bool visible() const override;
     void update() override;
+    // Modal: while visible it takes the pointer everywhere.
+    bool captures_pointer(ui::Point) const override { return true; }
     void draw(ui::Canvas& canvas, ui::Size screen) const override;
 
     // Places the panel, both grids and the close button (draw() does it before painting).
@@ -45,10 +50,13 @@ private:
     void move_stack(core::EntityId from, core::EntityId to, std::size_t slot) const;
     // The grid of the current target, recreated when the target changes.
     InventoryGrid& building_grid() const;
-    // The panel's widget tree for the current target, rebuilt by every layout() so the
-    // name, details and Recruit button follow the building. It points at building_grid_,
-    // so building_grid() drops it whenever it replaces that grid.
-    std::unique_ptr<ui::Box> build_tree() const;
+    // Brings the widget tree up to date with the current target: it is built once per
+    // building (and again only when its number of detail lines changes); every other frame
+    // just updates the texts and shows or hides the grid, details and Recruit button.
+    void sync_tree() const;
+    // A tree with `detail_lines` empty detail labels. It points at building_grid_, so
+    // building_grid() drops it whenever it replaces that grid.
+    std::unique_ptr<ui::Box> build_tree(std::size_t detail_lines) const;
 
     WorldModel& model_;
     std::shared_ptr<const input::Pointer> pointer_;
@@ -59,6 +67,13 @@ private:
     mutable std::unique_ptr<InventoryGrid> building_grid_;
     mutable core::EntityId building_ = 0;
     mutable std::unique_ptr<ui::Box> root_;
+    // Parts of root_ updated in place (owned by it).
+    mutable ui::Label* building_title_ = nullptr;
+    mutable std::vector<ui::Label*> detail_labels_;
+    mutable ui::Widget* details_ = nullptr;
+    mutable ui::Widget* recruit_row_ = nullptr;
+    // Shows four rows of the building's grid at most (a storage scrolls).
+    mutable ui::ScrollBox* building_view_ = nullptr;
 };
 
 } // namespace scene::world

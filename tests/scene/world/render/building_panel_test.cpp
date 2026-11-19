@@ -148,7 +148,8 @@ struct StoragePanel {
         save.entities.push_back({"building", "Storage",
                                  {{"building.type", "Storage"},
                                   {"building.x", "1"},
-                                  {"building.y", "0"}}});
+                                  {"building.y", "0"},
+                                  {"inventory.40", "Coal:5"}}});
         return save;
     }
 
@@ -172,7 +173,6 @@ TEST(BuildingPanelScroll, ABigInventoryShowsFourRowsAndTheWheelOverItScrollsIt) 
     StoragePanel p;
     ASSERT_NE(p.model.transfer_target(), 0u);
     const ui::Rect first = p.panel.building_slot_bounds(0);
-    EXPECT_FLOAT_EQ(p.panel.building_slot_bounds(40).width, 0.0f);
 
     // When
     p.pointer->at = {first.x + 1.0f, first.y + 1.0f};
@@ -181,13 +181,28 @@ TEST(BuildingPanelScroll, ABigInventoryShowsFourRowsAndTheWheelOverItScrollsIt) 
     p.panel.layout(p.canvas, Screen);
 
     // Then
-    EXPECT_FLOAT_EQ(p.panel.building_slot_bounds(0).width, 0.0f);
     EXPECT_FLOAT_EQ(p.panel.building_slot_bounds(10).y, first.y);
+}
+
+TEST(BuildingPanelScroll, AStackScrolledOutOfViewCannotBeClicked) {
+    // Given: coal in the fifth row, below the four rows shown
+    StoragePanel p;
+    const ui::Rect hidden = p.panel.building_slot_bounds(40);
+
+    // When
+    p.pointer->at = {hidden.x + hidden.width / 2.0f, hidden.y + hidden.height / 2.0f};
+    p.pointer->release = true;
+    p.panel.update();
+    p.model.update(scene::world::SimulationTick);
+
+    // Then: nothing reached the player
+    EXPECT_EQ(p.model.registry().get<::world::Inventory>(p.model.player_id())->count(::world::items::Coal), 0);
 }
 
 TEST(BuildingPanelScroll, TheWheelOutsideTheBuildingInventoryDoesNotScrollIt) {
     // Given
     StoragePanel p;
+    const float top = p.panel.building_slot_bounds(0).y;
 
     // When
     p.pointer->at = {0.0f, 0.0f};
@@ -196,7 +211,7 @@ TEST(BuildingPanelScroll, TheWheelOutsideTheBuildingInventoryDoesNotScrollIt) {
     p.panel.layout(p.canvas, Screen);
 
     // Then
-    EXPECT_GT(p.panel.building_slot_bounds(0).width, 0.0f);
+    EXPECT_FLOAT_EQ(p.panel.building_slot_bounds(0).y, top);
 }
 
 namespace {
@@ -277,4 +292,12 @@ TEST(BuildingPanelRecruit, TheRecruitButtonHasNoBoundsOnceTheBarracksIsNoLongerS
     // Then
     EXPECT_FLOAT_EQ(panel.recruit_bounds().width, 0.0f);
     graphics::TextureManager::instance().reset();
+}
+
+TEST_F(BuildingPanel, IsModalCapturingThePointerEvenOutsideThePanel) {
+    // Given: a point in the corner of the screen, far from the centred panel
+    const ui::Point corner{1.0f, 1.0f};
+
+    // When / Then: nothing below it (the build bar, the world) gets the click
+    EXPECT_TRUE(panel.captures_pointer(corner));
 }

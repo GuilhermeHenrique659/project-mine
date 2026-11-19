@@ -7,13 +7,12 @@
 #include "scene/world/render/inventory_grid.hpp"
 #include "scene/world/render/renderer.hpp"
 #include "scene/world/world_model.hpp"
+#include "ui/box.hpp"
 #include "ui/button.hpp"
+#include "ui/scroll_box.hpp"
 #include "ui/tab_bar.hpp"
 
 namespace scene::world {
-
-class LogisticsPage;
-class WorkersPage;
 
 // The player menu (Tab): a panel covering almost the whole screen with a tab bar on top
 // (Inventory, active; Energy; Workers; Statistics, disabled until it exists; Logistics) and
@@ -32,6 +31,8 @@ public:
 
     bool visible() const override;
     void update() override;
+    // Modal: while visible it takes the pointer everywhere.
+    bool captures_pointer(ui::Point) const override { return true; }
     void draw(ui::Canvas& canvas, ui::Size screen) const override;
 
     // Places the panel, the tabs and the page on a screen of the given size (draw() does
@@ -41,22 +42,28 @@ public:
     const ui::TabBar& tab_bar() const { return *tab_bar_; }
     const ui::Button& close_button() const { return *close_button_; }
     const ui::Rect& panel_bounds() const { return panel_; }
+    // The scroll view of the active page, null for a tab without one.
+    const ui::ScrollBox* page_view() const;
 
 private:
     PlayerMenu(const PlayerMenu&) = delete;
     PlayerMenu& operator=(const PlayerMenu&) = delete;
 
+    std::unique_ptr<ui::Box> build_tree(ui::Size panel) const;
+
     WorldModel& model_;
     std::shared_ptr<const input::Pointer> pointer_;
-    // Layout state, recomputed by every layout(); mutable because draw() is const.
     std::unique_ptr<ui::TabBar> tab_bar_;
     std::unique_ptr<ui::Button> close_button_;
     // One page per tab, null for the tabs without content yet.
     std::vector<std::unique_ptr<ui::Widget>> pages_;
-    // The Workers and Logistics pages in pages_ (not owning), for the mouse wheel.
-    WorkersPage* workers_ = nullptr;
-    LogisticsPage* logistics_ = nullptr;
+    // One scroll view per page (null for a page not available yet), in tab order.
+    std::vector<std::unique_ptr<ui::ScrollBox>> page_views_;
+    // Layout state; mutable because draw() is const. The tree is rebuilt only when the
+    // screen size changes.
     mutable ui::Rect panel_;
+    mutable ui::Size screen_;
+    mutable std::unique_ptr<ui::Box> root_;
 };
 
 } // namespace scene::world

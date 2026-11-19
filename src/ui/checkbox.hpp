@@ -30,6 +30,8 @@ public:
     void set_focused(bool focused) override { focused_ = focused; }
     void activate() override { click(); }
     bool checked() const { return checked_; }
+    // Shows a value without notifying on_change (the owner syncing it to the game).
+    void set_checked(bool checked) { checked_ = checked; }
     const std::string& label() const { return label_; }
 
 private:

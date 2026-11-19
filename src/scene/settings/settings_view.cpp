@@ -2,8 +2,6 @@
 
 #include <algorithm>
 
-#include <raylib.h>
-
 #include "game/game_events.hpp"
 #include "ui/theme.hpp"
 
@@ -11,7 +9,6 @@ namespace scene::settings {
 
 namespace {
 constexpr float CardWidth = 640.0f;
-constexpr float CardTop = 80.0f;
 constexpr int TitleFontSize = 40;
 
 std::size_t preset_index(game::Resolution resolution) {
@@ -67,23 +64,7 @@ SettingsView::SettingsView(event::EventBus& bus, game::DisplaySettings current)
     builder.child(std::move(dropdown));
     builder.child(std::move(checkbox));
     builder.child(std::move(back));
-    root_ = builder.build();
-}
-
-void SettingsView::layout(const ui::Canvas& canvas, float screen_width) const {
-    const ui::Size size = root_->preferred_size(canvas);
-    root_->layout({(screen_width - size.width) / 2.0f, CardTop, size.width, size.height}, canvas);
-}
-
-void SettingsView::draw() const {
-    ui::RaylibCanvas canvas;
-    layout(canvas, static_cast<float>(GetScreenWidth()));
-    root_->draw(canvas);
-
-}
-
-void SettingsView::handle_pointer(ui::Point position, bool released) {
-    root_->handle_pointer(position, released);
+    set_root(builder.build());
 }
 
 } // namespace scene::settings

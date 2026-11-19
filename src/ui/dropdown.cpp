@@ -9,6 +9,41 @@ constexpr const char* ClosedArrow = "v";
 constexpr const char* OpenArrow = "^";
 } // namespace
 
+Dropdown::Dropdown(std::vector<std::string> options, std::size_t selected, Style style,
+                   ChangeHandler on_change)
+    : Widget(std::move(style)), options_(std::move(options)), selected_(selected),
+      on_change_(std::move(on_change)) {
+    // An option: the header's face without its bevel (the list gets one bevel around it).
+    Style option = style_;
+    option.bevel.reset();
+    option.text_align = TextAlign::Left;
+    BoxBuilder list = column();
+    list.align(Align::Stretch);
+    for (const std::string& text : options_) {
+        auto button = std::make_unique<Button>(text, option, true);
+        option_buttons_.push_back(button.get());
+        list.child(std::move(button));
+    }
+    list_ = list.build();
+}
+
+void Dropdown::layout(Rect bounds, const Canvas& canvas) {
+    Widget::layout(bounds, canvas);
+    // Each option is as big as the header, stacked right below it.
+    for (Button* button : option_buttons_) {
+        button->set_style(button->style().with_height(bounds.height));
+    }
+    list_->layout({bounds.x, bounds.y + bounds.height, bounds.width, 0.0f}, canvas);
+}
+
+void Dropdown::highlight() const {
+    // The option under the pointer wins; with no pointer over the list, show the selected one.
+    const std::size_t highlighted = hovered_option_.value_or(selected_);
+    for (std::size_t i = 0; i < option_buttons_.size(); ++i) {
+        option_buttons_[i]->set_focused(i == highlighted);
+    }
+}
+
 Size Dropdown::preferred_size(const Canvas& canvas) const {
     Size content = canvas.measure_text(ClosedArrow, style_.font_size);
     float widest = 0.0f;
@@ -44,30 +79,12 @@ void Dropdown::draw(Canvas& canvas) const {
 }
 
 void Dropdown::draw_overlay(Canvas& canvas) const {
-    if (!open_) {
+    if (!open_ || options_.empty()) {
         return;
     }
-    // The option under the pointer wins; with no pointer over the list, show the selected one.
-    const std::size_t highlighted = hovered_option_.value_or(selected_);
-    for (std::size_t i = 0; i < options_.size(); ++i) {
-        const Rect rect = option_bounds(i);
-        const bool is_highlighted = i == highlighted;
-        const Color background =
-            is_highlighted ? style_.hover_background.value_or(style_.background) : style_.background;
-        const Color foreground = style_.foreground;
-
-        canvas.fill_rect(rect, background);
-        canvas.stroke_rect(rect, style_.border_color, style_.border_width);
-        const Size text = canvas.measure_text(options_[i], style_.font_size);
-        canvas.draw_text(options_[i],
-                         {rect.x + style_.padding.left, rect.y + (rect.height - text.height) / 2.0f},
-                         style_.font_size, foreground);
-    }
-    if (options_.empty()) {
-        return;
-    }
-    const Rect first = option_bounds(0);
-    draw_bevel(canvas, {first.x, first.y, first.width, first.height * static_cast<float>(options_.size())});
+    highlight();
+    list_->draw(canvas);
+    draw_bevel(canvas, list_->bounds());
 }
 
 void Dropdown::handle_pointer(Point position, bool released) {
@@ -79,9 +96,12 @@ void Dropdown::handle_pointer(Point position, bool released) {
         return;
     }
 
+    // The option buttons track the hover; their own clicks are not used, since a release
+    // anywhere closes the list.
+    list_->handle_pointer(position, false);
     hovered_option_.reset();
-    for (std::size_t i = 0; i < options_.size(); ++i) {
-        if (option_bounds(i).contains(position)) {
+    for (std::size_t i = 0; i < option_buttons_.size(); ++i) {
+        if (option_buttons_[i]->hovered()) {
             hovered_option_ = i;
             break;
         }
@@ -114,8 +134,7 @@ void Dropdown::select(std::size_t index) {
 }
 
 Rect Dropdown::option_bounds(std::size_t index) const {
-    return {bounds_.x, bounds_.y + bounds_.height * static_cast<float>(index + 1), bounds_.width,
-            bounds_.height};
+    return index < option_buttons_.size() ? option_buttons_[index]->bounds() : Rect{};
 }
 
 } // namespace ui

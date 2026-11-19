@@ -10,6 +10,7 @@
 #include "scene/new_game/new_game_view.hpp"
 #include "support/fake_canvas.hpp"
 #include "support/fake_keyboard.hpp"
+#include "support/fake_pointer.hpp"
 
 namespace {
 
@@ -43,7 +44,8 @@ struct ControllerFixture {
         auto owned = std::make_unique<FakeKeyboard>();
         keyboard = owned.get();
         controller =
-            std::make_unique<scene::new_game::NewGameController>(view, bus, std::move(owned));
+            std::make_unique<scene::new_game::NewGameController>(view, bus, std::move(owned),
+                                                                  std::make_shared<FakePointer>());
     }
 
     void press(input::Key key) {

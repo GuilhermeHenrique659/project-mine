@@ -353,3 +353,12 @@ TEST_F(PlayerHud, TheRejectedMarkClearsOnAnotherTile) {
     ASSERT_TRUE(hud.preview().has_value());
     EXPECT_FALSE(hud.preview()->rejected);
 }
+
+TEST_F(PlayerHud, CapturesThePointerOnlyOverTheBar) {
+    // Given
+    const ui::Point on_bar = centre_of(hud.bar_bounds());
+
+    // When / Then
+    EXPECT_TRUE(hud.captures_pointer(on_bar));
+    EXPECT_FALSE(hud.captures_pointer({Screen.width / 2.0f, 10.0f}));
+}

@@ -1,7 +1,5 @@
 #include "scene/new_game/new_game_view.hpp"
 
-#include <raylib.h>
-
 #include "game/game_events.hpp"
 #include "game/save_game.hpp"
 #include "ui/theme.hpp"
@@ -10,7 +8,6 @@ namespace scene::new_game {
 
 namespace {
 constexpr float CardWidth = 640.0f;
-constexpr float CardTop = 80.0f;
 constexpr int TitleFontSize = 40;
 constexpr int FieldFontSize = 28;
 constexpr const char* EmptyNameMessage = "Type a name for the save";
@@ -55,22 +52,11 @@ NewGameView::NewGameView(event::EventBus& bus) : bus_(bus) {
     builder.child(std::move(error));
     builder.child(std::move(create));
     builder.child(std::move(back));
-    root_ = builder.build();
-}
-
-void NewGameView::layout(const ui::Canvas& canvas, float screen_width) const {
-    const ui::Size size = root_->preferred_size(canvas);
-    root_->layout({(screen_width - size.width) / 2.0f, CardTop, size.width, size.height}, canvas);
-}
-
-void NewGameView::draw() const {
-    ui::RaylibCanvas canvas;
-    layout(canvas, static_cast<float>(GetScreenWidth()));
-    root_->draw(canvas);
+    set_root(builder.build());
 }
 
 void NewGameView::handle_pointer(ui::Point position, bool released) {
-    root_->handle_pointer(position, released);
+    PanelView::handle_pointer(position, released);
     if (!released) {
         return;
     }

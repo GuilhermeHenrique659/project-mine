@@ -3,6 +3,7 @@
 #include <memory>
 #include <vector>
 
+#include "input/pointer_gate.hpp"
 #include "scene/scene.hpp"
 #include "scene/world/render/renderer.hpp"
 #include "ui/ui.hpp"
@@ -14,7 +15,10 @@ namespace scene::world {
 // topmost first; a renderer that is not visible() is skipped by both.
 class WorldView : public scene::View {
 public:
-    explicit WorldView(std::vector<std::unique_ptr<Renderer>> renderers);
+    // `gate` is the pointer the renderers read; the view resets it every frame and claims it
+    // for the topmost renderer that captures it. Without one, every renderer sees every click.
+    explicit WorldView(std::vector<std::unique_ptr<Renderer>> renderers,
+                       std::shared_ptr<input::PointerGate> gate = nullptr);
 
     // Lets the visible renderers poll their input.
     void update() override;
@@ -30,6 +34,7 @@ private:
     WorldView& operator=(const WorldView&) = delete;
 
     std::vector<std::unique_ptr<Renderer>> renderers_;
+    std::shared_ptr<input::PointerGate> gate_;
 };
 
 } // namespace scene::world

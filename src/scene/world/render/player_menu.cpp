@@ -3,6 +3,7 @@
 #include "scene/world/render/energy_page.hpp"
 #include "scene/world/render/logistics_page.hpp"
 #include "scene/world/render/workers_page.hpp"
+#include "ui/box.hpp"
 #include "ui/theme.hpp"
 
 namespace scene::world {
@@ -13,6 +14,8 @@ constexpr float Padding = 32.0f;
 constexpr float PageGap = 24.0f;
 constexpr float BorderWidth = 2.0f;
 constexpr float SeparatorHeight = 2.0f;
+// Pixels per wheel notch over a page: about one line of the Workers or Logistics list.
+constexpr float PageScrollStep = 40.0f;
 } // namespace
 
 PlayerMenu::PlayerMenu(WorldModel& model, std::shared_ptr<const input::Pointer> pointer)
@@ -29,82 +32,91 @@ PlayerMenu::PlayerMenu(WorldModel& model, std::shared_ptr<const input::Pointer> 
     close_button_->set_on_click([&model] { model.close_player_menu(); });
     pages_.push_back(std::make_unique<InventoryGrid>(model.registry(), model.player_id()));
     pages_.push_back(std::make_unique<EnergyPage>(model.registry()));
-    auto workers = std::make_unique<WorkersPage>(
+    pages_.push_back(std::make_unique<WorkersPage>(
         model.registry(),
-        [&model](core::EntityId building, int count) { model.request_workers(building, count); });
-    workers_ = workers.get();
-    pages_.push_back(std::move(workers));
+        [&model](core::EntityId building, int count) { model.request_workers(building, count); }));
     pages_.push_back(nullptr); // Statistics: not available yet
-    auto logistics = std::make_unique<LogisticsPage>(
+    pages_.push_back(std::make_unique<LogisticsPage>(
         model.registry(), model.routes(),
         [&model](::world::RouteKey route, ::world::HaulMode mode, int count) {
             model.request_haulers(route, mode, count);
         },
         [&model](::world::RouteKey route, ::world::HaulMode mode) {
             model.request_haul_mode(route, mode);
-        });
-    logistics_ = logistics.get();
-    pages_.push_back(std::move(logistics));
+        }));
+    // Each page scrolls in its own view, so it keeps its place when the tab changes.
+    for (const auto& page : pages_) {
+        page_views_.push_back(
+            page ? ui::scroll_box(*page).step(PageScrollStep).build() : nullptr);
+    }
 }
 
 bool PlayerMenu::visible() const { return model_.is_player_menu_open() && !model_.is_paused(); }
 
+const ui::ScrollBox* PlayerMenu::page_view() const {
+    return page_views_[tab_bar_->active()].get();
+}
+
 void PlayerMenu::update() {
+    if (!root_) {
+        return; // not laid out yet
+    }
     const input::PointerPosition at = pointer_->position();
     const ui::Point position{at.x, at.y};
-    const bool released = pointer_->released();
-    tab_bar_->handle_pointer(position, released);
-    if (const auto& page = pages_[tab_bar_->active()]) {
-        page->handle_pointer(position, released);
-        // The mouse wheel over the Workers or Logistics page scrolls its list.
-        if (page->bounds().contains(position)) {
-            if (page.get() == logistics_) {
-                logistics_->scroll(pointer_->scroll());
-            } else if (page.get() == workers_) {
-                workers_->scroll(pointer_->scroll());
-            }
+    // Tabs, the page's buttons and the red X react through the tree; the page's view takes
+    // the wheel.
+    root_->handle_pointer(position, pointer_->released());
+    root_->handle_scroll(position, pointer_->scroll());
+}
+
+// The panel: the tab bar and the X over an accent line, then the active page filling the
+// rest (Flex: it grows into the room left and shrinks to it, scrolling what does not fit).
+// Rebuilt only when the screen size changes; every part is owned by the menu.
+std::unique_ptr<ui::Box> PlayerMenu::build_tree(ui::Size panel) const {
+    ui::BoxBuilder root = ui::column();
+    root.width(panel.width)
+        .height(panel.height)
+        .padding(Padding)
+        .gap(PageGap)
+        .align(ui::Align::Stretch)
+        .background(ui::theme::Panel)
+        .border(ui::theme::Outline, BorderWidth)
+        .child(ui::column()
+                   .align(ui::Align::Stretch)
+                   .child(ui::row()
+                              .justify(ui::Justify::SpaceBetween)
+                              .child_ref(*tab_bar_)
+                              .child_ref(*close_button_)
+                              .build())
+                   .child(ui::row().height(SeparatorHeight).background(ui::theme::Accent).build())
+                   .build());
+    for (const auto& view : page_views_) {
+        if (view) {
+            root.child_ref(*view, {1.0f, 1.0f});
         }
     }
-    // Last: a click on it closes the menu.
-    close_button_->handle_pointer(position, released);
+    return root.build();
 }
 
 void PlayerMenu::layout(const ui::Canvas& canvas, ui::Size screen) const {
     const float width = screen.width * ScreenCoverage;
     const float height = screen.height * ScreenCoverage;
     panel_ = {(screen.width - width) / 2.0f, (screen.height - height) / 2.0f, width, height};
-
-    tab_bar_->layout({panel_.x + Padding, panel_.y + Padding, 0.0f, 0.0f}, canvas);
-    const ui::Size close = close_button_->preferred_size(canvas);
-    close_button_->layout({panel_.x + width - Padding - close.width, panel_.y + Padding,
-                           close.width, close.height},
-                          canvas);
-    const ui::Rect& tabs = tab_bar_->bounds();
-    const float page_y = tabs.y + tabs.height + PageGap;
-    for (const auto& page : pages_) {
-        if (!page) {
-            continue;
-        }
-        page->layout({panel_.x + Padding, page_y, width - 2.0f * Padding,
-                      panel_.y + height - Padding - page_y},
-                     canvas);
+    if (!root_ || screen.width != screen_.width || screen.height != screen_.height) {
+        root_ = build_tree({width, height});
+        screen_ = screen;
     }
+    for (std::size_t i = 0; i < page_views_.size(); ++i) {
+        if (page_views_[i]) {
+            page_views_[i]->set_visible(i == tab_bar_->active());
+        }
+    }
+    root_->layout(panel_, canvas);
 }
 
 void PlayerMenu::draw(ui::Canvas& canvas, ui::Size screen) const {
     layout(canvas, screen);
-    canvas.fill_rect(panel_, ui::theme::Panel);
-    canvas.stroke_rect(panel_, ui::theme::Outline, BorderWidth);
-    tab_bar_->draw(canvas);
-    close_button_->draw(canvas);
-    const ui::Rect& tabs = tab_bar_->bounds();
-    canvas.fill_rect({panel_.x + Padding, tabs.y + tabs.height, panel_.width - 2.0f * Padding,
-                      SeparatorHeight},
-                     ui::theme::Accent);
-    const auto& page = pages_[tab_bar_->active()];
-    if (page) {
-        page->draw(canvas);
-    }
+    root_->draw(canvas);
 }
 
 } // namespace scene::world

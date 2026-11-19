@@ -23,6 +23,8 @@ public:
 
     bool visible() const override;
     void update() override;
+    // Modal: while visible it takes the pointer everywhere.
+    bool captures_pointer(ui::Point) const override { return true; }
     void draw(ui::Canvas& canvas, ui::Size screen) const override;
 
     // Centres the panel on a screen of the given size (draw() does it before painting).

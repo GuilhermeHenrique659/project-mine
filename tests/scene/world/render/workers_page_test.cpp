@@ -63,15 +63,6 @@ bool contains(const std::vector<std::string>& texts, const std::string& wanted) 
     return false;
 }
 
-// The workplace rows among the drawn texts.
-std::vector<std::string> workplace_rows(const std::vector<std::string>& texts) {
-    std::vector<std::string> rows;
-    for (const std::string& text : texts) {
-        if (text.ends_with(" workers") && !text.starts_with("Idle")) rows.push_back(text);
-    }
-    return rows;
-}
-
 } // namespace
 
 TEST(WorkersPage, ShowsTheIdleWorkersAndEachWorkplaceWithItsAssignedWorkers) {
@@ -139,31 +130,6 @@ TEST(WorkersPage, GroupsTheWorkplacesUnderAHeadingPerBuildingType) {
     EXPECT_EQ(lines, expected);
 }
 
-TEST(WorkersPage, WorkplacesThatDoNotFitThePageAreHiddenUntilScrolledTo) {
-    // Given: six mines on a page too short for all of them
-    Page p;
-    for (int x = 0; x < 6; ++x) p.add_mine({x * 3, 0});
-    const std::vector<std::string> top = p.draw(400.0f);
-
-    // When: scroll far past the bottom (clamped to the last lines)
-    p.page.scroll(-100.0f);
-    const std::vector<std::string> bottom = p.draw(400.0f);
-
-    // Then: each view shows only part of the list, together all of it
-    const auto top_rows = workplace_rows(top);
-    const auto bottom_rows = workplace_rows(bottom);
-    EXPECT_TRUE(contains(top, "[-] Mine (6)"));
-    EXPECT_FALSE(contains(bottom, "[-] Mine (6)"));
-    EXPECT_GT(top_rows.size(), 0u);
-    EXPECT_LT(top_rows.size(), 6u);
-    EXPECT_EQ(bottom_rows.size(), top_rows.size() + 1); // the heading's line holds a row now
-    std::vector<std::string> seen = top_rows;
-    for (const auto& row : bottom_rows) {
-        if (std::find(seen.begin(), seen.end(), row) == seen.end()) seen.push_back(row);
-    }
-    EXPECT_EQ(seen.size(), 6u);
-}
-
 TEST(WorkersPage, ClickingAGroupsHeadingHidesItsWorkplacesAndClickingAgainShowsThem) {
     // Given: a mine and a steelworks
     Page p;
@@ -183,4 +149,18 @@ TEST(WorkersPage, ClickingAGroupsHeadingHidesItsWorkplacesAndClickingAgainShowsT
     EXPECT_TRUE(contains(hidden, "Steelworks #2 (0, 3) - 0/10 workers"));
     EXPECT_TRUE(contains(shown, "[-] Mine (1)"));
     EXPECT_TRUE(contains(shown, "Mine #1 (3, 0) - 0/10 workers"));
+}
+
+TEST(WorkersPage, KeepsItsButtonsBetweenLayoutsWhileNothingChanges) {
+    // Given
+    Page p;
+    p.add_mine({4, 2});
+    p.draw();
+    const ui::Button* before = &p.page.add_button(0);
+
+    // When
+    p.draw();
+
+    // Then: the same button, so its hover and focus survive the frame
+    EXPECT_EQ(&p.page.add_button(0), before);
 }

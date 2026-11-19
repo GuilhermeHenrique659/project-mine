@@ -1,63 +1,66 @@
 #pragma once
 
+#include <cstddef>
+#include <functional>
 #include <vector>
 
 #include "core/registry.hpp"
 #include "scene/world/core/items/item.hpp"
-#include "ui/widget.hpp"
+#include "ui/composite.hpp"
 
 namespace scene::world {
 
 // The colour an item is drawn with in an inventory: the colour of its ore on the ground.
 ui::Color item_color(::world::ItemType type);
 
-// Draws an entity's inventory as rows of square slots, Columns per row. A filled slot
-// shows the item's colour and its count in the bottom-right corner. It reads the
-// inventory from the registry on every layout/draw, so it always shows the current
-// contents; an entity without an inventory shows no slots. With `visible_rows` above zero
-// it shows at most that many rows at once, scrolled with scroll(), and draws a scrollbar
-// right of the slots while rows are hidden; a hidden slot has empty bounds. The registry
-// must outlive it.
-class InventoryGrid : public ui::Widget {
+// One slot of an inventory: a square button-like face (theme::slot_style(), darker while
+// hovered); a filled slot shows the item's colour and its count in the bottom-right corner,
+// an empty filtered one its item faintly. It reads the slot from the registry on every draw.
+class InventorySlot : public ui::Widget {
+public:
+    InventorySlot(const core::Registry& registry, core::EntityId entity, std::size_t index);
+
+    ui::Size preferred_size(const ui::Canvas& canvas) const override;
+    void draw(ui::Canvas& canvas) const override;
+
+private:
+    const core::Registry& registry_;
+    core::EntityId entity_;
+    std::size_t index_;
+};
+
+// Draws an entity's inventory as a ui::grid() of InventorySlots, Columns per row. It reads
+// the inventory from the registry on every layout/draw, so it always shows the current
+// contents; an entity without an inventory shows no slots. Clicking a slot calls
+// on_slot_click(index). It always lays out every row: put it in a ui::ScrollBox to show a
+// few rows of a big one (step: RowStep). The slots are rebuilt only when the capacity
+// changes. The registry must outlive it.
+class InventoryGrid : public ui::Composite {
 public:
     static constexpr int Columns = 10;
     static constexpr float SlotSize = 64.0f;
     static constexpr float SlotGap = 6.0f;
-    static constexpr float ScrollbarWidth = 10.0f;
+    // Height of a row with the gap below it: the scroll step of a grid in a ScrollBox.
+    static constexpr float RowStep = SlotSize + SlotGap;
 
-    InventoryGrid(const core::Registry& registry, core::EntityId entity,
-                  std::size_t visible_rows = 0);
+    using SlotHandler = std::function<void(std::size_t slot)>;
 
-    // Moves the view by mouse wheel notches (positive = up), a row per notch.
-    void scroll(float notches);
-    std::size_t first_row() const { return first_row_; }
+    InventoryGrid(const core::Registry& registry, core::EntityId entity);
 
-    ui::Size preferred_size(const ui::Canvas& canvas) const override;
-    void layout(ui::Rect bounds, const ui::Canvas& canvas) override;
-    void draw(ui::Canvas& canvas) const override;
-    // Tracks the slot under the pointer, drawn in the hover colour.
-    void handle_pointer(ui::Point position, bool released) override;
+    void set_on_slot_click(SlotHandler handler) { on_slot_click_ = std::move(handler); }
 
     // Screen bounds of each slot, from the last layout().
-    const std::vector<ui::Rect>& slot_bounds() const { return slot_bounds_; }
+    std::vector<ui::Rect> slot_bounds() const;
 
 private:
+    void sync(const ui::Canvas& canvas) const override;
     std::size_t capacity() const;
-    std::size_t total_rows() const;
-    // How many rows are shown at once.
-    std::size_t shown_rows() const;
-    // The largest first_row(): the last rows fill the view.
-    std::size_t last_first_row() const;
-    void draw_scrollbar(ui::Canvas& canvas) const;
 
     const core::Registry& registry_;
     core::EntityId entity_;
-    std::size_t visible_rows_;
-    std::size_t first_row_ = 0;
-    std::vector<ui::Rect> slot_bounds_;
-    static constexpr std::size_t NoSlot = static_cast<std::size_t>(-1);
-    // The slot under the pointer, or NoSlot.
-    std::size_t hovered_slot_ = NoSlot;
+    SlotHandler on_slot_click_;
+    mutable std::vector<InventorySlot*> slots_; // owned by the tree
+    mutable bool built_ = false;
 };
 
 } // namespace scene::world

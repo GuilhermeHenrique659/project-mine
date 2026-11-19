@@ -17,6 +17,7 @@ public:
     void draw(Canvas& canvas) const override;
 
     void set_text(std::string text) { text_ = std::move(text); }
+    void set_color(Color color) { style_.foreground = color; }
     const std::string& text() const { return text_; }
 
 private:

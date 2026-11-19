@@ -1,13 +1,16 @@
 #pragma once
 
 #include <cstddef>
+#include <functional>
 #include <memory>
 #include <optional>
 
 #include "input/pointer.hpp"
 #include "scene/world/core/construction/construction.hpp"
+#include "scene/world/render/icon_button.hpp"
 #include "scene/world/render/renderer.hpp"
 #include "scene/world/world_model.hpp"
+#include "ui/box.hpp"
 
 namespace scene::world {
 
@@ -23,8 +26,9 @@ namespace scene::world {
 // and clears the selection (a refused click keeps it and turns the preview a stronger red
 // until the pointer leaves that tile); until then a translucent cube previews it on the tile under
 // the pointer, green where it can be built and red where it cannot. It reads the mouse itself in
-// update() through the injected pointer, using the bounds of the last layout. The model
-// must outlive the HUD.
+// update() through the injected pointer, using the bounds of the last layout. The bar is a
+// widget tree (a row of IconButtons) built once; the open list is another one, rebuilt when
+// the open tab changes. The model must outlive the HUD.
 class PlayerHud : public Renderer {
 public:
     // Part of the screen width the bar covers (it grows past it if the tabs need more).
@@ -34,6 +38,7 @@ public:
 
     bool visible() const override;
     void update() override;
+    bool captures_pointer(ui::Point position) const override;
     void draw(ui::Canvas& canvas, ui::Size screen) const override;
 
     // Places the bar, its tabs and the open list on a screen of the given size (draw()
@@ -70,18 +75,28 @@ private:
     // A translucent cube of the selection on the tile under the pointer (see preview()).
     void draw_preview(ui::Canvas& canvas) const;
 
+    // The drop-up of the open tab's constructions (its entries in items_).
+    std::unique_ptr<ui::Box> build_list(std::size_t tab) const;
+
     WorldModel& model_;
     std::shared_ptr<const input::Pointer> pointer_;
     std::optional<std::size_t> open_tab_;
     const ::world::Construction* selected_ = nullptr;
     // The tile of the last refused click, shown a stronger red while the pointer is on it.
     std::optional<::world::TileCoord> rejected_tile_;
-    // Layout state, recomputed by every layout(); mutable because draw() is const.
+    // Selects a construction picked from the list and closes it (the list's click handler).
+    std::function<void(const ::world::Construction&)> pick_;
+    // One tab per catalog category, owned here; the bar row only places them.
+    std::vector<std::unique_ptr<IconButton>> tabs_;
+    std::unique_ptr<ui::Box> bar_root_;
+    // Layout state; mutable because draw() is const. The list is rebuilt by layout() (never
+    // from a click handler, which runs inside it) when the open tab changes.
+    mutable std::unique_ptr<ui::Box> list_root_;
+    mutable std::optional<std::size_t> list_tab_;
+    mutable std::vector<IconButton*> items_; // owned by list_root_
     mutable ui::Size screen_;
     mutable ui::Rect bar_;
-    mutable std::vector<ui::Rect> tabs_;
     mutable ui::Rect list_;
-    mutable std::vector<ui::Rect> items_;
 };
 
 } // namespace scene::world

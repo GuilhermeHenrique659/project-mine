@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <string>
 
 #include "event/event_bus.hpp"
 #include "scene/world/render/player_menu.hpp"
@@ -31,6 +32,18 @@ struct Menu {
     scene::world::WorldModel model;
     scene::world::PlayerMenu menu;
 };
+
+// Twelve finished mines in a row, enough workplaces to overflow the Workers page.
+game::SaveGame save_with_mines() {
+    game::SaveGame save{"Alpha", 0};
+    for (int i = 0; i < 12; ++i) {
+        save.entities.push_back({"building", "Mine",
+                                 {{"building.type", "Mine"},
+                                  {"building.x", std::to_string(3 + 3 * i)},
+                                  {"building.y", "6"}}});
+    }
+    return save;
+}
 
 } // namespace
 
@@ -219,4 +232,29 @@ TEST(PlayerMenu, ClickingTheLogisticsTabShowsTheLogisticRoutes) {
         if (text.text.starts_with("Logistic routes:")) listed = true;
     }
     EXPECT_TRUE(listed);
+}
+
+TEST(PlayerMenu, TheWheelOverALongPageScrollsIt) {
+    // Given: the Workers page with twelve workplaces
+    Menu m(save_with_mines());
+    m.model.toggle_player_menu();
+    m.menu.layout(m.canvas, Screen);
+    const ui::Rect workers = m.menu.tab_bar().tab_bounds()[2];
+    m.pointer->at = {workers.x + workers.width / 2.0f, workers.y + workers.height / 2.0f};
+    m.pointer->release = true;
+    m.menu.update();
+    m.pointer->release = false;
+    m.menu.layout(m.canvas, Screen);
+    ASSERT_NE(m.menu.page_view(), nullptr);
+    const ui::Rect page = m.menu.page_view()->bounds();
+    ASSERT_GT(m.menu.page_view()->max_offset(), 0.0f);
+
+    // When
+    m.pointer->at = {page.x + 10.0f, page.y + 10.0f};
+    m.pointer->wheel = -1.0f;
+    m.menu.update();
+
+    // Then: the page stays inside the panel and has scrolled
+    EXPECT_LE(page.y + page.height, m.menu.panel_bounds().y + m.menu.panel_bounds().height);
+    EXPECT_GT(m.menu.page_view()->offset(), 0.0f);
 }

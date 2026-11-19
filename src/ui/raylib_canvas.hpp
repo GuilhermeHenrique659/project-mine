@@ -15,6 +15,12 @@ public:
     void draw_texture(const graphics::Texture& texture, Rect dest,
                       const TextureDraw& options) override;
     Size measure_text(const std::string& text, int font_size) const override;
+
+    // Size of the raylib window, in pixels.
+    static Size screen_size();
+
+protected:
+    void apply_clip(const std::optional<Rect>& clip) override;
 };
 
 } // namespace ui

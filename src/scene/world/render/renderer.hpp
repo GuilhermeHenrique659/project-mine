@@ -15,6 +15,10 @@ public:
     // A hidden renderer is neither updated nor drawn.
     virtual bool visible() const { return true; }
 
+    // Whether the renderer takes the pointer at `position` (from the last layout): the
+    // renderers below it then see no click, held button or wheel this frame.
+    virtual bool captures_pointer(ui::Point) const { return false; }
+
     // Polls input; most renderers have none.
     virtual void update() {}
 

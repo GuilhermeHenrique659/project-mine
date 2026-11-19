@@ -7,6 +7,7 @@
 #include "game/game.hpp"
 #include "game/game_events.hpp"
 #include "input/input_handler.hpp"
+#include "input/pointer_gate.hpp"
 #include "input/raylib_keyboard.hpp"
 #include "input/raylib_pointer.hpp"
 #include "scene/world/render/entity_renderer.hpp"
@@ -75,7 +76,10 @@ private:
 std::unique_ptr<scene::Scene> make_world_scene(game::Game& game, game::SaveGame save) {
     auto input = std::make_shared<WorldInput>();
     auto model = std::make_unique<WorldModel>(game.event_bus(), input->handler, std::move(save));
-    std::shared_ptr<input::Pointer> pointer = std::make_shared<input::RaylibPointer>();
+    std::shared_ptr<input::Pointer> mouse = std::make_shared<input::RaylibPointer>();
+    // The renderers read the mouse through the gate, so a panel on top keeps clicks from
+    // reaching the ones below it (the world, the build bar).
+    auto pointer = std::make_shared<input::PointerGate>(mouse);
 
     // Bottom to top. Adding something to the screen is one more entry here.
     auto menu = std::make_unique<WorldMenu>(game.event_bus(), *model, pointer);
@@ -89,8 +93,8 @@ std::unique_ptr<scene::Scene> make_world_scene(game::Game& game, game::SaveGame 
     renderers.push_back(std::make_unique<PlayerMenu>(*model, pointer));
     renderers.push_back(std::move(menu));
 
-    auto view = std::make_unique<WorldView>(std::move(renderers));
-    auto controller = std::make_unique<WorldController>(menu_ref, *model, std::move(input), pointer);
+    auto view = std::make_unique<WorldView>(std::move(renderers), pointer);
+    auto controller = std::make_unique<WorldController>(menu_ref, *model, std::move(input), mouse);
     return std::make_unique<scene::Scene>(std::move(model), std::move(view),
                                           std::move(controller));
 }

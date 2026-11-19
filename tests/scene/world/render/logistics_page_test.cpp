@@ -96,14 +96,6 @@ bool contains(const std::vector<std::string>& texts, const std::string& wanted) 
     return false;
 }
 
-std::vector<std::string> route_rows(const std::vector<std::string>& texts) {
-    std::vector<std::string> rows;
-    for (const std::string& text : texts) {
-        if (text.starts_with("Storage")) rows.push_back(text);
-    }
-    return rows;
-}
-
 } // namespace
 
 TEST(LogisticsPage, ListsEachLogisticRouteWithItsEndsLengthAndHaulers) {
@@ -245,47 +237,6 @@ TEST(LogisticsPage, GroupsTheRoutesUnderAHeadingPerDestinationBuildingType) {
     EXPECT_EQ(lines, expected);
 }
 
-TEST(LogisticsPage, RoutesThatDoNotFitThePageAreHiddenUntilScrolledTo) {
-    // Given: six routes on a page too short for all of them
-    Page p;
-    p.add_six_mine_routes();
-    const std::vector<std::string> top = p.draw(400.0f);
-
-    // When: scroll far past the bottom (clamped to the last lines)
-    p.page.scroll(-100.0f);
-    const std::vector<std::string> bottom = p.draw(400.0f);
-
-    // Then: each view shows only part of the list, together all of it
-    const auto top_rows = route_rows(top);
-    const auto bottom_rows = route_rows(bottom);
-    EXPECT_TRUE(contains(top, "[-] Mine (6)"));
-    EXPECT_FALSE(contains(bottom, "[-] Mine (6)"));
-    EXPECT_GT(top_rows.size(), 0u);
-    EXPECT_LT(top_rows.size(), 6u);
-    EXPECT_EQ(bottom_rows.size(), top_rows.size() + 1); // the heading's line holds a row now
-    std::vector<std::string> seen = top_rows;
-    for (const auto& row : bottom_rows) {
-        if (std::find(seen.begin(), seen.end(), row) == seen.end()) seen.push_back(row);
-    }
-    EXPECT_EQ(seen.size(), 6u);
-}
-
-TEST(LogisticsPage, ScrollingUpPastTheTopStaysOnTheFirstLine) {
-    // Given
-    Page p;
-    p.add_six_mine_routes();
-    p.draw(400.0f);
-
-    // When
-    p.page.scroll(-1.0f);
-    p.page.scroll(5.0f);
-    const std::vector<std::string> texts = p.draw(400.0f);
-
-    // Then
-    EXPECT_EQ(p.page.first_line(), 0u);
-    EXPECT_TRUE(contains(texts, "[-] Mine (6)"));
-}
-
 TEST(LogisticsPage, ClickingAGroupsHeadingHidesItsRoutesAndClickingAgainShowsThem) {
     // Given: a storage feeding a mine and a steelworks
     Page p;
@@ -313,4 +264,18 @@ TEST(LogisticsPage, ClickingAGroupsHeadingHidesItsRoutesAndClickingAgainShowsThe
     EXPECT_TRUE(contains(hidden, "[-] Steelworks (1)"));
     EXPECT_TRUE(contains(shown, "[-] Mine (1)"));
     EXPECT_TRUE(mine_row(shown));
+}
+
+TEST(LogisticsPage, KeepsItsControlsBetweenLayoutsWhileNothingChanges) {
+    // Given
+    Page p;
+    p.add_route();
+    p.draw();
+    const ui::Checkbox* before = &p.page.take_checkbox(0);
+
+    // When
+    p.draw();
+
+    // Then
+    EXPECT_EQ(&p.page.take_checkbox(0), before);
 }

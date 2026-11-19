@@ -26,6 +26,7 @@ public:
     void set_enabled(bool enabled) { enabled_ = enabled; }
     bool enabled() const { return enabled_; }
     const std::string& text() const { return text_; }
+    void set_text(std::string text) { text_ = std::move(text); }
 
 private:
     std::string text_;

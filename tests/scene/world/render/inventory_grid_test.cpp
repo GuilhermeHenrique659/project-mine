@@ -152,115 +152,17 @@ TEST(InventoryGrid, MovingThePointerAwayRestoresTheSlotColour) {
     EXPECT_EQ(face_of(g.canvas, slot), ui::theme::ButtonFace);
 }
 
-namespace {
-
-// A 120-slot inventory (12 rows) shown 4 rows at a time, laid out at (0, 0).
-struct ScrollGrid {
-    ScrollGrid() : id(registry.create("Storage")) {
-        registry.add(id, world::Inventory{120});
-        grid = std::make_unique<scene::world::InventoryGrid>(registry, id, 4);
-    }
-
-    void draw() {
-        canvas = FakeCanvas{};
-        grid->layout({0.0f, 0.0f, 0.0f, 0.0f}, canvas);
-        grid->draw(canvas);
-    }
-
-    bool drawn_text(const std::string& text) const {
-        for (const DrawnText& drawn : canvas.texts) {
-            if (drawn.text == text) return true;
-        }
-        return false;
-    }
-
-    core::Registry registry;
-    core::EntityId id;
-    std::unique_ptr<scene::world::InventoryGrid> grid;
-    FakeCanvas canvas;
-};
-
-} // namespace
-
-TEST(InventoryGrid, WithLimitedRowsOnlyTheFirstRowsGetBounds) {
+TEST(InventoryGrid, ClickingASlotNotifiesItsIndex) {
     // Given
-    ScrollGrid g;
-
-    // When
+    Grid g;
     g.draw();
-
-    // Then
-    const auto& slots = g.grid->slot_bounds();
-    ASSERT_EQ(slots.size(), 120u);
-    EXPECT_GT(slots[39].width, 0.0f);
-    EXPECT_FLOAT_EQ(slots[40].width, 0.0f);
-    EXPECT_FLOAT_EQ(slots[119].width, 0.0f);
-    EXPECT_LT(g.grid->bounds().height, 5.0f * scene::world::InventoryGrid::SlotSize);
-}
-
-TEST(InventoryGrid, ScrollingDownOneNotchShowsTheNextRowAtTheTop) {
-    // Given
-    ScrollGrid g;
-    g.registry.get<world::Inventory>(g.id)->set_slot(0, world::ItemStack{world::items::Coal, 7});
-    g.draw();
-    const ui::Rect top_left = g.grid->slot_bounds()[0];
+    std::size_t clicked = 999;
+    g.grid->set_on_slot_click([&clicked](std::size_t slot) { clicked = slot; });
+    const ui::Rect slot = g.grid->slot_bounds()[12];
 
     // When
-    g.grid->scroll(-1.0f);
-    g.draw();
+    g.grid->handle_pointer({slot.x + 1.0f, slot.y + 1.0f}, true);
 
     // Then
-    const auto& slots = g.grid->slot_bounds();
-    EXPECT_FLOAT_EQ(slots[0].width, 0.0f);
-    EXPECT_FLOAT_EQ(slots[10].x, top_left.x);
-    EXPECT_FLOAT_EQ(slots[10].y, top_left.y);
-    EXPECT_GT(slots[49].width, 0.0f);
-    EXPECT_FALSE(g.drawn_text("7"));
-}
-
-TEST(InventoryGrid, ScrollingStopsAtTheTopAndAtTheLastRow) {
-    // Given
-    ScrollGrid g;
-
-    // When
-    g.grid->scroll(3.0f);
-    const std::size_t at_top = g.grid->first_row();
-    g.grid->scroll(-50.0f);
-
-    // Then
-    EXPECT_EQ(at_top, 0u);
-    EXPECT_EQ(g.grid->first_row(), 8u); // rows 8..11 are the last four
-}
-
-TEST(InventoryGrid, AGridThatFitsDoesNotScroll) {
-    // Given
-    Grid g; // 40 slots, no row limit
-
-    // When
-    g.grid->scroll(-1.0f);
-
-    // Then
-    EXPECT_EQ(g.grid->first_row(), 0u);
-}
-
-TEST(InventoryGrid, AScrollbarIsDrawnOnlyWhenRowsAreHidden) {
-    // Given
-    ScrollGrid scrolled;
-    Grid fits;
-
-    // When
-    scrolled.draw();
-    fits.draw();
-
-    // Then: something is painted right of the last column
-    using scene::world::InventoryGrid;
-    const float right = 10.0f * InventoryGrid::SlotSize + 9.0f * InventoryGrid::SlotGap;
-    const auto painted_right = [right](const FakeCanvas& canvas) {
-        for (const FilledRect& fill : canvas.fills) {
-            if (fill.rect.x > right) return true;
-        }
-        return false;
-    };
-    EXPECT_TRUE(painted_right(scrolled.canvas));
-    EXPECT_FALSE(painted_right(fits.canvas));
+    EXPECT_EQ(clicked, 12u);
 }

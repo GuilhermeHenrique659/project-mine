@@ -26,6 +26,11 @@ struct Style {
     float gap = 0.0f; // space between children of a container
     std::optional<float> width;
     std::optional<float> height;
+    // Limits on the resolved size (content plus padding, or width/height).
+    std::optional<float> min_width;
+    std::optional<float> max_width;
+    std::optional<float> min_height;
+    std::optional<float> max_height;
     int font_size = 20;
     TextAlign text_align = TextAlign::Left;
     std::optional<Color> hover_background;

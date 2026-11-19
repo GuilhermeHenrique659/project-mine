@@ -3,30 +3,29 @@
 #include <memory>
 
 #include "event/event_bus.hpp"
-#include "input/input_handler.hpp"
 #include "input/keyboard.hpp"
+#include "input/pointer.hpp"
 #include "scene/new_game/new_game_view.hpp"
-#include "scene/scene.hpp"
+#include "scene/panel_view.hpp"
 
 namespace scene::new_game {
 
-// Translates player input into calls on the view or business events. It only knows
-// actions (see input::Action) and typed characters, never physical keys.
-class NewGameController : public scene::Controller {
+// The New Game screen's controller: a PanelController on the text entry bindings (letters
+// and Space type into the name), plus Erase (Backspace) and the typed characters, which go
+// to the view; Cancel goes back to the main menu.
+class NewGameController : public scene::PanelController {
 public:
     NewGameController(NewGameView& view, event::EventBus& bus,
-                      std::unique_ptr<input::Keyboard> keyboard);
+                      std::unique_ptr<input::Keyboard> keyboard,
+                      std::shared_ptr<const input::Pointer> pointer);
 
-    // Mouse (read from raylib) and then the keyboard.
     void handle_input() override;
 
-    // Typed characters go to the name field; actions navigate, submit, erase or go back.
+    // The keyboard part of handle_input(): typed characters, then the actions.
     void handle_keyboard();
 
 private:
     NewGameView& view_;
-    std::unique_ptr<input::Keyboard> keyboard_; // declared before input_, which references it
-    input::InputHandler input_;
 };
 
 } // namespace scene::new_game

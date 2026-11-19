@@ -1,6 +1,5 @@
 #include "scene/world/render/energy_page.hpp"
 
-#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -62,24 +61,33 @@ std::vector<Line> page_lines(const ::world::PowerReport& report) {
 } // namespace
 
 EnergyPage::EnergyPage(const core::Registry& registry)
-    : ui::Widget(ui::theme::label_style()), registry_(registry) {}
+    : ui::Composite(ui::theme::label_style()), registry_(registry) {}
 
-ui::Size EnergyPage::preferred_size(const ui::Canvas& canvas) const {
-    ui::Size size{};
-    for (const Line& line : page_lines(::world::power_report(registry_))) {
-        const ui::Size text = canvas.measure_text(line.text, FontSize);
-        size.width = std::max(size.width, line.indent + text.width);
-        size.height += line.gap_before + text.height + LineGap;
+void EnergyPage::sync(const ui::Canvas&) const {
+    const std::vector<Line> lines = page_lines(::world::power_report(registry_));
+    std::vector<Slot> slots;
+    for (const Line& line : lines) {
+        slots.push_back({line.indent, line.gap_before});
     }
-    return size;
-}
-
-void EnergyPage::draw(ui::Canvas& canvas) const {
-    float y = bounds_.y;
-    for (const Line& line : page_lines(::world::power_report(registry_))) {
-        y += line.gap_before;
-        canvas.draw_text(line.text, {bounds_.x + line.indent, y}, FontSize, line.color);
-        y += static_cast<float>(FontSize) + LineGap;
+    if (slots != slots_) {
+        ui::BoxBuilder column = ui::column();
+        column.gap(LineGap);
+        labels_.clear();
+        for (const Slot& slot : slots) {
+            auto label =
+                ui::label("").style(ui::theme::label_style().with_font_size(FontSize)).build();
+            labels_.push_back(label.get());
+            column.child(ui::row()
+                             .style(ui::Style{}.with_padding({slot.gap_before, 0.0f, 0.0f, slot.indent}))
+                             .child(std::move(label))
+                             .build());
+        }
+        set_tree(column.build());
+        slots_ = std::move(slots);
+    }
+    for (std::size_t i = 0; i < lines.size(); ++i) {
+        labels_[i]->set_text(lines[i].text);
+        labels_[i]->set_color(lines[i].color);
     }
 }
 

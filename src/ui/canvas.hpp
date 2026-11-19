@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "graphics/texture.hpp"
 #include "ui/geometry.hpp"
@@ -36,6 +37,18 @@ public:
         draw_texture(texture, dest, TextureDraw{});
     }
     virtual Size measure_text(const std::string& text, int font_size) const = 0;
+
+    // Limits drawing to `rect`, intersected with the current clip, until the matching
+    // pop_clip(). Clips nest (a scroll view inside a scroll view).
+    void push_clip(Rect rect);
+    void pop_clip();
+
+protected:
+    // The backend applies the clip now in force; empty = draw anywhere.
+    virtual void apply_clip(const std::optional<Rect>& clip) = 0;
+
+private:
+    std::vector<Rect> clips_;
 };
 
 } // namespace ui

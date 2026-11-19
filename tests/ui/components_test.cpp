@@ -27,7 +27,7 @@ TEST(UiCard, StacksChildrenVerticallyWithPaddingAndGap) {
                     .build();
 
     // When
-    card->layout({0.0f, 0.0f, 500.0f, 500.0f}, canvas);
+    card->layout({0.0f, 0.0f, 0.0f, 0.0f}, canvas);
 
     // Then
     EXPECT_FLOAT_EQ(card->children()[0]->bounds().y, 10.0f);
@@ -46,10 +46,10 @@ TEST(UiCard, WithoutWidthFitsTheWidestChild) {
                     .build();
 
     // When
-    card->layout({0.0f, 0.0f, 500.0f, 500.0f}, canvas);
+    const ui::Size size = card->preferred_size(canvas);
 
     // Then
-    EXPECT_FLOAT_EQ(card->bounds().width, 60.0f);
+    EXPECT_FLOAT_EQ(size.width, 60.0f);
 }
 
 TEST(UiLabel, CenteredTextIsDrawnInTheMiddleOfItsBox) {

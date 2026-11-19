@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "event/event_bus.hpp"
+#include "input/pointer_gate.hpp"
 #include "game/game_events.hpp"
 #include "scene/world/render/entity_renderer.hpp"
 #include "scene/world/render/world_menu.hpp"
@@ -35,6 +36,23 @@ private:
     std::string name_;
     Calls& calls_;
     bool visible_;
+};
+
+// Records whether it saw a click; optionally captures the pointer (a panel on top).
+class ClickRenderer : public scene::world::Renderer {
+public:
+    ClickRenderer(std::shared_ptr<const input::Pointer> pointer, bool captures)
+        : pointer_(std::move(pointer)), captures_(captures) {}
+
+    bool captures_pointer(ui::Point) const override { return captures_; }
+    void update() override { clicked = clicked || pointer_->released(); }
+    void draw(ui::Canvas&, ui::Size) const override {}
+
+    bool clicked = false;
+
+private:
+    std::shared_ptr<const input::Pointer> pointer_;
+    bool captures_;
 };
 
 std::vector<RendererPtr> renderers_of(RendererPtr bottom, RendererPtr top) {
@@ -143,4 +161,41 @@ TEST(WorldView, PauseMenuIgnoresClicksWhileThePlayIsNotPaused) {
 
     // Then
     EXPECT_EQ(back_requests, 0);
+}
+
+TEST(WorldView, ARendererThatCapturesThePointerKeepsTheClickFromTheOnesBelow) {
+    // Given: a capturing panel above a renderer that also reads clicks
+    auto mouse = std::make_shared<FakePointer>();
+    mouse->release = true;
+    auto gate = std::make_shared<input::PointerGate>(mouse);
+    auto bottom = std::make_unique<ClickRenderer>(gate, false);
+    auto top = std::make_unique<ClickRenderer>(gate, true);
+    ClickRenderer& below = *bottom;
+    ClickRenderer& above = *top;
+    scene::world::WorldView view(renderers_of(std::move(bottom), std::move(top)), gate);
+
+    // When
+    view.update();
+
+    // Then
+    EXPECT_TRUE(above.clicked);
+    EXPECT_FALSE(below.clicked);
+}
+
+TEST(WorldView, TheClickReachesTheRendererBelowANonCapturingOne) {
+    // Given
+    auto mouse = std::make_shared<FakePointer>();
+    mouse->release = true;
+    auto gate = std::make_shared<input::PointerGate>(mouse);
+    auto bottom = std::make_unique<ClickRenderer>(gate, false);
+    ClickRenderer& below = *bottom;
+    scene::world::WorldView view(
+        renderers_of(std::move(bottom), std::make_unique<ClickRenderer>(gate, false)), gate);
+    gate->claim(); // left over from the previous frame
+
+    // When
+    view.update();
+
+    // Then
+    EXPECT_TRUE(below.clicked);
 }

@@ -85,4 +85,17 @@ Size RaylibCanvas::measure_text(const std::string& text, int font_size) const {
     return {measured.x, static_cast<float>(font_size)};
 }
 
+void RaylibCanvas::apply_clip(const std::optional<Rect>& clip) {
+    EndScissorMode();
+    if (!clip) {
+        return;
+    }
+    BeginScissorMode(static_cast<int>(clip->x), static_cast<int>(clip->y),
+                     static_cast<int>(clip->width), static_cast<int>(clip->height));
+}
+
+Size RaylibCanvas::screen_size() {
+    return {static_cast<float>(GetScreenWidth()), static_cast<float>(GetScreenHeight())};
+}
+
 } // namespace ui

@@ -2,7 +2,6 @@
 
 #include <algorithm>
 
-#include "graphics/sprite.hpp"
 #include "scene/world/core/occupancy.hpp"
 #include "scene/world/render/cube.hpp"
 #include "ui/theme.hpp"
@@ -11,13 +10,11 @@ namespace scene::world {
 
 namespace {
 constexpr float TabSize = 64.0f;
-constexpr float IconInset = 8.0f;
 constexpr float Padding = 8.0f;
 constexpr float Gap = 8.0f;
 constexpr float ItemHeight = 56.0f;
 constexpr float ItemWidth = 240.0f;
 constexpr float BorderWidth = 2.0f;
-constexpr int FontSize = 20;
 constexpr ui::Color PreviewValidFront{60, 170, 80, 140};
 constexpr ui::Color PreviewValidTop{110, 220, 130, 140};
 constexpr ui::Color PreviewBlockedFront{190, 50, 50, 140};
@@ -29,21 +26,48 @@ constexpr ui::Color PreviewRejectedTop{255, 40, 40, 230};
 const std::vector<::world::ConstructionGroup>& catalog() {
     return ::world::construction_catalog();
 }
-
-ui::Rect inset(const ui::Rect& rect, float by) {
-    return {rect.x + by, rect.y + by, rect.width - 2.0f * by, rect.height - 2.0f * by};
-}
 } // namespace
 
 PlayerHud::PlayerHud(WorldModel& model, std::shared_ptr<const input::Pointer> pointer)
-    : model_(model), pointer_(std::move(pointer)) {}
+    : model_(model), pointer_(std::move(pointer)),
+      pick_([this](const ::world::Construction& construction) {
+          selected_ = &construction;
+          rejected_tile_.reset();
+          open_tab_.reset();
+      }) {
+    ui::BoxBuilder bar = ui::row();
+    bar.padding(Padding)
+        .gap(Gap)
+        .justify(ui::Justify::Center)
+        .align(ui::Align::Center)
+        .background(ui::theme::Panel)
+        .border(ui::theme::Outline, BorderWidth);
+    for (std::size_t i = 0; i < catalog().size(); ++i) {
+        auto tab = std::make_unique<IconButton>(catalog()[i].icon, "", ui::Size{TabSize, TabSize});
+        // Clicking a tab opens its list; clicking the open one closes it.
+        tab->set_on_click([this, i] {
+            if (open_tab_ == i) {
+                open_tab_.reset();
+            } else {
+                open_tab_ = i;
+            }
+        });
+        bar.child_ref(*tab);
+        tabs_.push_back(std::move(tab));
+    }
+    bar_root_ = bar.build();
+}
 
 bool PlayerHud::visible() const { return model_.is_build_bar_open() && !model_.is_paused(); }
 
-std::size_t PlayerHud::tab_count() const { return catalog().size(); }
+bool PlayerHud::captures_pointer(ui::Point position) const {
+    return bar_.contains(position) || list_.contains(position);
+}
+
+std::size_t PlayerHud::tab_count() const { return tabs_.size(); }
 
 ui::Rect PlayerHud::tab_bounds(std::size_t index) const {
-    return index < tabs_.size() ? tabs_[index] : ui::Rect{};
+    return index < tabs_.size() ? tabs_[index]->bounds() : ui::Rect{};
 }
 
 std::size_t PlayerHud::item_count() const {
@@ -51,40 +75,36 @@ std::size_t PlayerHud::item_count() const {
 }
 
 ui::Rect PlayerHud::item_bounds(std::size_t index) const {
-    return index < items_.size() ? items_[index] : ui::Rect{};
+    return index < items_.size() ? items_[index]->bounds() : ui::Rect{};
+}
+
+std::unique_ptr<ui::Box> PlayerHud::build_list(std::size_t tab) const {
+    ui::BoxBuilder list = ui::column();
+    list.padding(Padding).gap(Gap).background(ui::theme::Panel).border(ui::theme::Outline,
+                                                                        BorderWidth);
+    items_.clear();
+    for (const ::world::Construction& construction : catalog()[tab].constructions) {
+        auto item = std::make_unique<IconButton>(construction.icon, construction.name,
+                                                 ui::Size{ItemWidth, ItemHeight});
+        // Picking an entry selects it and closes the list (rebuilt by the next layout).
+        item->set_on_click([this, &construction] { pick_(construction); });
+        items_.push_back(item.get());
+        list.child(std::move(item));
+    }
+    return list.build();
 }
 
 void PlayerHud::update() {
-    if (!pointer_->released()) {
-        return;
-    }
     const input::PointerPosition at = pointer_->position();
     const ui::Point position{at.x, at.y};
-    for (std::size_t i = 0; i < items_.size(); ++i) {
-        if (!items_[i].contains(position)) {
-            continue;
-        }
-        const ::world::Construction& construction = catalog()[*open_tab_].constructions[i];
-        if (is_disabled(construction)) {
-            return;
-        }
-        selected_ = &construction;
-        rejected_tile_.reset();
-        open_tab_.reset();
-        return;
+    const bool released = pointer_->released();
+    // The list first (it sits above the bar), then the bar; both from the last layout.
+    const bool on_hud = bar_.contains(position) || list_.contains(position);
+    if (list_root_) {
+        list_root_->handle_pointer(position, released);
     }
-    for (std::size_t i = 0; i < tabs_.size(); ++i) {
-        if (!tabs_[i].contains(position)) {
-            continue;
-        }
-        if (open_tab_ == i) {
-            open_tab_.reset();
-        } else {
-            open_tab_ = i;
-        }
-        return;
-    }
-    if (selected_ == nullptr || bar_.contains(position) || list_.contains(position)) {
+    bar_root_->handle_pointer(position, released);
+    if (!released || on_hud || selected_ == nullptr) {
         return;
     }
     // A click on the world places the selected construction on the tile under the pointer;
@@ -135,73 +155,49 @@ bool PlayerHud::is_disabled(const ::world::Construction& construction) const {
     return model_.build_status(construction) != ::world::BuildResult::Ok;
 }
 
-void PlayerHud::layout(const ui::Canvas&, ui::Size screen) const {
+void PlayerHud::layout(const ui::Canvas& canvas, ui::Size screen) const {
     screen_ = screen;
-    const std::size_t count = tab_count();
-    const float tabs_width = count * TabSize + (count > 0 ? (count - 1) * Gap : 0.0f);
-    const float width = std::max(screen.width * BarWidthCoverage, tabs_width + 2.0f * Padding);
-    const float height = 2.0f * Padding + TabSize;
-    // Flush with the bottom edge of the screen; the tabs are centred inside it.
-    bar_ = {(screen.width - width) / 2.0f, screen.height - height, width, height};
-
-    tabs_.clear();
-    const float tabs_x = bar_.x + (width - tabs_width) / 2.0f;
-    for (std::size_t i = 0; i < count; ++i) {
-        tabs_.push_back({tabs_x + i * (TabSize + Gap), bar_.y + Padding, TabSize, TabSize});
+    // Flush with the bottom edge of the screen, at least BarWidthCoverage wide; the tabs
+    // are centred inside it.
+    const ui::Size wanted = bar_root_->preferred_size(canvas);
+    const float width = std::max(screen.width * BarWidthCoverage, wanted.width);
+    bar_root_->layout({(screen.width - width) / 2.0f, screen.height - wanted.height, width,
+                       wanted.height},
+                      canvas);
+    bar_ = bar_root_->bounds();
+    for (std::size_t i = 0; i < tabs_.size(); ++i) {
+        tabs_[i]->set_active(open_tab_ == i);
     }
 
-    items_.clear();
+    if (list_tab_ != open_tab_) {
+        list_root_ = open_tab_ ? build_list(*open_tab_) : nullptr;
+        if (!open_tab_) {
+            items_.clear();
+        }
+        list_tab_ = open_tab_;
+    }
     list_ = {};
-    if (!open_tab_) {
+    if (!list_root_) {
         return;
     }
-    // The drop-up grows upwards from the top of the bar, aligned with the left of its tab.
-    const std::size_t items = item_count();
-    const float list_height = 2.0f * Padding + items * ItemHeight + (items - 1) * Gap;
-    const ui::Rect& tab = tabs_[*open_tab_];
-    list_ = {tab.x - Padding, bar_.y - list_height, ItemWidth + 2.0f * Padding, list_height};
-    for (std::size_t i = 0; i < items; ++i) {
-        items_.push_back({list_.x + Padding, list_.y + Padding + i * (ItemHeight + Gap), ItemWidth,
-                          ItemHeight});
+    // Constructions the model refuses now are disabled.
+    const auto& constructions = catalog()[*open_tab_].constructions;
+    for (std::size_t i = 0; i < items_.size(); ++i) {
+        items_[i]->set_enabled(!is_disabled(constructions[i]));
     }
+    // The drop-up grows upwards from the top of the bar, aligned with the left of its tab.
+    const ui::Size size = list_root_->preferred_size(canvas);
+    const ui::Rect& tab = tabs_[*open_tab_]->bounds();
+    list_root_->layout({tab.x - Padding, bar_.y - size.height, size.width, size.height}, canvas);
+    list_ = list_root_->bounds();
 }
 
 void PlayerHud::draw(ui::Canvas& canvas, ui::Size screen) const {
     layout(canvas, screen);
-    const input::PointerPosition at = pointer_->position();
-    const ui::Point mouse{at.x, at.y};
-    const ui::Style style = ui::theme::slot_style();
-
     draw_preview(canvas);
-    canvas.fill_rect(bar_, ui::theme::Panel);
-    canvas.stroke_rect(bar_, ui::theme::Outline, BorderWidth);
-    for (std::size_t i = 0; i < tabs_.size(); ++i) {
-        const ui::Color face = open_tab_ == i           ? ui::theme::GreenFace
-                               : tabs_[i].contains(mouse) ? ui::theme::ButtonFaceHover
-                                                          : ui::theme::ButtonFace;
-        ui::draw_raised(canvas, tabs_[i], face, style);
-        graphics::draw_sprite(canvas, {catalog()[i].icon, std::nullopt}, inset(tabs_[i], IconInset));
-    }
-
-    if (!open_tab_) {
-        return;
-    }
-    canvas.fill_rect(list_, ui::theme::Panel);
-    canvas.stroke_rect(list_, ui::theme::Outline, BorderWidth);
-    const auto& constructions = catalog()[*open_tab_].constructions;
-    for (std::size_t i = 0; i < items_.size(); ++i) {
-        const ui::Rect& item = items_[i];
-        const bool disabled = is_disabled(constructions[i]);
-        const ui::Color face = disabled              ? ui::theme::ButtonShadow
-                               : item.contains(mouse) ? ui::theme::ButtonFaceHover
-                                                      : ui::theme::ButtonFace;
-        ui::draw_raised(canvas, item, face, style);
-        const ui::Rect icon{item.x + IconInset, item.y + IconInset, item.height - 2.0f * IconInset,
-                            item.height - 2.0f * IconInset};
-        graphics::draw_sprite(canvas, {constructions[i].icon, std::nullopt}, icon);
-        const float text_y = item.y + (item.height - FontSize) / 2.0f;
-        canvas.draw_text(constructions[i].name, {icon.x + icon.width + IconInset, text_y}, FontSize,
-                         disabled ? ui::theme::Muted : ui::theme::Text);
+    bar_root_->draw(canvas);
+    if (list_root_) {
+        list_root_->draw(canvas);
     }
 }
 

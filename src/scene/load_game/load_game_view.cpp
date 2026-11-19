@@ -1,18 +1,18 @@
 #include "scene/load_game/load_game_view.hpp"
 
-#include <raylib.h>
-
 #include "game/game_events.hpp"
+#include "ui/scroll_box.hpp"
 #include "ui/theme.hpp"
 
 namespace scene::load_game {
 
 namespace {
 constexpr float CardWidth = 720.0f;
-constexpr float CardTop = 80.0f;
 constexpr float ButtonGap = 10.0f;
 constexpr int TitleFontSize = 40;
 constexpr int SaveFontSize = 24;
+// Saves shown at once; a longer list scrolls (one save per wheel notch).
+constexpr float VisibleSaves = 4.0f;
 } // namespace
 
 LoadGameView::LoadGameView(event::EventBus& bus, const std::vector<game::SaveGame>& saves) {
@@ -27,13 +27,24 @@ LoadGameView::LoadGameView(event::EventBus& bus, const std::vector<game::SaveGam
     builder.child(std::move(title));
 
     const ui::ButtonFactory button_factory(focus_group_);
+    ui::BoxBuilder list = ui::column();
+    list.gap(ButtonGap).align(ui::Align::Stretch);
+    float save_height = 0.0f;
     for (const game::SaveGame& save : saves) {
         auto button = button_factory.create(
             save.name + "   " + game::format_created_at(save.created_at),
             [&bus, name = save.name] { bus.publish(game::LoadSaveRequested{name}); },
             ui::theme::button_style().with_font_size(SaveFontSize));
         save_buttons_.push_back(button.get());
-        builder.child(std::move(button));
+        save_height = button->style().padding.vertical() + static_cast<float>(SaveFontSize);
+        list.child(std::move(button));
+    }
+    if (!saves.empty()) {
+        const float step = save_height + ButtonGap;
+        builder.child(ui::scroll_box(list.build())
+                          .step(step)
+                          .max_height(VisibleSaves * step - ButtonGap)
+                          .build());
     }
     if (saves.empty()) {
         auto empty = ui::label("No saved games yet")
@@ -49,22 +60,7 @@ LoadGameView::LoadGameView(event::EventBus& bus, const std::vector<game::SaveGam
         "Back", [&bus] { bus.publish(game::BackToMenuRequested{}); });
     back_button_ = back.get();
     builder.child(std::move(back));
-    root_ = builder.build();
-}
-
-void LoadGameView::layout(const ui::Canvas& canvas, float screen_width) const {
-    const ui::Size size = root_->preferred_size(canvas);
-    root_->layout({(screen_width - size.width) / 2.0f, CardTop, size.width, size.height}, canvas);
-}
-
-void LoadGameView::draw() const {
-    ui::RaylibCanvas canvas;
-    layout(canvas, static_cast<float>(GetScreenWidth()));
-    root_->draw(canvas);
-}
-
-void LoadGameView::handle_pointer(ui::Point position, bool released) {
-    root_->handle_pointer(position, released);
+    set_root(builder.build());
 }
 
 } // namespace scene::load_game

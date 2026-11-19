@@ -1,7 +1,5 @@
 #include "scene/menu/menu_view.hpp"
 
-#include <raylib.h>
-
 #include "game/game_events.hpp"
 #include "ui/theme.hpp"
 
@@ -10,7 +8,6 @@ namespace scene::menu {
 namespace {
 constexpr float CardWidth = 560.0f;
 constexpr float ButtonGap = 10.0f;
-constexpr float CardTop = 80.0f;
 constexpr int TitleFontSize = 56;
 } // namespace
 
@@ -43,23 +40,7 @@ MenuView::MenuView(event::EventBus& bus) {
     builder.child(std::move(load_game_button));
     builder.child(std::move(settings_button));
     builder.child(std::move(quit_button));
-    root_ = builder.build();
-}
-
-void MenuView::layout(const ui::Canvas& canvas, float screen_width) const {
-    const ui::Size size = root_->preferred_size(canvas);
-    root_->layout({(screen_width - size.width) / 2.0f, CardTop, size.width, size.height}, canvas);
-}
-
-void MenuView::draw() const {
-    ui::RaylibCanvas canvas;
-    layout(canvas, static_cast<float>(GetScreenWidth()));
-    root_->draw(canvas);
-
-}
-
-void MenuView::handle_pointer(ui::Point position, bool released) {
-    root_->handle_pointer(position, released);
+    set_root(builder.build());
 }
 
 } // namespace scene::menu
