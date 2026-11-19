@@ -4,7 +4,8 @@ Run from the project root:  python tools/sprites/buildings.py [output_dir]
 
 Each building is a sheet of equal frames (one row) whose ground anchor, the screen point
 of the footprint's centre, sits at a fixed pixel of the frame. Sizes, frame counts and the
-anchor must match graphics::building_sprite() (src/graphics/building_sprites.hpp).
+anchor are written to the .sprite file next to the sheet (pixel.write_sprite); the game
+finds it as buildings/<building type in snake_case>, so a new building sprite needs no C++.
 """
 import math
 import os
@@ -12,12 +13,13 @@ import random
 import sys
 
 from iso import IsoCanvas, lit_faces
-from pixel import blank, mix, shade, sheet, write_png
+from pixel import blank, mix, shade, write_sprite
 
 # Headquarters: 5x5 tiles -> a 320x160 ground diamond.
 HQ_FRAME_W, HQ_FRAME_H = 336, 352
-HQ_ANCHOR = (168, 264)          # graphics::HeadquartersAnchor
-HQ_FRAMES = 8                   # graphics::HeadquartersFrames (one antenna turn)
+HQ_ANCHOR = (168, 264)          # the footprint centre
+HQ_FRAMES = 8                   # one antenna turn
+HQ_FPS = 4
 
 # Palette: grimy industrial metal with cyberpunk neon.
 CONCRETE = (92, 92, 98)
@@ -147,8 +149,8 @@ def headquarters(frame):
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else os.path.join("resource", "sprite", "buildings")
     os.makedirs(out, exist_ok=True)
-    write_png(os.path.join(out, "headquarters_sheet.png"),
-              sheet([headquarters(f) for f in range(HQ_FRAMES)], HQ_FRAMES))
+    write_sprite(out, "headquarters", [headquarters(f) for f in range(HQ_FRAMES)], HQ_FRAMES,
+                 anchor=HQ_ANCHOR, clips={"idle": (0, HQ_FRAMES, HQ_FPS, True)})
     print(f"wrote building sprites to {out}")
 
 

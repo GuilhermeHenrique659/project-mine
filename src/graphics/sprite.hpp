@@ -3,6 +3,7 @@
 #include <optional>
 #include <string>
 
+#include "graphics/sprite_library.hpp"
 #include "ui/canvas.hpp"
 
 namespace graphics {
@@ -24,5 +25,10 @@ bool draw_sprite(ui::Canvas& canvas, const Sprite& sprite, ui::Rect dest,
 // the caller can keep what is already under it. Returns whether the sprite was drawn.
 bool draw_loaded_sprite(ui::Canvas& canvas, const Sprite& sprite, ui::Rect dest,
                         ui::TextureDraw options = {});
+
+// Draws `frame` over `dest` when its texture loads (looked up by id, no hashing); otherwise
+// draws nothing so what is under it stays. Returns whether it was drawn.
+bool draw_frame(ui::Canvas& canvas, const SpriteFrame& frame, ui::Rect dest,
+                ui::TextureDraw options = {});
 
 } // namespace graphics

@@ -11,27 +11,23 @@ Python 3 from MSYS2 (`python`), stdlib only (no Pillow). Run everything from the
 
 ## Files
 
-- `tools/sprites/pixel.py`: shared helpers. `write_png` / `read_png` (RGBA), `blank`, `diamond_tile(color_at)` (a 64x32 isometric tile, transparent outside the diamond), `in_diamond` / `on_diamond_rim`, `mix`, `shade`, `sheet(frames, columns)` (lays frames out in `graphics::SpriteSheet` order: left to right, top to bottom).
-- `tools/sprites/<category>.py`: one generator per folder of `resource/sprite/`. `environment.py` makes the terrain (`grass_0..3`, `iron_ore`, `copper_ore`, `coal`, `water_sheet`). Add a new script for a new category (e.g. `buildings.py` -> `resource/sprite/buildings/`).
+- `tools/sprites/pixel.py`: shared helpers. `write_png` / `read_png` (RGBA), `blank`, `diamond_tile(color_at)` (a 64x32 isometric tile, transparent outside the diamond), `in_diamond` / `on_diamond_rim`, `mix`, `shade`, `sheet(frames, columns)` (lays frames out left to right, top to bottom), and **`write_sprite(dir, name, frames, columns, anchor, clips)`**, which writes the sheet *and* its `<name>.sprite` metadata (frame size, rows, anchor, clips) that the game reads. Always save game sprites with `write_sprite`.
+- `tools/sprites/<category>.py`: one generator per folder of `resource/sprite/`. `environment.py` makes the terrain (`grass` with 4 variant rows, `iron_ore`, `copper_ore`, `coal`, `water` with 8 animated frames). Add a new script for a new category (e.g. `buildings.py` -> `resource/sprite/buildings/`).
 - `tools/sprites/iso.py`: `IsoCanvas(image, origin)`, a tiny isometric rasterizer in world space (x right-down, y left-down, z = pixels up): `box()` with per-face colors or `(u, v) -> color` texture functions, `line()`, `dot()`; `lit_faces(color)` gives top/left/right shades. Draw back to front.
-- `tools/sprites/buildings.py`: building sheets (`headquarters_sheet.png`: cyberpunk-industrial block, 8 frames of a spinning antenna). A building frame is sized so its footprint diamond is `width x 64` px wide and its **anchor** (the footprint centre) sits at a fixed pixel; size, anchor and frame count must match `src/graphics/building_sprites.hpp`.
-- `tools/sprites/units.py`: `character_sheet.png`, a small 3D figure (capsules in the character's own frame: forward / right / up) turned to each of the 8 facings and projected like the game camera, so directions stay consistent; rows = `world::Direction` order, column 0 standing, then the walk cycle. Must match `src/graphics/unit_sprites.hpp`.
+- `tools/sprites/buildings.py`: building sheets (`headquarters_sheet.png`: cyberpunk-industrial block, 8 frames of a spinning antenna). A building frame is sized so its footprint diamond is `width x 64` px wide and its **anchor** (the footprint centre) sits at a fixed pixel, passed as `anchor` to `write_sprite`.
+- `tools/sprites/units.py`: `character_sheet.png`, a small 3D figure (capsules in the character's own frame: forward / right / up) turned to each of the 8 facings and projected like the game camera, so directions stay consistent; rows = `world::Direction` order, column 0 standing, then the walk cycle; clips `idle`, `walk`, `run`.
 - `tools/sprites/preview.py`: `strip <out.png> <pngs...>` (side by side) and `tiled <out.png> <tiles...>` (a 6x6 isometric patch like the game). Both enlarge 3x.
 
 ## Workflow
 
-1. **Read the code that will draw the sprite** before drawing anything: `docs/engine-modules.md#graphics`, `src/graphics/terrain_sprites.hpp` (frame size, variant and frame counts) and `src/graphics/texture_catalog.cpp` (texture name -> file). The sprite's size, frame count and file name must match them.
+1. **Read how the game finds the sprite** before drawing anything: `docs/engine-modules.md#graphics` and `src/graphics/game_sprites.hpp`. The `.sprite` name is the convention: `buildings/<building key in snake_case>`, `environment/<tile type>`, `units/character`; clip names `idle` (and `walk` / `run` for units); rows are facings (units) or variants (tiles).
 2. **Write or change the generator.** Keep it deterministic (`random.Random(seed)`, never the global random), so a rerun gives the same image.
 3. **Run it:** `python tools/sprites/<category>.py`.
 4. **Look at it.** Write previews into the session scratchpad (not the project) and open them with the Read tool:
    - `python tools/sprites/preview.py strip <scratch>/strip.png resource/sprite/<category>/*.png`
    - for tiles also `tiled`, mixing the variants and neighbours that meet in the game.
    Fix what looks wrong and repeat before going further. Say that you checked a preview, not the game.
-5. **Hook it into the game** if it is a new texture (code change: follow the `tdd` skill):
-   - register the name and file in `register_game_textures()` (`src/graphics/texture_catalog.cpp`), with a test in `tests/graphics/texture_catalog_test.cpp`;
-   - choose the sprite in the `graphics/` layer (like `tile_sprite()`), using `SpriteSheet` + `Animation` for animations, never hand-written frame maths;
-   - draw with `graphics::draw_sprite()` (shows the fallback when missing) or `draw_loaded_sprite()` (draws nothing when missing, so what is under it stays);
-   - update `docs/engine-modules.md#graphics`.
+5. **Hooking it into the game needs no code** when it follows the naming convention: `write_sprite` with the right name and folder is enough, and `GameSprites` picks it up at the next start (a finished building draws its sprite instead of its box, a tile instead of its colour). Only a *new kind* of thing to draw (items, a new unit) needs a lookup in `GameSprites` (code change: follow the `tdd` skill) and a line in `docs/engine-modules.md#graphics`.
 6. Commit the script changes (the PNGs are not in git).
 
 ## Rules for buildings
@@ -39,7 +35,7 @@ Python 3 from MSYS2 (`python`), stdlib only (no Pillow). Run everything from the
 - Build the shape from `IsoCanvas.box()` calls in painter order (back stacks first, then the main block, then what sits on top), so faces overlap correctly.
 - Leave the footprint diamond fully covered by the base (a plinth) so the grass does not show through gaps; keep everything above inside the frame (check the antenna tip).
 - Animate only the moving part (an antenna, a fan, blinking lights) and keep the rest identical in every frame, otherwise the building shimmers.
-- A new building sprite: add it to `buildings.py`, then `building_sprite()` + its constants, and the catalog (tdd skill). `EntityRenderer` then draws it instead of the cube automatically.
+- A new building sprite: add it to `buildings.py` and save it with `write_sprite(out, "<building key in snake_case>", frames, columns, anchor=..., clips={"idle": ...})`. That's all; `EntityRenderer` then draws it instead of the cube.
 
 ## Rules for good-looking tiles
 

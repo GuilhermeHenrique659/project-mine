@@ -12,6 +12,7 @@
 #include "game/save_game.hpp"
 #include "persistence/save_store.hpp"
 #include "persistence/settings_persistence.hpp"
+#include "graphics/game_sprites.hpp"
 #include "scene/scene.hpp"
 
 namespace game {
@@ -53,6 +54,9 @@ public:
     // Saved games on disk (read by the Load Game screen).
     const persistence::SaveStore& save_store() const { return save_store_; }
 
+    // Which sprite to draw for what, loaded by start_up() (none before).
+    const graphics::GameSprites& sprites() const { return sprites_; }
+
     void quit();
     bool is_running() const;
     const scene::Scene* active_scene() const;
@@ -75,6 +79,7 @@ private:
     std::filesystem::path data_dir_;
     Clock clock_;
     SeedSource seed_source_;
+    graphics::GameSprites sprites_;
     bool running_ = false;
 };
 

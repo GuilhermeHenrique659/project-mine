@@ -1,8 +1,9 @@
 """Generates the terrain sprites in resource/sprite/environment/.
 
 Run from the project root:  python tools/sprites/environment.py [output_dir]
-File names must match graphics::register_game_textures() (src/graphics/texture_catalog.cpp)
-and the counts below the constants in src/graphics/terrain_sprites.hpp.
+Each sprite is a sheet plus its .sprite file (pixel.write_sprite); the game finds it as
+environment/<tile type> (graphics::tile_sprite_name()), so nothing in the C++ needs editing.
+Grass variants are the rows of one sheet; the game picks a row per tile.
 """
 import math
 import os
@@ -10,10 +11,11 @@ import random
 import sys
 
 from pixel import TILE_HEIGHT as H, TILE_WIDTH as W, diamond_tile, mix, on_diamond_rim, \
-    shade, sheet, write_png
+    shade, write_sprite
 
-GRASS_VARIANTS = 4   # graphics::GrassVariants
-WATER_FRAMES = 8     # graphics::WaterFrames
+GRASS_VARIANTS = 4
+WATER_FRAMES = 8
+WATER_FPS = 8
 
 
 def grass(seed):
@@ -78,13 +80,12 @@ def water(frame):
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else os.path.join("resource", "sprite", "environment")
     os.makedirs(out, exist_ok=True)
-    for i in range(GRASS_VARIANTS):
-        write_png(os.path.join(out, f"grass_{i}.png"), grass(i))
-    write_png(os.path.join(out, "iron_ore.png"), ore(11, (120, 104, 96), (190, 120, 90)))
-    write_png(os.path.join(out, "copper_ore.png"), ore(12, (150, 96, 60), (230, 150, 80)))
-    write_png(os.path.join(out, "coal.png"), ore(13, (46, 44, 48), (90, 90, 100)))
-    write_png(os.path.join(out, "water_sheet.png"),
-              sheet([water(f) for f in range(WATER_FRAMES)], WATER_FRAMES))
+    write_sprite(out, "grass", [grass(i) for i in range(GRASS_VARIANTS)], 1)
+    write_sprite(out, "iron_ore", [ore(11, (120, 104, 96), (190, 120, 90))], 1)
+    write_sprite(out, "copper_ore", [ore(12, (150, 96, 60), (230, 150, 80))], 1)
+    write_sprite(out, "coal", [ore(13, (46, 44, 48), (90, 90, 100))], 1)
+    write_sprite(out, "water", [water(f) for f in range(WATER_FRAMES)], WATER_FRAMES,
+                 clips={"idle": (0, WATER_FRAMES, WATER_FPS, True)})
     print(f"wrote environment sprites to {out}")
 
 

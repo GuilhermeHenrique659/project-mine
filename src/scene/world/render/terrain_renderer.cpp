@@ -5,7 +5,6 @@
 
 #include "scene/world/core/isometric.hpp"
 #include "graphics/sprite.hpp"
-#include "graphics/terrain_sprites.hpp"
 
 namespace scene::world {
 
@@ -51,18 +50,23 @@ void TerrainRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
     for (int y = first_y; y <= last_y; ++y) {
         for (int x = first_x; x <= last_x; ++x) {
             const ::world::TileCoord tile{x, y};
+            const ::world::TileType type = terrain_.tile_at(tile);
             const ::world::TileCorners diamond = projection.tile_corners(tile);
-            const ui::Color color = tile_color(terrain_.tile_at(tile));
+
+            // The sprite covers the whole diamond: the colour is only for tiles without one.
+            if (const auto frame = sprites_.tile(type, tile, seconds)) {
+                const ui::Rect dest{diamond.left.x, diamond.top.y,
+                                    diamond.right.x - diamond.left.x,
+                                    diamond.bottom.y - diamond.top.y};
+                if (graphics::draw_frame(canvas, *frame, dest)) {
+                    continue;
+                }
+            }
+            const ui::Color color = tile_color(type);
             canvas.fill_triangle(to_point(diamond.top), to_point(diamond.left),
                                  to_point(diamond.bottom), color);
             canvas.fill_triangle(to_point(diamond.top), to_point(diamond.bottom),
                                  to_point(diamond.right), color);
-
-            // The sprite covers the colour; a texture that does not load keeps the colour.
-            const ui::Rect dest{diamond.left.x, diamond.top.y, diamond.right.x - diamond.left.x,
-                                diamond.bottom.y - diamond.top.y};
-            graphics::draw_loaded_sprite(
-                canvas, graphics::tile_sprite(terrain_.tile_at(tile), tile, seconds), dest);
         }
     }
 }

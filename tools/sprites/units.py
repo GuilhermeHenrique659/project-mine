@@ -4,7 +4,7 @@ Run from the project root:  python tools/sprites/units.py [output_dir]
 
 character_sheet.png: one row per facing, in world::Direction order (N, NE, E, SE, S, SW,
 W, NW); column 0 is standing, columns 1..WALK_FRAMES the walk cycle. Frame size, anchor
-and counts must match src/graphics/unit_sprites.hpp.
+and clips (idle, walk, run) go to character.sprite (pixel.write_sprite), read by the game.
 
 The figure is a little 3D model (capsules and spheres in the character's own frame),
 turned to each facing and projected the way the game's camera sees it, so all eight
@@ -14,12 +14,13 @@ import math
 import os
 import sys
 
-from pixel import blank, shade, write_png
+from pixel import blank, shade, write_sprite
 
 FRAME_W, FRAME_H = 32, 48
-ANCHOR = (16, 44)        # graphics::CharacterAnchor: the feet on the ground point
+ANCHOR = (16, 44)        # the feet on the ground point
 DIRECTIONS = 8
-WALK_FRAMES = 6          # graphics::CharacterWalkFrames
+WALK_FRAMES = 6
+WALK_FPS, RUN_FPS = 10, 16
 COLUMNS = 1 + WALK_FRAMES
 
 # Cyberpunk-industrial worker: hi-vis jumpsuit, dark armour bits, glowing visor.
@@ -132,15 +133,14 @@ def character(direction, phase, walking):
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else os.path.join("resource", "sprite", "units")
     os.makedirs(out, exist_ok=True)
-    image = blank(FRAME_W * COLUMNS, FRAME_H * DIRECTIONS)
+    frames = []
     for direction in range(DIRECTIONS):
-        frames = [character(direction, 0.0, False)]
+        frames.append(character(direction, 0.0, False))
         frames += [character(direction, i / WALK_FRAMES * 2 * math.pi, True)
                    for i in range(WALK_FRAMES)]
-        for column, frame in enumerate(frames):
-            for y in range(FRAME_H):
-                image[direction * FRAME_H + y][column * FRAME_W:(column + 1) * FRAME_W] = frame[y]
-    write_png(os.path.join(out, "character_sheet.png"), image)
+    write_sprite(out, "character", frames, COLUMNS, anchor=ANCHOR,
+                 clips={"idle": (0, 1, 0, True), "walk": (1, WALK_FRAMES, WALK_FPS, True),
+                        "run": (1, WALK_FRAMES, RUN_FPS, True)})
     print(f"wrote unit sprites to {out}")
 
 

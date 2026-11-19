@@ -32,4 +32,15 @@ bool draw_loaded_sprite(ui::Canvas& canvas, const Sprite& sprite, ui::Rect dest,
     return true;
 }
 
+bool draw_frame(ui::Canvas& canvas, const SpriteFrame& frame, ui::Rect dest,
+                ui::TextureDraw options) {
+    const Texture* texture = TextureManager::instance().find(frame.texture);
+    if (texture == nullptr) {
+        return false;
+    }
+    options.source = frame.source;
+    canvas.draw_texture(*texture, dest, options);
+    return true;
+}
+
 } // namespace graphics

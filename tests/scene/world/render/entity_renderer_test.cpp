@@ -1,11 +1,11 @@
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <string>
 
 #include "core/registry.hpp"
-#include "graphics/building_sprites.hpp"
+#include "graphics/game_sprites.hpp"
 #include "graphics/texture_manager.hpp"
-#include "graphics/unit_sprites.hpp"
 #include "scene/world/core/components/facing.hpp"
 #include "scene/world/core/camera.hpp"
 #include "scene/world/render/entity_renderer.hpp"
@@ -96,6 +96,28 @@ protected:
         graphics::TextureManager::instance().set_loader(std::make_unique<FakeTextureLoader>());
     }
     void TearDown() override { graphics::TextureManager::instance().reset(); }
+
+    // A library holding only `name`, whose sheet loads.
+    static graphics::GameSprites sprites_with(const std::string& name,
+                                              graphics::SpriteDefinition definition) {
+        graphics::SpriteLibrary library;
+        library.add(name, std::move(definition),
+                    graphics::TextureManager::instance().register_texture(name, name + ".png"));
+        return graphics::GameSprites(std::move(library));
+    }
+
+    // 8 frames of 336x352, anchored at (168, 264), at 4 fps.
+    static graphics::SpriteDefinition headquarters() {
+        return {"hq.png", 336, 352, 8, 1, {168.0f, 264.0f},
+                {graphics::SpriteClip{"idle", 0, 8, 4.0f, true}}};
+    }
+
+    // 8 facings of standing + 6 walk frames at 10 fps, 32x48 anchored at (16, 44).
+    static graphics::SpriteDefinition character() {
+        return {"character.png", 32, 48, 7, 8, {16.0f, 44.0f},
+                {graphics::SpriteClip{"idle", 0, 1, 0.0f, true},
+                 graphics::SpriteClip{"walk", 1, 6, 10.0f, true}}};
+    }
 };
 
 } // namespace
@@ -247,71 +269,123 @@ TEST(EntityRenderer, AWorkerIsLabelledWithTheWorkItDoes) {
 
 TEST_F(EntityRendererTexture, AFinishedHeadquartersIsDrawnAsItsSpriteOnItsFootprint) {
     // Given: the headquarters sheet loads, 1 s of animation has passed
-    graphics::TextureManager::instance().register_texture(graphics::HeadquartersTexture,
-                                                          "hq.png");
+    const graphics::GameSprites sprites = sprites_with("buildings/headquarters", headquarters());
     core::Registry registry;
     const core::EntityId hq = registry.create("Headquarters");
     registry.add(hq, world::Building{world::BuildingType::Headquarters, {0, 0}, {5, 5}});
     registry.add(hq, world::Position{{0.0f, 0.0f}});
     const world::Camera camera;
-    const scene::world::EntityRenderer renderer(registry, camera, [] { return 1.0f; });
+    const scene::world::EntityRenderer renderer(registry, camera, sprites, [] { return 1.0f; });
     FakeCanvas canvas;
 
     // When
     renderer.draw(canvas, Screen);
 
-    // Then: no cube, the anchor on the screen centre, and the current frame
+    // Then: no cube, the anchor on the screen centre, and the current frame (the 5th)
     EXPECT_TRUE(canvas.triangles.empty());
     ASSERT_EQ(canvas.textures.size(), 1u);
     const DrawnTexture& drawn = canvas.textures.front();
-    const auto expected = graphics::building_sprite(world::BuildingType::Headquarters, 1.0f);
-    ASSERT_TRUE(expected && drawn.options.source);
-    EXPECT_FLOAT_EQ(drawn.dest.x + graphics::HeadquartersAnchor.x, Screen.width / 2.0f);
-    EXPECT_FLOAT_EQ(drawn.dest.y + graphics::HeadquartersAnchor.y, Screen.height / 2.0f);
-    EXPECT_FLOAT_EQ(drawn.options.source->x, expected->sprite.source->x);
+    ASSERT_TRUE(drawn.options.source);
+    EXPECT_FLOAT_EQ(drawn.dest.x + 168.0f, Screen.width / 2.0f);
+    EXPECT_FLOAT_EQ(drawn.dest.y + 264.0f, Screen.height / 2.0f);
+    EXPECT_FLOAT_EQ(drawn.options.source->x, 4.0f * 336.0f);
     EXPECT_EQ(canvas.texts.size(), 1u); // the label is still shown
 }
 
 TEST_F(EntityRendererTexture, ACharacterIsDrawnAsTheFrameOfItsFacingAndState) {
     // Given: the character sheet loads; a character walking, facing west
-    graphics::TextureManager::instance().register_texture(graphics::CharacterTexture,
-                                                          "character.png");
+    const graphics::GameSprites sprites = sprites_with(graphics::CharacterSpriteName, character());
     core::Registry registry;
     const core::EntityId id = world::spawn_character(registry, "Player", {0.0f, 0.0f});
     registry.get<world::Facing>(id)->direction = world::Direction::West;
     registry.get<world::Character>(id)->state = world::CharacterState::Moving;
     const world::Camera camera;
-    const scene::world::EntityRenderer renderer(registry, camera, [] { return 0.25f; });
+    const scene::world::EntityRenderer renderer(registry, camera, sprites, [] { return 0.25f; });
     FakeCanvas canvas;
 
     // When
     renderer.draw(canvas, Screen);
 
-    // Then: no cube; the frame of that facing and state, feet on the screen centre
+    // Then: no cube; row 6 (west), walk frame 1 + 2, feet on the screen centre
     EXPECT_TRUE(canvas.triangles.empty());
     ASSERT_EQ(canvas.textures.size(), 1u);
     const DrawnTexture& drawn = canvas.textures.front();
-    const auto expected = graphics::character_sprite(world::Direction::West,
-                                                     world::CharacterState::Moving, 0.25f);
-    ASSERT_TRUE(drawn.options.source && expected.sprite.source);
-    EXPECT_FLOAT_EQ(drawn.options.source->x, expected.sprite.source->x);
-    EXPECT_FLOAT_EQ(drawn.options.source->y, expected.sprite.source->y);
-    EXPECT_FLOAT_EQ(drawn.dest.x + graphics::CharacterAnchor.x, Screen.width / 2.0f);
-    EXPECT_FLOAT_EQ(drawn.dest.y + graphics::CharacterAnchor.y, Screen.height / 2.0f);
+    ASSERT_TRUE(drawn.options.source);
+    EXPECT_FLOAT_EQ(drawn.options.source->x, 3.0f * 32.0f);
+    EXPECT_FLOAT_EQ(drawn.options.source->y, 6.0f * 48.0f);
+    EXPECT_FLOAT_EQ(drawn.dest.x + 16.0f, Screen.width / 2.0f);
+    EXPECT_FLOAT_EQ(drawn.dest.y + 44.0f, Screen.height / 2.0f);
     EXPECT_EQ(canvas.texts.size(), 1u); // the label is still shown
+}
+
+TEST_F(EntityRendererTexture, ASpriteWhoseTextureDoesNotLoadStaysACube) {
+    // Given: the sheet file is missing
+    graphics::SpriteLibrary library;
+    library.add("buildings/headquarters", headquarters(),
+                graphics::TextureManager::instance().register_texture("hq", "missing.png"));
+    const graphics::GameSprites sprites(std::move(library));
+    core::Registry registry;
+    const core::EntityId hq = registry.create("Headquarters");
+    registry.add(hq, world::Building{world::BuildingType::Headquarters, {0, 0}, {5, 5}});
+    registry.add(hq, world::Position{{0.0f, 0.0f}});
+    const world::Camera camera;
+    const scene::world::EntityRenderer renderer(registry, camera, sprites);
+    FakeCanvas canvas;
+
+    // When
+    renderer.draw(canvas, Screen);
+
+    // Then
+    EXPECT_TRUE(canvas.textures.empty());
+    EXPECT_EQ(canvas.triangles.size(), TrianglesPerCube);
+}
+
+TEST(EntityRenderer, EntitiesOffScreenAreNotDrawnAtAll) {
+    // Given: one entity under the camera, one 100 tiles away
+    core::Registry registry;
+    world::spawn_character(registry, "Here", {0.0f, 0.0f});
+    world::spawn_character(registry, "Far away", {100.0f, 0.0f});
+    const world::Camera camera;
+    const scene::world::EntityRenderer renderer(registry, camera);
+    FakeCanvas canvas;
+
+    // When
+    renderer.draw(canvas, Screen);
+
+    // Then: neither its cube nor its label
+    EXPECT_EQ(canvas.triangles.size(), TrianglesPerCube);
+    ASSERT_EQ(canvas.texts.size(), 1u);
+    EXPECT_EQ(canvas.texts.front().text, "Here (Idle)");
+}
+
+TEST(EntityRenderer, AnEntityWhoseGroundPointIsOffScreenIsDrawnWhenItsBodyReachesIn) {
+    // Given: a 5x5 building at world (12, 12): its centre is 384 px below the screen centre,
+    // past the bottom edge, but its footprint rises 80 px above that
+    core::Registry registry;
+    const core::EntityId hq = registry.create("Headquarters");
+    registry.add(hq, world::Building{world::BuildingType::Headquarters, {0, 0}, {5, 5}});
+    registry.add(hq, world::Position{{12.0f, 12.0f}});
+    const world::Camera camera;
+    const scene::world::EntityRenderer renderer(registry, camera);
+    FakeCanvas canvas;
+
+    // When
+    renderer.draw(canvas, Screen);
+
+    // Then
+    EXPECT_EQ(canvas.triangles.size(), TrianglesPerCube);
 }
 
 TEST_F(EntityRendererTexture, AHeadquartersStillBeingBuiltStaysACube) {
     // Given
-    graphics::TextureManager::instance().register_texture(graphics::HeadquartersTexture,
-                                                          "hq.png");
+    const graphics::GameSprites sprites = sprites_with("buildings/headquarters", headquarters());
     core::Registry registry;
     const core::EntityId hq = registry.create("Headquarters");
     registry.add(hq, world::Building{world::BuildingType::Headquarters, {0, 0}, {5, 5}});
     registry.add(hq, world::ConstructionSite{0.0f, 100.0f});
     registry.add(hq, world::Position{{0.0f, 0.0f}});
     const world::Camera camera;
-    const scene::world::EntityRenderer renderer(registry, camera, [] { return 1.0f; });
+    const scene::world::EntityRenderer renderer(registry, camera, sprites, [] { return 1.0f; });
     FakeCanvas canvas;
 
     // When

@@ -5,7 +5,7 @@
 #include "game/fixed_step.hpp"
 #include "game/game_events.hpp"
 #include "graphics/raylib_texture_loader.hpp"
-#include "graphics/texture_catalog.hpp"
+#include "graphics/sprite_library.hpp"
 #include "graphics/texture_manager.hpp"
 #include "logging/logger.hpp"
 #include "scene/load_game/load_game_scene.hpp"
@@ -20,12 +20,12 @@ namespace {
 constexpr int TargetFps = 60;
 constexpr const char* WindowTitle = "Project Mine";
 
-// Every texture the game draws (graphics/texture_catalog.hpp). Files load lazily on
-// first use; a missing terrain file just leaves the tile's colour.
-void register_textures(const std::filesystem::path& data_dir) {
+// Every sprite under <data dir>/sprite/ (its .sprite files, see graphics/game_sprites.hpp).
+// Textures load lazily on first use; a missing sheet just leaves the plain shape.
+graphics::GameSprites load_sprites(const std::filesystem::path& data_dir) {
     auto& textures = graphics::TextureManager::instance();
     textures.set_loader(std::make_unique<graphics::RaylibTextureLoader>());
-    graphics::register_game_textures(textures, data_dir);
+    return graphics::GameSprites(graphics::load_sprite_library(textures, data_dir / "sprite"));
 }
 } // namespace
 
@@ -74,7 +74,7 @@ void Game::start_up() {
     // Raylib closes the window on Esc by default; Esc is the Pause/Cancel action here.
     SetExitKey(KEY_NULL);
     SetTargetFPS(TargetFps);
-    register_textures(data_dir_);
+    sprites_ = load_sprites(data_dir_);
     running_ = true;
     change_scene(scene::menu::make_title_scene(*this));
 }

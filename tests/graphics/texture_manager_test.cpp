@@ -153,3 +153,32 @@ TEST_F(TextureManagerTest, WithoutALoaderNothingIsLoadedNotEvenTheFallback) {
     EXPECT_EQ(manager().get("player"), nullptr);
     EXPECT_EQ(manager().get("tree"), nullptr);
 }
+
+TEST_F(TextureManagerTest, ATextureFoundByItsIdIsTheOneOfItsNameAndLoadsOnce) {
+    // Given
+    const graphics::TextureId id = manager().register_texture("player", "player.png");
+
+    // When
+    const graphics::Texture* by_id = manager().find(id);
+    const graphics::Texture* by_name = manager().find("player");
+
+    // Then
+    ASSERT_NE(by_id, nullptr);
+    EXPECT_EQ(by_id, by_name);
+    EXPECT_EQ(loader->loaded.size(), 1u);
+}
+
+TEST_F(TextureManagerTest, RegisteringANameAgainKeepsItsIdAndLoadsTheNewFile) {
+    // Given
+    const graphics::TextureId first = manager().register_texture("player", "old.png");
+    manager().find(first);
+
+    // When
+    const graphics::TextureId second = manager().register_texture("player", "new.png");
+    manager().find(second);
+
+    // Then
+    EXPECT_EQ(first, second);
+    ASSERT_EQ(loader->loaded.size(), 2u);
+    EXPECT_EQ(loader->loaded.back(), "new.png");
+}

@@ -1,18 +1,23 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "graphics/texture.hpp"
 #include "graphics/texture_loader.hpp"
 
 namespace graphics {
 
+// Handle of a registered texture: an index, so the draw loop never hashes a name.
+enum class TextureId : std::uint32_t {};
+
 // Process-wide texture cache. The game registers a name -> file for each texture at start
-// up; views and renderers ask for it by name. A texture is loaded on its first get() (it
-// needs the window's GL context), kept until unload_all() and loaded only once.
+// up; views and renderers ask for it by id (hot paths) or by name. A texture is loaded on
+// first use (it needs the window's GL context), kept until unload_all() and loaded only once.
 class TextureManager {
 public:
     static TextureManager& instance();
@@ -20,12 +25,14 @@ public:
     // Where textures are read from. Without a loader nothing can be loaded.
     void set_loader(std::unique_ptr<TextureLoader> loader);
 
-    // Makes `name` available. Registering a name again replaces its file.
-    void register_texture(const std::string& name, const std::string& path);
+    // Makes `name` available and returns its id. Registering a name again replaces its file
+    // and keeps its id.
+    TextureId register_texture(const std::string& name, const std::string& path);
 
-    // The texture, loaded on first use. Null when the name is not registered or the file
-    // cannot be loaded (a failed load is not retried). Never the fallback.
+    // The texture, loaded on first use. Null when the name / id is not registered or the
+    // file cannot be loaded (a failed load is not retried). Never the fallback.
     const Texture* find(const std::string& name);
+    const Texture* find(TextureId id);
 
     // Like find(), but a texture that does not exist gives the fallback instead of null.
     // Null only when there is no fallback either (no loader).
@@ -49,8 +56,11 @@ private:
         bool failed = false;
     };
 
+    void release(Entry& entry);
+
     std::unique_ptr<TextureLoader> loader_;
-    std::unordered_map<std::string, Entry> entries_;
+    std::vector<Entry> entries_;
+    std::unordered_map<std::string, TextureId> ids_;
     std::optional<Texture> fallback_;
     bool fallback_failed_ = false;
 };

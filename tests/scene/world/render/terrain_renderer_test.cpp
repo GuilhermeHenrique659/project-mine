@@ -6,7 +6,7 @@
 #include "scene/world/core/camera.hpp"
 #include "scene/world/render/terrain_renderer.hpp"
 #include "graphics/texture_manager.hpp"
-#include "graphics/terrain_sprites.hpp"
+#include "graphics/game_sprites.hpp"
 #include "support/fake_canvas.hpp"
 #include "support/fake_texture_loader.hpp"
 
@@ -120,38 +120,72 @@ TEST(TerrainRenderer, TilesAroundTheCameraAreDrawnWhenItIsFarFromTheOrigin) {
     EXPECT_TRUE(tile_is_drawn_with(canvas, projection.tile_corners(middle).top, color));
 }
 
+namespace {
+
+// Every tile type with a one-frame 64x32 sprite whose sheet loads (water animated).
+graphics::GameSprites every_tile_sprite() {
+    auto& textures = graphics::TextureManager::instance();
+    graphics::SpriteLibrary library;
+    for (const world::TileType type : {world::TileType::Grass, world::TileType::Water,
+                                       world::TileType::IronOre, world::TileType::CopperOre,
+                                       world::TileType::Coal}) {
+        const std::string name = graphics::tile_sprite_name(type);
+        library.add(name,
+                    {"tile.png", 64, 32, 8, 4, {}, {graphics::SpriteClip{"idle", 0, 8, 8.0f, true}}},
+                    textures.register_texture(name, name + ".png"));
+    }
+    return graphics::GameSprites(std::move(library));
+}
+
+} // namespace
+
 TEST(TerrainRenderer, TilesWithATextureAreDrawnWithTheirSpriteOverTheDiamond) {
     // Given: every terrain texture loads, and 1.3 s of animation have passed
     auto& textures = graphics::TextureManager::instance();
     textures.reset();
     textures.set_loader(std::make_unique<FakeTextureLoader>());
-    for (const char* name : graphics::GrassTextures) {
-        textures.register_texture(name, std::string(name) + ".png");
-    }
-    for (const char* name : {graphics::WaterTexture, graphics::IronOreTexture,
-                             graphics::CopperOreTexture, graphics::CoalTexture}) {
-        textures.register_texture(name, std::string(name) + ".png");
-    }
+    const graphics::GameSprites sprites = every_tile_sprite();
     const world::Terrain terrain(2024);
     const world::Camera camera;
-    const scene::world::TerrainRenderer renderer(terrain, camera, [] { return 1.3f; });
+    const scene::world::TerrainRenderer renderer(terrain, camera, sprites, [] { return 1.3f; });
     FakeCanvas canvas;
     const world::IsoProjection projection = camera.projection(Screen.width, Screen.height);
 
     // When
     renderer.draw(canvas, Screen);
 
-    // Then: the centre tile's sprite fills the box around its diamond
+    // Then: the centre tile's current frame fills the box around its diamond
     const world::TileCorners diamond = projection.tile_corners({0, 0});
-    const graphics::Sprite expected =
-        graphics::tile_sprite(terrain.tile_at({0, 0}), {0, 0}, 1.3f);
+    const auto expected = sprites.tile(terrain.tile_at({0, 0}), {0, 0}, 1.3f);
+    ASSERT_TRUE(expected);
     const bool found = std::any_of(
         canvas.textures.begin(), canvas.textures.end(), [&](const DrawnTexture& drawn) {
             return drawn.dest.x == diamond.left.x && drawn.dest.y == diamond.top.y &&
                    drawn.dest.width == diamond.right.x - diamond.left.x &&
                    drawn.dest.height == diamond.bottom.y - diamond.top.y &&
-                   drawn.options.source.has_value() == expected.source.has_value();
+                   drawn.options.source && drawn.options.source->x == expected->source.x &&
+                   drawn.options.source->y == expected->source.y;
         });
     textures.reset();
     EXPECT_TRUE(found);
+}
+
+TEST(TerrainRenderer, ATileDrawnWithItsSpriteSkipsItsPlainColour) {
+    // Given: every terrain texture loads
+    auto& textures = graphics::TextureManager::instance();
+    textures.reset();
+    textures.set_loader(std::make_unique<FakeTextureLoader>());
+    const graphics::GameSprites sprites = every_tile_sprite();
+    const world::Terrain terrain(2024);
+    const world::Camera camera;
+    const scene::world::TerrainRenderer renderer(terrain, camera, sprites);
+    FakeCanvas canvas;
+
+    // When
+    renderer.draw(canvas, Screen);
+
+    // Then: no diamond painted underneath
+    textures.reset();
+    EXPECT_FALSE(canvas.textures.empty());
+    EXPECT_TRUE(canvas.triangles.empty());
 }
