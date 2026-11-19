@@ -3,6 +3,7 @@
 #include <set>
 
 #include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/military.hpp"
 #include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/power.hpp"
 #include "scene/world/core/components/worker.hpp"
@@ -446,4 +447,35 @@ TEST(BuildingType, NewFactoriesRoundTripThroughTheirSaveKeys) {
         EXPECT_EQ(key, name);
         EXPECT_EQ(world::parse_building_type(key), type);
     }
+}
+
+TEST(ConstructionCatalog, BarracksCosts200SteelAnd100ToolsTakes1200WorkAndRecruitsOn200Kw) {
+    // Given / When
+    const world::Construction* barracks = world::find_construction(world::BuildingType::Barracks);
+
+    // Then
+    ASSERT_NE(barracks, nullptr);
+    EXPECT_EQ(barracks->name, "Barracks");
+    ASSERT_EQ(barracks->cost.size(), 2u);
+    EXPECT_EQ(barracks->cost[0].item, world::items::Steel);
+    EXPECT_EQ(barracks->cost[0].count, 200);
+    EXPECT_EQ(barracks->cost[1].item, world::items::Tool);
+    EXPECT_EQ(barracks->cost[1].count, 100);
+    EXPECT_FLOAT_EQ(barracks->effort, 1200.0f);
+    EXPECT_NE(barracks->blueprint.find<world::Recruiter>(), nullptr);
+    const auto* power = barracks->blueprint.find<world::PowerConsumer>();
+    ASSERT_NE(power, nullptr);
+    EXPECT_FLOAT_EQ(power->demand_kw, 200.0f);
+}
+
+TEST(BuildingType, BarracksRoundTripsThroughItsSaveKey) {
+    // Given
+    const std::string_view key = world::building_type_key(world::BuildingType::Barracks);
+
+    // When
+    const auto parsed = world::parse_building_type(key);
+
+    // Then
+    EXPECT_EQ(key, "Barracks");
+    EXPECT_EQ(parsed, world::BuildingType::Barracks);
 }

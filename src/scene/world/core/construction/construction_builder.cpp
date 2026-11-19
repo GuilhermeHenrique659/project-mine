@@ -1,5 +1,7 @@
 #include "scene/world/core/construction/construction_builder.hpp"
 
+#include "scene/world/core/components/military.hpp"
+
 #include "scene/world/core/components/inventory.hpp"
 #include "scene/world/core/components/power.hpp"
 #include "scene/world/core/components/worker.hpp"
@@ -88,6 +90,11 @@ ConstructionBuilder& ConstructionBuilder::houses(int workers) {
     return *this;
 }
 
+ConstructionBuilder& ConstructionBuilder::recruits() {
+    recruits_ = true;
+    return *this;
+}
+
 ConstructionBuilder& ConstructionBuilder::solar(float power_kw) {
     generator_ = GeneratorSpec{GeneratorType::Solar, std::nullopt, 0.0f, power_kw};
     return *this;
@@ -128,6 +135,9 @@ Construction ConstructionBuilder::build() const {
     }
     if (houses_) {
         blueprint.with(Housing{*houses_});
+    }
+    if (recruits_) {
+        blueprint.with(Recruiter{});
     }
     if (recipe_) {
         blueprint.with(BuildingStatus{});

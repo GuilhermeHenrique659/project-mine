@@ -5,6 +5,7 @@
 #include "event/event_bus.hpp"
 #include "graphics/texture_manager.hpp"
 #include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/military.hpp"
 #include "scene/world/render/building_panel.hpp"
 #include "support/fake_canvas.hpp"
 #include "support/fake_input.hpp"
@@ -196,4 +197,62 @@ TEST(BuildingPanelScroll, TheWheelOutsideTheBuildingInventoryDoesNotScrollIt) {
 
     // Then
     EXPECT_GT(p.panel.building_slot_bounds(0).width, 0.0f);
+}
+
+namespace {
+
+// A finished barracks next to the player, powered by a headquarters further away.
+game::SaveGame save_with_barracks() {
+    game::SaveGame save{"Alpha", 0};
+    save.entities.push_back({"building", "Headquarters",
+                             {{"building.type", "Headquarters"},
+                              {"building.x", "-10"},
+                              {"building.y", "-10"}}});
+    save.entities.push_back({"building", "Barracks",
+                             {{"building.type", "Barracks"},
+                              {"building.x", "1"},
+                              {"building.y", "0"}}});
+    return save;
+}
+
+int soldiers(const core::Registry& registry) {
+    int count = 0;
+    for (const core::Entity& entity : registry.entities()) {
+        count += registry.has<::world::Soldier>(entity.id) ? 1 : 0;
+    }
+    return count;
+}
+
+} // namespace
+
+TEST(BuildingPanelRecruit, TheRecruitButtonOfABarracksRecruitsOneSoldier) {
+    // Given
+    graphics::TextureManager::instance().reset();
+    graphics::TextureManager::instance().set_loader(std::make_unique<FakeTextureLoader>());
+    event::EventBus bus;
+    FakeInput input;
+    FakeCanvas canvas;
+    auto pointer = std::make_shared<FakePointer>();
+    scene::world::WorldModel model(bus, input.handler, save_with_barracks());
+    scene::world::BuildingPanel panel(model, pointer);
+    model.update(scene::world::SimulationTick);
+    model.open_transfer(MineTile);
+    panel.layout(canvas, Screen);
+    ASSERT_TRUE(panel.recruit_visible());
+
+    // When
+    const ui::Point at = centre_of(panel.recruit_bounds());
+    pointer->at = {at.x, at.y};
+    pointer->release = true;
+    panel.update();
+    model.update(scene::world::SimulationTick);
+
+    // Then
+    EXPECT_EQ(soldiers(model.registry()), 1);
+    graphics::TextureManager::instance().reset();
+}
+
+TEST_F(BuildingPanel, AMineHasNoRecruitButton) {
+    // Given / When / Then
+    EXPECT_FALSE(panel.recruit_visible());
 }

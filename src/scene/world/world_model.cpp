@@ -8,12 +8,14 @@
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/events/building_events.hpp"
 #include "scene/world/core/events/item_transfer_requested.hpp"
+#include "scene/world/core/events/military_events.hpp"
 #include "scene/world/core/events/worker_events.hpp"
 #include "scene/world/core/occupancy.hpp"
 #include "scene/world/core/systems/build_system.hpp"
 #include "scene/world/core/systems/inventory_transfer_system.hpp"
 #include "scene/world/core/systems/power_system.hpp"
 #include "scene/world/core/systems/production_system.hpp"
+#include "scene/world/core/systems/recruit_system.hpp"
 #include "scene/world/core/systems/camera_follow_system.hpp"
 #include "scene/world/core/systems/character_move_system.hpp"
 #include "scene/world/core/systems/haul_system.hpp"
@@ -51,6 +53,7 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
     // Workers spawn with the headquarters and take free construction sites, then follow
     // the route to them.
     systems_.push_back(std::make_unique<::world::WorkerSystem>(registry_, bus_, factory_));
+    systems_.push_back(std::make_unique<::world::RecruitSystem>(registry_, bus_, factory_));
     systems_.push_back(std::make_unique<::world::RouteFollowSystem>(registry_, routes_));
     systems_.push_back(std::make_unique<::world::UnitTrafficSystem>(registry_));
     systems_.push_back(std::make_unique<::world::CharacterMoveSystem>(registry_, bus_, &terrain_));
@@ -186,6 +189,10 @@ void WorldModel::request_transfer(core::EntityId from, core::EntityId to, ::worl
 
 void WorldModel::request_workers(core::EntityId building, int count) {
     enqueue(::world::WorkerAssignmentRequested{building, count});
+}
+
+void WorldModel::request_recruit(core::EntityId building) {
+    enqueue(::world::SoldierRecruitRequested{building});
 }
 
 void WorldModel::request_haulers(::world::RouteKey route, ::world::HaulMode mode, int count) {

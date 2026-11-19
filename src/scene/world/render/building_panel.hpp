@@ -17,7 +17,9 @@ namespace scene::world {
 // name, its details (state, power; see building_details()) and its inventory, at most
 // four rows at once: the mouse wheel over it scrolls a bigger one (a storage).
 // Clicking a filled slot moves that whole stack to the other inventory (as much as fits,
-// through WorldModel::request_transfer()); the red X closes it. Visible while a transfer
+// through WorldModel::request_transfer()); the red X closes it. A building that recruits
+// (a barracks) shows a "Recruit" button under its inventory: one soldier per click
+// (WorldModel::request_recruit()). Visible while a transfer
 // is open and the game is not paused. It reads the mouse itself in update(), using the
 // bounds of the last layout. The model must outlive it.
 class BuildingPanel : public Renderer {
@@ -34,6 +36,9 @@ public:
     ui::Rect player_slot_bounds(std::size_t index) const;
     ui::Rect building_slot_bounds(std::size_t index) const;
     ui::Rect close_bounds() const { return close_button_->bounds(); }
+    ui::Rect recruit_bounds() const { return recruit_button_->bounds(); }
+    // Whether the current building recruits soldiers (the Recruit button is shown).
+    bool recruit_visible() const;
 
 private:
     // Moves the stack in `slot` of `from` to `to`; nothing when the slot is empty.
@@ -45,6 +50,7 @@ private:
     std::shared_ptr<const input::Pointer> pointer_;
     std::unique_ptr<InventoryGrid> player_grid_;
     std::unique_ptr<ui::Button> close_button_;
+    std::unique_ptr<ui::Button> recruit_button_;
     // Layout state, recomputed by every layout(); mutable because draw() is const.
     mutable std::unique_ptr<InventoryGrid> building_grid_;
     mutable core::EntityId building_ = 0;

@@ -28,7 +28,7 @@ private:
 };
 
 // Every archetype of the game: "character" -> spawn_character at (0, 0) and "building" ->
-// spawn_building (placed afterwards with make_building()).
+// spawn_building (placed afterwards with make_building()), "worker" and "soldier" at (0, 0).
 EntityFactory make_entity_factory();
 
 } // namespace world

@@ -93,6 +93,8 @@ public:
     // Asks to send `count` idle workers to a production building, or with a negative count
     // to send that many of its workers back (::world::WorkerAssignmentRequested, next tick).
     void request_workers(core::EntityId building, int count);
+    // Asks to recruit one soldier at a barracks (::world::SoldierRecruitRequested, next tick).
+    void request_recruit(core::EntityId building);
     // Asks to make `count` idle workers haulers of a logistic route in `mode`, or with a
     // negative count to send that many of its haulers back (::world::HaulersRequested,
     // next tick).

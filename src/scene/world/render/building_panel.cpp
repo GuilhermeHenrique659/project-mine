@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/military.hpp"
 #include "scene/world/render/building_details.hpp"
 #include "scene/world/render/entity_name.hpp"
 #include "ui/theme.hpp"
@@ -30,8 +31,14 @@ BuildingPanel::BuildingPanel(WorldModel& model, std::shared_ptr<const input::Poi
     : model_(model),
       pointer_(std::move(pointer)),
       player_grid_(std::make_unique<InventoryGrid>(model.registry(), model.player_id())),
-      close_button_(std::make_unique<ui::Button>("X", ui::theme::close_button_style(), true)) {
+      close_button_(std::make_unique<ui::Button>("X", ui::theme::close_button_style(), true)),
+      recruit_button_(std::make_unique<ui::Button>("Recruit", ui::theme::button_style(), true)) {
     close_button_->set_on_click([&model] { model.close_transfer(); });
+    recruit_button_->set_on_click([&model] { model.request_recruit(model.transfer_target()); });
+}
+
+bool BuildingPanel::recruit_visible() const {
+    return model_.registry().has<::world::Recruiter>(model_.transfer_target());
 }
 
 bool BuildingPanel::visible() const { return model_.transfer_target() != 0 && !model_.is_paused(); }
@@ -90,6 +97,10 @@ void BuildingPanel::update() {
             return;
         }
     }
+    if (recruit_visible() && recruit_button_->bounds().contains(position)) {
+        recruit_button_->handle_pointer(position, released);
+        return;
+    }
     // Last: a click on it closes the panel.
     close_button_->handle_pointer(position, released);
 }
@@ -99,6 +110,8 @@ void BuildingPanel::layout(const ui::Canvas& canvas, ui::Size screen) const {
     const ui::Size player_size = player_grid_->preferred_size(canvas);
     const ui::Size building_size = building.preferred_size(canvas);
     const ui::Size close = close_button_->preferred_size(canvas);
+    const ui::Size recruit = recruit_visible() ? recruit_button_->preferred_size(canvas) : ui::Size{};
+    const float recruit_height = recruit_visible() ? SectionGap + recruit.height : 0.0f;
     const float title = static_cast<float>(TitleFontSize);
     details_ = building_details(model_.registry(), model_.transfer_target());
     const float detail_line = static_cast<float>(DetailFontSize) + DetailGap;
@@ -107,7 +120,7 @@ void BuildingPanel::layout(const ui::Canvas& canvas, ui::Size screen) const {
         std::max(player_size.width, building_size.width) + 2.0f * Padding;
     const float height = 2.0f * Padding + std::max(title, close.height) + TitleGap +
                          player_size.height + SectionGap + title + TitleGap + details_height +
-                         building_size.height;
+                         building_size.height + recruit_height;
     panel_ = {(screen.width - width) / 2.0f, (screen.height - height) / 2.0f, width, height};
 
     close_button_->layout({panel_.x + width - Padding - close.width, panel_.y + Padding,
@@ -123,6 +136,8 @@ void BuildingPanel::layout(const ui::Canvas& canvas, ui::Size screen) const {
     details_top_ = y;
     y += details_height;
     building.layout({panel_.x + Padding, y, building_size.width, building_size.height}, canvas);
+    y += building_size.height + SectionGap;
+    recruit_button_->layout({panel_.x + Padding, y, recruit.width, recruit.height}, canvas);
 }
 
 void BuildingPanel::draw(ui::Canvas& canvas, ui::Size screen) const {
@@ -143,6 +158,9 @@ void BuildingPanel::draw(ui::Canvas& canvas, ui::Size screen) const {
     player_grid_->draw(canvas);
     building_grid().draw(canvas);
     close_button_->draw(canvas);
+    if (recruit_visible()) {
+        recruit_button_->draw(canvas);
+    }
 }
 
 } // namespace scene::world

@@ -22,7 +22,8 @@ WorkerType type_at(BuildingType building) {
         case BuildingType::Headquarters:
         case BuildingType::Storage:
         case BuildingType::House:
-        case BuildingType::CoalGenerator: break;
+        case BuildingType::CoalGenerator:
+        case BuildingType::Barracks: break;
     }
     return WorkerType::None;
 }

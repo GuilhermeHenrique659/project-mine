@@ -9,6 +9,9 @@
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/components/route_follower.hpp"
 #include "scene/world/core/components/worker.hpp"
+#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/military.hpp"
+#include "scene/world/core/entities/soldier.hpp"
 #include "scene/world/core/construction/construction.hpp"
 #include "scene/world/core/entities/building.hpp"
 #include "scene/world/core/entities/entity_factory.hpp"
@@ -161,4 +164,26 @@ TEST(WorkerSave, AWorkerWhoseSavedJobIsNoLongerThereLoadsIdle) {
     ASSERT_EQ(workers.size(), 1u);
     EXPECT_EQ(f.loaded.get<world::Worker>(workers[0])->state, world::WorkerState::Idle);
     EXPECT_EQ(f.loaded.get<world::Worker>(workers[0])->workplace, 0u);
+}
+
+TEST(SoldierSave, ASoldierKeepsItsTwoSlotInventoryThroughASaveAndLoad) {
+    // Given
+    Fixture f;
+    const core::EntityId soldier = *f.factory.spawn(f.saved, world::SoldierArchetype, "Soldier");
+    f.saved.get<world::Inventory>(soldier)->add(world::items::Weapon, 1);
+    f.saved.get<world::Inventory>(soldier)->add(world::items::Ammo, 50);
+
+    // When
+    f.save_and_load();
+
+    // Then
+    int soldiers = 0;
+    f.loaded.each<world::Soldier, world::Inventory>(
+        [&](core::EntityId, world::Soldier&, world::Inventory& inventory) {
+            ++soldiers;
+            EXPECT_EQ(inventory.capacity(), 2u);
+            EXPECT_EQ(inventory.count(world::items::Weapon), 1);
+            EXPECT_EQ(inventory.count(world::items::Ammo), 50);
+        });
+    EXPECT_EQ(soldiers, 1);
 }

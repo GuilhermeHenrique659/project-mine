@@ -3,6 +3,7 @@
 #include "scene/world/core/components/persistent.hpp"
 #include "scene/world/core/entities/building.hpp"
 #include "scene/world/core/entities/character.hpp"
+#include "scene/world/core/entities/soldier.hpp"
 #include "scene/world/core/entities/worker.hpp"
 
 namespace world {
@@ -33,6 +34,9 @@ EntityFactory make_entity_factory() {
     });
     factory.register_archetype(WorkerArchetype, [](core::Registry& registry, const std::string& label) {
         return spawn_worker(registry, label, WorldPoint{0.0f, 0.0f});
+    });
+    factory.register_archetype(SoldierArchetype, [](core::Registry& registry, const std::string& label) {
+        return spawn_soldier(registry, label, WorldPoint{0.0f, 0.0f});
     });
     return factory;
 }

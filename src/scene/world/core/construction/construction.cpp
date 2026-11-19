@@ -20,6 +20,7 @@ std::string_view building_type_key(BuildingType type) {
         case BuildingType::ToolFactory: return "ToolFactory";
         case BuildingType::AmmoFactory: return "AmmoFactory";
         case BuildingType::WeaponFactory: return "WeaponFactory";
+        case BuildingType::Barracks: return "Barracks";
         case BuildingType::Headquarters: break;
     }
     return "Headquarters";
@@ -55,6 +56,9 @@ std::optional<BuildingType> parse_building_type(std::string_view key) {
     }
     if (key == building_type_key(BuildingType::WeaponFactory)) {
         return BuildingType::WeaponFactory;
+    }
+    if (key == building_type_key(BuildingType::Barracks)) {
+        return BuildingType::Barracks;
     }
     return std::nullopt;
 }
@@ -142,7 +146,13 @@ const std::vector<ConstructionGroup>& construction_catalog() {
          }},
         {ConstructionCategory::Military, "Military", "icon_tab_military",
          {
-             ConstructionBuilder{"Barracks", "icon_barracks"}.build(),
+             ConstructionBuilder{"Barracks", "icon_barracks"}
+                 .type(BuildingType::Barracks).size(3, 3)
+                 .cost(items::Steel, 200).cost(items::Tool, 100).effort(1200.0f)
+                 .needs_headquarters()
+                 .recruits()
+                 .storage(10).power(200.0f)
+                 .build(),
              ConstructionBuilder{"Turret", "icon_turret"}.build(),
              ConstructionBuilder{"Wall", "icon_wall"}.build(),
          }},
