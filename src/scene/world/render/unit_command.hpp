@@ -13,9 +13,12 @@ namespace scene::world {
 inline constexpr float SelectionDragThreshold = 6.0f;
 
 // Commands units with the mouse: holding the left button and dragging draws a box, and
-// releasing selects the soldiers inside it (WorldModel::select_units()); a plain left click
-// clears the selection (and SiteWork still builds or opens a transfer with it). A right click orders
-// the selection to walk to the tile under the pointer (WorldModel::order_move()). Hidden
+// releasing selects the soldiers inside it (WorldModel::select_units()); pressing the left
+// button makes the player shoot at what is on that tile (WorldModel::shoot_at()), and
+// holding it keeps firing with an automatic weapon (WorldModel::hold_trigger()); a plain
+// left click clears the selection (SiteWork still builds or opens a transfer with it). A right click orders
+// the selection onto the tile under the pointer (WorldModel::order_units()): to shoot what
+// is there, or to walk there when nothing can be shot. Hidden
 // while paused, while the player menu is open or while a transfer is open. The model must
 // outlive it.
 class UnitCommand : public Renderer {

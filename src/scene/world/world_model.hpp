@@ -31,6 +31,17 @@ inline constexpr float SimulationTick = 1.0f / 60.0f;
 // registry with the player character). The simulation lives in core:: and ::world::
 // and knows nothing about rendering; this model only drives it. Input reaches it through
 // the handler injected in the constructor, read by the input system.
+// How long (seconds) the line of a fired shot stays on screen.
+inline constexpr float ShotTraceDuration = 0.2f;
+
+// A shot that was just fired, for the view to draw: from the shooter to the target, `age`
+// seconds ago.
+struct ShotTrace {
+    ::world::WorldPoint from;
+    ::world::WorldPoint to;
+    float age = 0.0f;
+};
+
 class WorldModel : public scene::Model {
 public:
     // The bus receives the simulation events (::world::CharacterStateChanged) and the
@@ -106,6 +117,19 @@ public:
     // Orders the selected units to walk to `goal` (::world::UnitsMoveRequested, next tick);
     // nothing without a selection.
     void order_move(::world::TileCoord goal);
+    // Right-click order for the selection: when `tile` holds something to shoot (not one of
+    // them, not the player), every selected unit keeps shooting it until it is destroyed
+    // (::world::UnitsAttackRequested, next tick; only the armed ones fire); otherwise they walk there (order_move()).
+    void order_units(::world::TileCoord tile);
+    // The player shoots at what is on `tile` (::world::shootable_at, ::world::ShotRequested,
+    // next tick). Nothing when the tile holds no target; the ShootSystem then fires only
+    // when the player has a weapon and ammo and the target is within range.
+    void shoot_at(::world::TileCoord tile);
+    // Called each frame the player keeps the shoot button held after pressing it: fires
+    // again (shoot_at()) only with an Automatic weapon; a SemiAutomatic one needs a new click.
+    void hold_trigger(::world::TileCoord tile);
+    // The shots fired in the last ShotTraceDuration seconds, oldest first.
+    const std::vector<ShotTrace>& shot_traces() const { return shot_traces_; }
     // Asks to make `count` idle workers haulers of a logistic route in `mode`, or with a
     // negative count to send that many of its haulers back (::world::HaulersRequested,
     // next tick).
@@ -173,6 +197,8 @@ private:
     bool player_menu_open_ = false;
     bool build_bar_open_ = false;
     core::EntityId transfer_target_ = 0;
+    std::vector<ShotTrace> shot_traces_;
+    event::ScopedSubscription shot_subscription_;
 };
 
 } // namespace scene::world

@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "event/event_bus.hpp"
+#include "scene/world/core/components/combat.hpp"
 #include "scene/world/core/components/path_follower.hpp"
 #include "scene/world/render/unit_command.hpp"
 #include "support/fake_canvas.hpp"
@@ -168,4 +169,68 @@ TEST_F(UnitCommand, TheBoxIsDrawnOnlyWhileDragging) {
     // Then
     EXPECT_GT(while_dragging, 0u);
     EXPECT_EQ(canvas.fills.size(), while_dragging);
+}
+
+TEST_F(UnitCommand, ALeftClickMakesThePlayerShootTheUnitUnderThePointer) {
+    // Given: the soldier within the player's weapon range
+
+    // When
+    hold({soldier_on_screen.x, soldier_on_screen.y});
+    release({soldier_on_screen.x, soldier_on_screen.y});
+    model.update(scene::world::SimulationTick);
+
+    // Then
+    EXPECT_LT(model.registry().get<::world::Health>(soldier)->current, ::world::MaxHealth);
+}
+
+TEST_F(UnitCommand, ARightClickOnAUnitDoesNotShootIt) {
+    // Given: nothing selected
+
+    // When
+    right_click({soldier_on_screen.x, soldier_on_screen.y});
+    model.update(scene::world::SimulationTick);
+
+    // Then
+    EXPECT_EQ(model.registry().get<::world::Health>(soldier)->current, ::world::MaxHealth);
+}
+
+TEST_F(UnitCommand, ReleasingABoxSelectionDoesNotShoot) {
+    // Given / When
+    select_soldier();
+    model.update(scene::world::SimulationTick);
+
+    // Then
+    EXPECT_EQ(model.registry().get<::world::Health>(soldier)->current, ::world::MaxHealth);
+}
+
+TEST_F(UnitCommand, HoldingTheButtonWithASemiAutomaticWeaponFiresOnlyOnce) {
+    // Given: the player's starting Weapon is semi-automatic
+    const input::PointerPosition at{soldier_on_screen.x, soldier_on_screen.y};
+
+    // When: held for 2 seconds, past the cooldown
+    for (int frame = 0; frame < 4; ++frame) {
+        hold(at);
+        model.update(0.5f);
+    }
+
+    // Then
+    const int damage = ::world::weapon_stats(::world::ItemType::Weapon)->damage;
+    EXPECT_EQ(model.registry().get<::world::Health>(soldier)->current, ::world::MaxHealth - damage);
+}
+
+TEST_F(UnitCommand, ClickingAgainAfterTheCooldownFiresAgain) {
+    // Given
+    const input::PointerPosition at{soldier_on_screen.x, soldier_on_screen.y};
+    hold(at);
+    release(at);
+    model.update(1.1f);
+
+    // When
+    hold(at);
+    release(at);
+    model.update(scene::world::SimulationTick);
+
+    // Then
+    const int damage = ::world::weapon_stats(::world::ItemType::Weapon)->damage;
+    EXPECT_EQ(model.registry().get<::world::Health>(soldier)->current, ::world::MaxHealth - 2 * damage);
 }

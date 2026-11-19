@@ -25,13 +25,18 @@ void UnitCommand::update() {
     const ::world::IsoProjection projection =
         model_.camera().projection(screen_.width, screen_.height);
     if (pointer_->secondary_released()) {
-        model_.order_move(projection.tile_at({at.x, at.y}));
+        model_.order_units(projection.tile_at({at.x, at.y}));
     }
     if (pointer_->down()) {
+        const ::world::TileCoord tile = projection.tile_at({at.x, at.y});
         if (!pressed_) {
+            // The press fires; holding fires again only with an automatic weapon.
             pressed_ = true;
             dragged_ = false;
             anchor_ = at;
+            model_.shoot_at(tile);
+        } else if (!dragged_) {
+            model_.hold_trigger(tile);
         }
         current_ = at;
         dragged_ = dragged_ || std::hypot(at.x - anchor_.x, at.y - anchor_.y) >

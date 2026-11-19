@@ -13,6 +13,7 @@
 #include "scene/world/render/entity_renderer.hpp"
 #include "scene/world/render/player_hud.hpp"
 #include "scene/world/render/player_menu.hpp"
+#include "scene/world/render/shot_renderer.hpp"
 #include "scene/world/render/site_work.hpp"
 #include "scene/world/render/unit_command.hpp"
 #include "scene/world/render/terrain_renderer.hpp"
@@ -88,6 +89,7 @@ std::unique_ptr<scene::Scene> make_world_scene(game::Game& game, game::SaveGame 
     std::vector<std::unique_ptr<Renderer>> renderers;
     renderers.push_back(std::make_unique<TerrainRenderer>(model->terrain(), model->camera()));
     renderers.push_back(std::make_unique<EntityRenderer>(model->registry(), model->camera()));
+    renderers.push_back(std::make_unique<ShotRenderer>(*model));
     renderers.push_back(std::make_unique<SiteWork>(*model, pointer));
     renderers.push_back(std::make_unique<UnitCommand>(*model, pointer));
     renderers.push_back(std::make_unique<PlayerHud>(*model, pointer));

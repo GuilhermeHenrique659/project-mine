@@ -2,6 +2,7 @@
 
 #include <set>
 
+#include "scene/world/core/components/combat.hpp"
 #include "scene/world/core/components/inventory.hpp"
 #include "scene/world/core/components/military.hpp"
 #include "scene/world/core/components/building.hpp"
@@ -478,4 +479,33 @@ TEST(BuildingType, BarracksRoundTripsThroughItsSaveKey) {
     // Then
     EXPECT_EQ(key, "Barracks");
     EXPECT_EQ(parsed, world::BuildingType::Barracks);
+}
+
+TEST(ConstructionCatalog, TrainingTargetIsAFree1x1MilitaryBuildingThatCanBeShot) {
+    // Given / When
+    const world::Construction* target =
+        world::find_construction(world::BuildingType::TrainingTarget);
+
+    // Then
+    ASSERT_NE(target, nullptr);
+    EXPECT_EQ(target->name, "Training Target");
+    EXPECT_TRUE(target->cost.empty());
+    EXPECT_FLOAT_EQ(target->effort, 0.0f);
+    EXPECT_EQ(target->size.width, 1);
+    EXPECT_EQ(target->size.height, 1);
+    EXPECT_NE(target->blueprint.find<world::Health>(), nullptr);
+    EXPECT_NE(target->blueprint.find<world::TrainingTarget>(), nullptr);
+    EXPECT_EQ(target->blueprint.find<world::PowerConsumer>(), nullptr);
+}
+
+TEST(BuildingType, TrainingTargetRoundTripsThroughItsSaveKey) {
+    // Given
+    const std::string_view key = world::building_type_key(world::BuildingType::TrainingTarget);
+
+    // When
+    const auto parsed = world::parse_building_type(key);
+
+    // Then
+    EXPECT_EQ(key, "TrainingTarget");
+    EXPECT_EQ(parsed, world::BuildingType::TrainingTarget);
 }

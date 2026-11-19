@@ -21,6 +21,7 @@ std::string_view building_type_key(BuildingType type) {
         case BuildingType::AmmoFactory: return "AmmoFactory";
         case BuildingType::WeaponFactory: return "WeaponFactory";
         case BuildingType::Barracks: return "Barracks";
+        case BuildingType::TrainingTarget: return "TrainingTarget";
         case BuildingType::Headquarters: break;
     }
     return "Headquarters";
@@ -59,6 +60,9 @@ std::optional<BuildingType> parse_building_type(std::string_view key) {
     }
     if (key == building_type_key(BuildingType::Barracks)) {
         return BuildingType::Barracks;
+    }
+    if (key == building_type_key(BuildingType::TrainingTarget)) {
+        return BuildingType::TrainingTarget;
     }
     return std::nullopt;
 }
@@ -152,6 +156,11 @@ const std::vector<ConstructionGroup>& construction_catalog() {
                  .needs_headquarters()
                  .recruits()
                  .storage(10).power(200.0f)
+                 .build(),
+             ConstructionBuilder{"Training Target", "icon_training_target"}
+                 .type(BuildingType::TrainingTarget).size(1, 1)
+                 .needs_headquarters()
+                 .training_target()
                  .build(),
              ConstructionBuilder{"Turret", "icon_turret"}.build(),
              ConstructionBuilder{"Wall", "icon_wall"}.build(),

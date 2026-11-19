@@ -7,6 +7,11 @@
 #include "scene/world/core/components/builder.hpp"
 #include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/combat.hpp"
+#include "scene/world/core/components/military.hpp"
+#include "scene/world/core/components/path_follower.hpp"
+#include "scene/world/core/entities/character.hpp"
+#include "scene/world/core/items/item.hpp"
 
 #include <optional>
 #include <string>
@@ -631,4 +636,155 @@ TEST(WorldModel, ZoomingIsIgnoredWhileATransferIsOpen) {
 
     // Then
     EXPECT_FLOAT_EQ(model.camera().zoom, 1.0f);
+}
+
+namespace {
+
+// A new game (the player at the origin, armed) with one soldier standing on (x, y).
+game::SaveGame save_with_soldier_at(const std::string& x, const std::string& y) {
+    game::SaveGame save{"Alpha", 0};
+    save.entities.push_back({"soldier", "Soldier",
+                             {{"position.x", x}, {"position.y", y}}});
+    return save;
+}
+
+core::EntityId first_soldier(const scene::world::WorldModel& model) {
+    for (const core::Entity& entity : model.registry().entities()) {
+        if (model.registry().has<::world::Soldier>(entity.id)) {
+            return entity.id;
+        }
+    }
+    return 0;
+}
+
+int player_ammo(const scene::world::WorldModel& model) {
+    return model.registry().get<::world::Inventory>(model.player_id())->count(::world::items::Ammo);
+}
+
+} // namespace
+
+TEST(WorldModel, ANewPlayerStartsWithAWeaponAndAFullStackOfAmmo) {
+    // Given / When
+    event::EventBus bus;
+    FakeInput input;
+    const scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+
+    // Then
+    const auto* inventory = model.registry().get<::world::Inventory>(model.player_id());
+    EXPECT_EQ(inventory->count(::world::items::Weapon), 1);
+    EXPECT_EQ(inventory->count(::world::items::Ammo), ::world::items::Ammo.max_stack);
+}
+
+TEST(WorldModel, ShootingATileWithATargetInRangeHitsIt) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, save_with_soldier_at("2.5", "2.5"));
+    const core::EntityId soldier = first_soldier(model);
+
+    // When
+    model.shoot_at({2, 2});
+    model.update(scene::world::SimulationTick);
+
+    // Then
+    const int damage = ::world::weapon_stats(::world::ItemType::Weapon)->damage;
+    EXPECT_EQ(model.registry().get<::world::Health>(soldier)->current, ::world::MaxHealth - damage);
+    EXPECT_EQ(player_ammo(model), ::world::StartingAmmo - 1);
+}
+
+TEST(WorldModel, ShootingATargetOutOfRangeDoesNothing) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, save_with_soldier_at("10.5", "10.5"));
+    const core::EntityId soldier = first_soldier(model);
+
+    // When
+    model.shoot_at({10, 10});
+    model.update(scene::world::SimulationTick);
+
+    // Then
+    EXPECT_EQ(model.registry().get<::world::Health>(soldier)->current, ::world::MaxHealth);
+    EXPECT_EQ(player_ammo(model), ::world::StartingAmmo);
+    EXPECT_TRUE(model.shot_traces().empty());
+}
+
+TEST(WorldModel, ShootingAnEmptyTileDoesNothing) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, save_with_soldier_at("2.5", "2.5"));
+
+    // When
+    model.shoot_at({1, 3});
+    model.update(scene::world::SimulationTick);
+
+    // Then
+    EXPECT_EQ(player_ammo(model), ::world::StartingAmmo);
+}
+
+TEST(WorldModel, AFiredShotLeavesATraceFromShooterToTargetThatFades) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, save_with_soldier_at("2.5", "2.5"));
+    model.shoot_at({2, 2});
+
+    // When
+    model.update(scene::world::SimulationTick);
+    const std::vector<scene::world::ShotTrace> fired = model.shot_traces();
+    model.update(scene::world::ShotTraceDuration);
+
+    // Then
+    ASSERT_EQ(fired.size(), 1u);
+    EXPECT_FLOAT_EQ(fired[0].from.x, 0.0f);
+    EXPECT_FLOAT_EQ(fired[0].to.x, 2.5f);
+    EXPECT_FLOAT_EQ(fired[0].to.y, 2.5f);
+    EXPECT_TRUE(model.shot_traces().empty());
+}
+
+TEST(WorldModel, OrderingSelectedSoldiersOntoATargetMakesTheArmedOnesShootIt) {
+    // Given: an armed soldier on (1.5, 1.5) and another soldier on (3.5, 3.5)
+    event::EventBus bus;
+    FakeInput input;
+    game::SaveGame save{"Alpha", 0};
+    save.entities.push_back({"soldier", "Shooter",
+                             {{"position.x", "1.5"}, {"position.y", "1.5"},
+                              {"inventory.0", "Weapon:1"}, {"inventory.1", "Ammo:10"}}});
+    save.entities.push_back({"soldier", "Target", {{"position.x", "3.5"}, {"position.y", "3.5"}}});
+    scene::world::WorldModel model(bus, input.handler, std::move(save));
+    const core::EntityId shooter = first_soldier(model);
+    const core::EntityId target = shooter + 1;
+    const ::world::IsoProjection projection = model.camera().projection(1280.0f, 720.0f);
+    const ::world::ScreenPoint at = projection.world_to_screen({1.5f, 1.5f});
+    model.select_units(projection, {at.x - 5, at.y - 5}, {at.x + 5, at.y + 5});
+
+    // When
+    model.order_units({3, 3});
+    model.update(scene::world::SimulationTick);
+
+    // Then
+    const int damage = ::world::weapon_stats(::world::ItemType::Weapon)->damage;
+    EXPECT_EQ(model.registry().get<::world::Health>(target)->current, ::world::MaxHealth - damage);
+    EXPECT_EQ(model.registry().get<::world::Inventory>(shooter)->count(::world::items::Ammo), 9);
+    EXPECT_FALSE(model.registry().has<::world::PathFollower>(shooter));
+}
+
+TEST(WorldModel, APlayerLoadedFromASaveCanShoot) {
+    // Given: a saved player carrying a weapon and ammo, and a soldier next to it
+    event::EventBus bus;
+    FakeInput input;
+    game::SaveGame save{"Alpha", 0};
+    save.entities.push_back({"character", "Player",
+                             {{"player", "1"}, {"position.x", "0.5"}, {"position.y", "0.5"},
+                              {"inventory.0", "Weapon:1"}, {"inventory.1", "Ammo:10"}}});
+    save.entities.push_back({"soldier", "Soldier", {{"position.x", "2.5"}, {"position.y", "2.5"}}});
+    scene::world::WorldModel model(bus, input.handler, std::move(save));
+
+    // When
+    model.shoot_at({2, 2});
+    model.update(scene::world::SimulationTick);
+
+    // Then
+    EXPECT_EQ(player_ammo(model), 9);
 }

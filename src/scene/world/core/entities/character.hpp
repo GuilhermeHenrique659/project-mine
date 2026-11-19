@@ -5,6 +5,7 @@
 
 #include "core/registry.hpp"
 #include "scene/world/core/isometric.hpp"
+#include "scene/world/core/items/item.hpp"
 
 namespace world {
 
@@ -16,6 +17,9 @@ constexpr std::size_t CharacterInventorySlots = 40;
 
 // Iron ore the player's character carries at the start of a new game.
 constexpr int StartingIronOre = 200;
+// The player starts a new game with a weapon and a full stack of ammo, so it can shoot.
+constexpr int StartingWeapons = 1;
+constexpr int StartingAmmo = items::Ammo.max_stack;
 
 // A character is an archetype, not a class: an entity with the Character marker,
 // Position, Mover, an Inventory of CharacterInventorySlots and a Builder.

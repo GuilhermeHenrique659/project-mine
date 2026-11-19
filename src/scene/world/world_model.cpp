@@ -1,7 +1,10 @@
 #include "scene/world/world_model.hpp"
 
+#include <algorithm>
+
 #include "scene/world/core/components/builder.hpp"
 #include "scene/world/core/components/building.hpp"
+#include "scene/world/core/components/combat.hpp"
 #include "scene/world/core/components/inventory.hpp"
 #include "scene/world/core/entities/character.hpp"
 #include "scene/world/core/components/player_controlled.hpp"
@@ -16,6 +19,9 @@
 #include "scene/world/core/systems/power_system.hpp"
 #include "scene/world/core/systems/production_system.hpp"
 #include "scene/world/core/systems/recruit_system.hpp"
+#include "scene/world/core/systems/shoot_system.hpp"
+#include "scene/world/core/events/combat_events.hpp"
+#include "scene/world/core/targeting.hpp"
 #include "scene/world/core/systems/camera_follow_system.hpp"
 #include "scene/world/core/systems/character_move_system.hpp"
 #include "scene/world/core/systems/haul_system.hpp"
@@ -47,7 +53,22 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
         registry_.add(player_, ::world::PlayerControlled{});
         registry_.get<::world::Inventory>(player_)->add(::world::items::IronOre,
                                                         ::world::StartingIronOre);
+        registry_.get<::world::Inventory>(player_)->add(::world::items::Weapon,
+                                                        ::world::StartingWeapons);
+        registry_.get<::world::Inventory>(player_)->add(::world::items::Ammo,
+                                                        ::world::StartingAmmo);
     }
+    shot_subscription_ = event::subscribe_scoped<::world::ShotFired>(
+        bus_, [this](const ::world::ShotFired& shot) {
+            const auto* from = registry_.get<::world::Position>(shot.shooter);
+            const auto* to = registry_.get<::world::Position>(shot.target);
+            if (from == nullptr || to == nullptr) {
+                return;
+            }
+            shot_traces_.push_back({from->point, to->point, 0.0f});
+        });
+    // Only the player and soldiers shoot (a saved player is armed here too).
+    registry_.add(player_, ::world::Shooter{});
     // Order matters: input writes the direction that movement then reads.
     systems_.push_back(std::make_unique<::world::PlayerInputSystem>(registry_, input));
     // Routes are recomputed only on the first frame and after a building is placed; the
@@ -59,6 +80,7 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
     systems_.push_back(std::make_unique<::world::WorkerSystem>(registry_, bus_, factory_));
     systems_.push_back(std::make_unique<::world::RecruitSystem>(registry_, bus_, factory_, terrain_));
     // Move orders give the soldiers a path of their own, walked like a route.
+    systems_.push_back(std::make_unique<::world::ShootSystem>(registry_, bus_));
     systems_.push_back(std::make_unique<::world::MoveOrderSystem>(registry_, bus_, terrain_));
     systems_.push_back(std::make_unique<::world::RouteFollowSystem>(registry_, routes_));
     systems_.push_back(std::make_unique<::world::PathFollowSystem>(registry_));
@@ -100,6 +122,12 @@ void WorldModel::update(float delta_time) {
     if (paused_) {
         return;
     }
+    // Age the traces first, so a shot fired in this update is still drawn.
+    for (ShotTrace& trace : shot_traces_) {
+        trace.age += delta_time;
+    }
+    std::erase_if(shot_traces_,
+                  [](const ShotTrace& trace) { return trace.age >= ShotTraceDuration; });
     const int ticks = clock_.advance(delta_time);
     for (int tick = 0; tick < ticks; ++tick) {
         run_tick();
@@ -240,6 +268,36 @@ void WorldModel::order_move(::world::TileCoord goal) {
         return;
     }
     enqueue(::world::UnitsMoveRequested{std::move(units), goal});
+}
+
+void WorldModel::shoot_at(::world::TileCoord tile) {
+    const core::EntityId target = ::world::shootable_at(registry_, tile, player_);
+    if (target == 0) {
+        return;
+    }
+    enqueue(::world::ShotRequested{player_, target});
+}
+
+void WorldModel::hold_trigger(::world::TileCoord tile) {
+    const auto* inventory = registry_.get<::world::Inventory>(player_);
+    if (inventory == nullptr) {
+        return;
+    }
+    const auto weapon = ::world::held_weapon(*inventory);
+    if (!weapon || weapon->mode != ::world::FireMode::Automatic) {
+        return;
+    }
+    shoot_at(tile);
+}
+
+void WorldModel::order_units(::world::TileCoord tile) {
+    const std::vector<core::EntityId> units = selected_units();
+    const core::EntityId target = ::world::shootable_at(registry_, tile, player_);
+    if (target == 0 || std::find(units.begin(), units.end(), target) != units.end()) {
+        order_move(tile);
+        return;
+    }
+    enqueue(::world::UnitsAttackRequested{units, target});
 }
 
 void WorldModel::cancel() {

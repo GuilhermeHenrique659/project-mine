@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 namespace world {
 
 // Kinds of item that can be stored in an inventory.
@@ -38,6 +40,27 @@ constexpr Item item_of(ItemType type) {
         case ItemType::IronOre: break;
     }
     return items::IronOre;
+}
+
+// How the player fires a weapon: Automatic keeps firing while the button is held,
+// SemiAutomatic fires once per click.
+enum class FireMode { SemiAutomatic, Automatic };
+
+// What a weapon item does when fired: `range` in tiles, `damage` in hit points,
+// `cooldown` in seconds between shots and its fire mode.
+struct WeaponStats {
+    float range;
+    int damage;
+    float cooldown;
+    FireMode mode;
+};
+
+// The stats of an item type that can be fired; empty for anything that is not a weapon.
+constexpr std::optional<WeaponStats> weapon_stats(ItemType type) {
+    if (type == ItemType::Weapon) {
+        return WeaponStats{6.0f, 25, 1.0f, FireMode::SemiAutomatic};
+    }
+    return std::nullopt;
 }
 
 // A quantity of one item, as held in a single inventory slot.
