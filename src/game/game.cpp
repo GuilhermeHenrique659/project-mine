@@ -103,6 +103,7 @@ void Game::draw() const {
     if (active_scene_) {
         active_scene_->draw();
     }
+    DrawFPS(10, 10);
     EndDrawing();
 }
 
