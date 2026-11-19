@@ -405,7 +405,7 @@ TEST(WorldSerializer, ToolsAmmoAndWeaponsInAnInventorySurviveASaveAndLoad) {
     auto* inventory = saved.registry.get<world::Inventory>(id);
     inventory->set_slot(0, world::ItemStack{world::items::Tool, 3});
     inventory->set_slot(1, world::ItemStack{world::items::Ammo, 4});
-    inventory->set_slot(2, world::ItemStack{world::items::Weapon, 5});
+    inventory->set_slot(2, world::ItemStack{world::items::Weapon, 1});
     const auto records = saved.serializer.snapshot(saved.registry);
     Fixture loaded;
 
@@ -415,12 +415,12 @@ TEST(WorldSerializer, ToolsAmmoAndWeaponsInAnInventorySurviveASaveAndLoad) {
     // Then
     EXPECT_EQ(records[0].fields.at("inventory.0"), "Tool:3");
     EXPECT_EQ(records[0].fields.at("inventory.1"), "Ammo:4");
-    EXPECT_EQ(records[0].fields.at("inventory.2"), "Weapon:5");
+    EXPECT_EQ(records[0].fields.at("inventory.2"), "Weapon:1");
     const auto& slots =
         loaded.registry.get<world::Inventory>(loaded.registry.entities()[0].id)->slots();
     ASSERT_TRUE(slots[0].has_value() && slots[1].has_value() && slots[2].has_value());
     EXPECT_EQ(slots[0]->item, world::items::Tool);
     EXPECT_EQ(slots[1]->item, world::items::Ammo);
     EXPECT_EQ(slots[2]->item, world::items::Weapon);
-    EXPECT_EQ(slots[2]->count, 5);
+    EXPECT_EQ(slots[2]->count, 1);
 }

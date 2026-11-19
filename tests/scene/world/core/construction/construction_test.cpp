@@ -430,7 +430,7 @@ TEST(ConstructionCatalog, ToolAndWeaponFactoriesKeepTheirInputsOutOfTheGeneralSl
     EXPECT_EQ(tool_left, 1000);
     EXPECT_EQ(weapon_steel_left, 500);
     EXPECT_EQ(weapon_tool_left, 500);
-    EXPECT_EQ(weapon_left, 1000);
+    EXPECT_EQ(weapon_left, 1990);
 }
 
 TEST(BuildingType, NewFactoriesRoundTripThroughTheirSaveKeys) {
@@ -467,6 +467,25 @@ TEST(ConstructionCatalog, BarracksCosts200SteelAnd100ToolsTakes1200WorkAndRecrui
     const auto* power = barracks->blueprint.find<world::PowerConsumer>();
     ASSERT_NE(power, nullptr);
     EXPECT_FLOAT_EQ(power->demand_kw, 200.0f);
+}
+
+TEST(ConstructionCatalog, BarracksIsASupplyHolding5WeaponsAnd5AmmoStacksOnly) {
+    // Given
+    const world::Construction* barracks = world::find_construction(world::BuildingType::Barracks);
+    ASSERT_NE(barracks, nullptr);
+    ASSERT_NE(barracks->blueprint.find<world::Inventory>(), nullptr);
+    world::Inventory inventory = *barracks->blueprint.find<world::Inventory>();
+
+    // When
+    const int weapons_left = inventory.add(world::items::Weapon, 600);
+    const int ammo_left = inventory.add(world::items::Ammo, 600);
+    const int steel_left = inventory.add(world::items::Steel, 10);
+
+    // Then
+    EXPECT_NE(barracks->blueprint.find<world::Supply>(), nullptr);
+    EXPECT_EQ(weapons_left, 595);
+    EXPECT_EQ(ammo_left, 100);
+    EXPECT_EQ(steel_left, 10);
 }
 
 TEST(BuildingType, BarracksRoundTripsThroughItsSaveKey) {

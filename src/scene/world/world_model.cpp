@@ -11,6 +11,7 @@
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/events/building_events.hpp"
 #include "scene/world/core/events/item_transfer_requested.hpp"
+#include "scene/world/core/components/military.hpp"
 #include "scene/world/core/events/military_events.hpp"
 #include "scene/world/core/events/worker_events.hpp"
 #include "scene/world/core/occupancy.hpp"
@@ -30,6 +31,7 @@
 #include "scene/world/core/components/selected.hpp"
 #include "scene/world/core/selection.hpp"
 #include "scene/world/core/systems/move_order_system.hpp"
+#include "scene/world/core/systems/resupply_system.hpp"
 #include "scene/world/core/systems/path_follow_system.hpp"
 #include "scene/world/core/systems/unit_traffic_system.hpp"
 #include "scene/world/core/systems/route_system.hpp"
@@ -82,6 +84,7 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
     // Move orders give the soldiers a path of their own, walked like a route.
     systems_.push_back(std::make_unique<::world::ShootSystem>(registry_, bus_));
     systems_.push_back(std::make_unique<::world::MoveOrderSystem>(registry_, bus_, terrain_));
+    systems_.push_back(std::make_unique<::world::ResupplySystem>(registry_, bus_, terrain_));
     systems_.push_back(std::make_unique<::world::RouteFollowSystem>(registry_, routes_));
     systems_.push_back(std::make_unique<::world::PathFollowSystem>(registry_));
     systems_.push_back(std::make_unique<::world::UnitTrafficSystem>(registry_));
@@ -292,6 +295,11 @@ void WorldModel::hold_trigger(::world::TileCoord tile) {
 
 void WorldModel::order_units(::world::TileCoord tile) {
     const std::vector<core::EntityId> units = selected_units();
+    const core::EntityId supply = ::world::building_at(registry_, tile);
+    if (supply != 0 && registry_.has<::world::Supply>(supply)) {
+        enqueue(::world::UnitsResupplyRequested{units, supply});
+        return;
+    }
     const core::EntityId target = ::world::shootable_at(registry_, tile, player_);
     if (target == 0 || std::find(units.begin(), units.end(), target) != units.end()) {
         order_move(tile);

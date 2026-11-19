@@ -23,7 +23,7 @@ namespace world {
 //
 // build() turns the facts into the Construction and its Blueprint: an Inventory (general
 // slots + one filtered section per input or fuel), a Producer + BuildingStatus when it
-// produces, Staffing, PowerConsumer, Generator, Housing, Recruiter and
+// produces, Staffing, PowerConsumer, Generator, Housing, Recruiter, Supply and
 // Health + TrainingTarget when given.
 class ConstructionBuilder {
 public:
@@ -57,6 +57,8 @@ public:
     ConstructionBuilder& houses(int workers);
     // Soldiers can be recruited at it (Recruiter).
     ConstructionBuilder& recruits();
+    // Soldiers resupply at it (Supply): a filtered section of `slots` for Weapon and one for Ammo.
+    ConstructionBuilder& supplies(std::size_t slots = InputSlots);
     // It can be shot for practice: Health + TrainingTarget, never destroyed.
     ConstructionBuilder& training_target();
 
@@ -76,6 +78,7 @@ private:
     std::optional<float> power_kw_;
     std::optional<int> houses_;
     bool recruits_ = false;
+    bool supplies_ = false;
     bool training_target_ = false;
     std::optional<GeneratorSpec> generator_;
 

@@ -20,4 +20,12 @@ struct UnitsMoveRequested {
     TileCoord goal;
 };
 
+// The player orders units (the selection) to resupply at a Supply building. The
+// ResupplySystem walks each soldier among them next to it, where it takes a weapon and an
+// ammo stack.
+struct UnitsResupplyRequested {
+    std::vector<core::EntityId> units;
+    core::EntityId supply = 0;
+};
+
 } // namespace world

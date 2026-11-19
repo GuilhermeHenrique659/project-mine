@@ -788,3 +788,31 @@ TEST(WorldModel, APlayerLoadedFromASaveCanShoot) {
     // Then
     EXPECT_EQ(player_ammo(model), 9);
 }
+
+TEST(WorldModel, OrderingSelectedSoldiersOntoABarracksResuppliesThem) {
+    // Given: a soldier on (1.5, 0.5) next to a barracks on (2, 0) holding a weapon and ammo
+    event::EventBus bus;
+    FakeInput input;
+    game::SaveGame save{"Alpha", 0};
+    save.entities.push_back({"soldier", "Soldier", {{"position.x", "1.5"}, {"position.y", "0.5"}}});
+    save.entities.push_back({"building", "Barracks",
+                             {{"building.type", "Barracks"},
+                              {"building.x", "2"},
+                              {"building.y", "0"},
+                              {"inventory.0", "Weapon:1"},
+                              {"inventory.5", "Ammo:100"}}});
+    scene::world::WorldModel model(bus, input.handler, std::move(save));
+    const core::EntityId soldier = first_soldier(model);
+    const ::world::IsoProjection projection = model.camera().projection(1280.0f, 720.0f);
+    const ::world::ScreenPoint at = projection.world_to_screen({1.5f, 0.5f});
+    model.select_units(projection, {at.x - 5, at.y - 5}, {at.x + 5, at.y + 5});
+
+    // When
+    model.order_units({3, 1});
+    model.update(scene::world::SimulationTick);
+
+    // Then
+    const auto* carried = model.registry().get<::world::Inventory>(soldier);
+    EXPECT_EQ(carried->count(::world::items::Weapon), 1);
+    EXPECT_EQ(carried->count(::world::items::Ammo), 100);
+}

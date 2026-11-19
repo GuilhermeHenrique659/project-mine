@@ -154,8 +154,8 @@ const std::vector<ConstructionGroup>& construction_catalog() {
                  .type(BuildingType::Barracks).size(3, 3)
                  .cost(items::Steel, 200).cost(items::Tool, 100).effort(1200.0f)
                  .needs_headquarters()
-                 .recruits()
-                 .storage(10).power(200.0f)
+                 .recruits().supplies()
+                 .power(200.0f)
                  .build(),
              ConstructionBuilder{"Training Target", "icon_training_target"}
                  .type(BuildingType::TrainingTarget).size(1, 1)

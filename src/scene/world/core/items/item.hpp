@@ -24,7 +24,7 @@ inline constexpr Item Steel{ItemType::Steel, 100};
 inline constexpr Item Electronics{ItemType::Electronics, 100};
 inline constexpr Item Tool{ItemType::Tool, 100};
 inline constexpr Item Ammo{ItemType::Ammo, 100};
-inline constexpr Item Weapon{ItemType::Weapon, 100};
+inline constexpr Item Weapon{ItemType::Weapon, 1};
 } // namespace items
 
 // The definition of an item type.

@@ -119,7 +119,9 @@ public:
     void order_move(::world::TileCoord goal);
     // Right-click order for the selection: when `tile` holds something to shoot (not one of
     // them, not the player), every selected unit keeps shooting it until it is destroyed
-    // (::world::UnitsAttackRequested, next tick; only the armed ones fire); otherwise they walk there (order_move()).
+    // (::world::UnitsAttackRequested, next tick; only the armed ones fire); onto a Supply building
+    // (the barracks) they go take a weapon and an ammo stack (::world::UnitsResupplyRequested);
+    // otherwise they walk there (order_move()).
     void order_units(::world::TileCoord tile);
     // The player shoots at what is on `tile` (::world::shootable_at, ::world::ShotRequested,
     // next tick). Nothing when the tile holds no target; the ShootSystem then fires only

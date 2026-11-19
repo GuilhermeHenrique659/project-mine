@@ -96,6 +96,13 @@ ConstructionBuilder& ConstructionBuilder::recruits() {
     return *this;
 }
 
+ConstructionBuilder& ConstructionBuilder::supplies(std::size_t slots) {
+    supplies_ = true;
+    sections_.emplace_back(slots, ItemType::Weapon);
+    sections_.emplace_back(slots, ItemType::Ammo);
+    return *this;
+}
+
 ConstructionBuilder& ConstructionBuilder::training_target() {
     training_target_ = true;
     return *this;
@@ -144,6 +151,9 @@ Construction ConstructionBuilder::build() const {
     }
     if (recruits_) {
         blueprint.with(Recruiter{});
+    }
+    if (supplies_) {
+        blueprint.with(Supply{});
     }
     if (training_target_) {
         blueprint.with(Health{});
