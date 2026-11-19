@@ -8,6 +8,7 @@ Shared helpers live in `tests/support/` and are included as `"support/..."`:
 - `fake_keyboard.hpp`: a `Keyboard` whose pressed keys, held keys and typed characters the test sets.
 - `fake_pointer.hpp`: a `Pointer` whose position and release the test sets.
 - `fake_input.hpp`: a world-bindings `InputHandler` over a `FakeKeyboard`, for the world model and its systems.
+- `always_hit.hpp`: `AlwaysHit`, a `world::HitRoll` that always hits; pass it to a `WorldModel` (or `ShootSystem`) whose test checks what a hit does.
 - `temp_dir.hpp`: a temporary directory for persistence tests.
 
 Rules for writing tests (Given/When/Then, only meaningful tests) are in [AGENTS.md](../AGENTS.md#tests).

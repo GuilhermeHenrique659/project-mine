@@ -24,6 +24,8 @@ struct UnitsAttackRequested {
 struct ShotFired {
     core::EntityId shooter = 0;
     core::EntityId target = 0;
+    // Whether it hit (damaged the target) or missed.
+    bool hit = true;
 };
 
 } // namespace world

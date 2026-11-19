@@ -2,7 +2,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <optional>
+#include <random>
+#include <utility>
 
 #include "scene/world/core/components/combat.hpp"
 #include "scene/world/core/components/inventory.hpp"
@@ -25,9 +28,19 @@ std::optional<WeaponStats> held_weapon(const Inventory& inventory) {
     return std::nullopt;
 }
 
-ShootSystem::ShootSystem(core::Registry& registry, event::EventBus& bus)
+HitRoll random_hit_roll() {
+    auto generator = std::make_shared<std::mt19937>(std::random_device{}());
+    return [generator] { return std::uniform_real_distribution<float>{0.0f, 1.0f}(*generator); };
+}
+
+float hit_chance(const WeaponStats& weapon, int experience) {
+    return std::clamp(weapon.accuracy + experience * AccuracyPerExperience, 0.0f, 1.0f);
+}
+
+ShootSystem::ShootSystem(core::Registry& registry, event::EventBus& bus, HitRoll roll)
     : registry_(registry),
       bus_(bus),
+      roll_(std::move(roll)),
       subscription_(event::subscribe_scoped<ShotRequested>(
           bus, [this](const ShotRequested& request) { shoot(request.shooter, request.target); })),
       attack_subscription_(event::subscribe_scoped<UnitsAttackRequested>(
@@ -84,9 +97,11 @@ void ShootSystem::shoot(core::EntityId shooter_id, core::EntityId target) {
     }
     inventory->remove(items::Ammo, 1);
     shooter->cooldown = weapon->cooldown;
-    bus_.publish(ShotFired{shooter_id, target});
+    const bool hit = roll_() < hit_chance(*weapon, shooter->experience);
+    ++shooter->experience;
+    bus_.publish(ShotFired{shooter_id, target, hit});
     auto* health = registry_.get<Health>(target);
-    if (health == nullptr) {
+    if (!hit || health == nullptr) {
         return;
     }
     health->current -= weapon->damage;

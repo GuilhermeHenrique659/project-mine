@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include "support/always_hit.hpp"
+
 #include <memory>
 
 #include "event/event_bus.hpp"
@@ -24,7 +26,7 @@ game::SaveGame save_with_soldier() {
 
 class UnitCommand : public testing::Test {
 protected:
-    UnitCommand() : model(bus, input.handler, save_with_soldier()), command(model, pointer) {
+    UnitCommand() : model(bus, input.handler, save_with_soldier(), AlwaysHit), command(model, pointer) {
         for (const core::Entity& entity : model.registry().entities()) {
             if (entity.id != model.player_id()) {
                 soldier = entity.id;

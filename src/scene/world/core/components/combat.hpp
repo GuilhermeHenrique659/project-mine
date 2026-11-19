@@ -8,9 +8,11 @@ namespace world {
 inline constexpr int MaxHealth = 100;
 
 // An entity that can fire the weapon in its inventory (see ShootSystem). `cooldown` is the
-// seconds left before it can fire again. Not saved.
+// seconds left before it can fire again; `experience` counts the shots it has fired and
+// raises its hit chance (see hit_chance). Not saved.
 struct Shooter {
     float cooldown = 0.0f;
+    int experience = 0;
 };
 
 // Hit points of an entity that can be shot; it is destroyed when they reach 0. Not saved

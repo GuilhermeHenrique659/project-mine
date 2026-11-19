@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include "scene/world/core/systems/shoot_system.hpp"
 #include "core/registry.hpp"
 #include "event/event_bus.hpp"
 #include "game/fixed_step.hpp"
@@ -45,8 +46,10 @@ struct ShotTrace {
 class WorldModel : public scene::Model {
 public:
     // The bus receives the simulation events (::world::CharacterStateChanged) and the
-    // input is read by the systems each update; both must outlive the model.
-    WorldModel(event::EventBus& bus, const input::InputHandler& input, game::SaveGame save);
+    // input is read by the systems each update; both must outlive the model. `roll` decides
+    // whether each shot hits (see ::world::ShootSystem).
+    WorldModel(event::EventBus& bus, const input::InputHandler& input, game::SaveGame save,
+               ::world::HitRoll roll = ::world::random_hit_roll());
 
     // The serializer and the systems refer to sibling members, so the model never moves.
     WorldModel(const WorldModel&) = delete;

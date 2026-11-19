@@ -47,18 +47,20 @@ constexpr Item item_of(ItemType type) {
 enum class FireMode { SemiAutomatic, Automatic };
 
 // What a weapon item does when fired: `range` in tiles, `damage` in hit points,
-// `cooldown` in seconds between shots and its fire mode.
+// `cooldown` in seconds between shots, its fire mode and `accuracy`, the chance (0 to 1) a
+// shot by a shooter without experience hits (see hit_chance).
 struct WeaponStats {
     float range;
     int damage;
     float cooldown;
     FireMode mode;
+    float accuracy;
 };
 
 // The stats of an item type that can be fired; empty for anything that is not a weapon.
 constexpr std::optional<WeaponStats> weapon_stats(ItemType type) {
     if (type == ItemType::Weapon) {
-        return WeaponStats{6.0f, 25, 1.0f, FireMode::SemiAutomatic};
+        return WeaponStats{6.0f, 25, 1.0f, FireMode::SemiAutomatic, 0.6f};
     }
     return std::nullopt;
 }

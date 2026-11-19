@@ -40,7 +40,7 @@
 namespace scene::world {
 
 WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
-                       game::SaveGame save)
+                       game::SaveGame save, ::world::HitRoll roll)
     : bus_(bus),
       save_(std::move(save)),
       terrain_(save_.seed),
@@ -82,7 +82,7 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
     systems_.push_back(std::make_unique<::world::WorkerSystem>(registry_, bus_, factory_));
     systems_.push_back(std::make_unique<::world::RecruitSystem>(registry_, bus_, factory_, terrain_));
     // Move orders give the soldiers a path of their own, walked like a route.
-    systems_.push_back(std::make_unique<::world::ShootSystem>(registry_, bus_));
+    systems_.push_back(std::make_unique<::world::ShootSystem>(registry_, bus_, std::move(roll)));
     systems_.push_back(std::make_unique<::world::MoveOrderSystem>(registry_, bus_, terrain_));
     systems_.push_back(std::make_unique<::world::ResupplySystem>(registry_, bus_, terrain_));
     systems_.push_back(std::make_unique<::world::RouteFollowSystem>(registry_, routes_));

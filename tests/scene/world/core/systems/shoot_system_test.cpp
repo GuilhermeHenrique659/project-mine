@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <vector>
+
 #include "core/registry.hpp"
 #include "event/event_bus.hpp"
 #include "scene/world/core/components/combat.hpp"
@@ -22,7 +24,9 @@ const world::WeaponStats Gun = *world::weapon_stats(world::ItemType::Weapon);
 struct Fixture {
     core::Registry registry;
     event::EventBus bus;
-    world::ShootSystem system{registry, bus};
+    // What every shot rolls: 0 always hits, unless said otherwise.
+    float roll = 0.0f;
+    world::ShootSystem system{registry, bus, [this] { return roll; }};
 
     core::EntityId shooter(int weapons, int ammo, world::WorldPoint at = {0.0f, 0.0f}) {
         const core::EntityId id = registry.create("Shooter");
@@ -249,4 +253,104 @@ TEST(ShootSystem, AWorkerCanBeShotButCannotShootEvenWhenArmed) {
     // Then
     EXPECT_EQ(f.health(soldier), world::MaxHealth);
     EXPECT_EQ(f.health(worker), world::MaxHealth - Gun.damage);
+}
+
+TEST(HitChance, AShooterWithoutExperienceHitsWithTheWeaponAccuracy) {
+    // Given / When
+    const float chance = world::hit_chance(Gun, 0);
+
+    // Then
+    EXPECT_FLOAT_EQ(chance, 0.6f);
+}
+
+TEST(HitChance, EachPointOfExperienceAddsHalfAPercent) {
+    // Given / When
+    const float chance = world::hit_chance(Gun, 40);
+
+    // Then
+    EXPECT_FLOAT_EQ(chance, 0.8f);
+}
+
+TEST(HitChance, ExperienceNeverTakesTheChanceAbove100Percent) {
+    // Given / When
+    const float chance = world::hit_chance(Gun, 1000);
+
+    // Then
+    EXPECT_FLOAT_EQ(chance, 1.0f);
+}
+
+TEST(HitChance, TheChanceNeverGoesBelowZero) {
+    // Given
+    world::WeaponStats wild = Gun;
+    wild.accuracy = -0.5f;
+
+    // When
+    const float chance = world::hit_chance(wild, 0);
+
+    // Then
+    EXPECT_FLOAT_EQ(chance, 0.0f);
+}
+
+TEST(ShootSystem, ARollAboveTheHitChanceMissesButStillSpendsTheAmmo) {
+    // Given: a 60% weapon without experience, rolling 0.7
+    Fixture f;
+    const auto shooter = f.shooter(1, 5);
+    const auto target = f.target(1.0f);
+    f.roll = 0.7f;
+    std::vector<world::ShotFired> fired;
+    auto counter = event::subscribe_scoped<world::ShotFired>(
+        f.bus, [&](const world::ShotFired& shot) { fired.push_back(shot); });
+
+    // When
+    f.shoot(shooter, target);
+
+    // Then
+    EXPECT_EQ(f.health(target), world::MaxHealth);
+    EXPECT_EQ(f.ammo(shooter), 4);
+    ASSERT_EQ(fired.size(), 1u);
+    EXPECT_FALSE(fired[0].hit);
+}
+
+TEST(ShootSystem, ExperienceTurnsTheSameRollIntoAHit) {
+    // Given: rolling 0.7 with 40 experience (80% chance)
+    Fixture f;
+    const auto shooter = f.shooter(1, 5);
+    f.registry.get<world::Shooter>(shooter)->experience = 40;
+    const auto target = f.target(1.0f);
+    f.roll = 0.7f;
+
+    // When
+    f.shoot(shooter, target);
+
+    // Then
+    EXPECT_EQ(f.health(target), world::MaxHealth - Gun.damage);
+}
+
+TEST(ShootSystem, EveryShotFiredHitOrMissGivesOneExperience) {
+    // Given
+    Fixture f;
+    const auto shooter = f.shooter(1, 5);
+    const auto target = f.target(1.0f);
+
+    // When: a hit, then a miss after the cooldown
+    f.shoot(shooter, target);
+    f.system.update(Gun.cooldown);
+    f.roll = 0.99f;
+    f.shoot(shooter, target);
+
+    // Then
+    EXPECT_EQ(f.registry.get<world::Shooter>(shooter)->experience, 2);
+}
+
+TEST(ShootSystem, AShotNotFiredGivesNoExperience) {
+    // Given: a target out of range
+    Fixture f;
+    const auto shooter = f.shooter(1, 5);
+    const auto target = f.target(Gun.range + 1.0f);
+
+    // When
+    f.shoot(shooter, target);
+
+    // Then
+    EXPECT_EQ(f.registry.get<world::Shooter>(shooter)->experience, 0);
 }

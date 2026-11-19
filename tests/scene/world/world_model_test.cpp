@@ -2,6 +2,7 @@
 
 #include "game/save_game.hpp"
 #include "scene/world/world_model.hpp"
+#include "support/always_hit.hpp"
 #include "support/fake_input.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/components/builder.hpp"
@@ -29,7 +30,7 @@ TEST(WorldModel, PlayerStartsAtTheWorldOriginAndCanBeFound) {
     // Given / When
     event::EventBus bus;
     FakeInput input;
-    const scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    const scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
 
     // Then
     const core::Entity* player = model.registry().find(model.player_id());
@@ -43,7 +44,7 @@ TEST(WorldModel, UpdatingWithADirectionMovesThePlayer) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
     input.keyboard.down = {input::Key::S, input::Key::D}; // screen down-right = world +x
 
     // When
@@ -58,7 +59,7 @@ TEST(WorldModel, CameraFollowsThePlayerAsItMoves) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
     input.keyboard.down = {input::Key::S, input::Key::D}; // screen down-right = world +x
 
     // When
@@ -74,7 +75,7 @@ TEST(WorldModel, TogglingPauseOpensAndClosesThePause) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
     const bool paused_at_start = model.is_paused();
 
     // When
@@ -92,7 +93,7 @@ TEST(WorldModel, ThePlayerDoesNotMoveWhilePaused) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
     input.keyboard.down = {input::Key::S, input::Key::D}; // screen down-right = world +x
     model.toggle_pause();
 
@@ -107,7 +108,7 @@ TEST(WorldModel, ClearingTheDirectionStopsThePlayer) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
     input.keyboard.down = {input::Key::A, input::Key::S}; // screen down-left = world +y
     model.update(0.5f);
     const ::world::WorldPoint stopped_at = player_position(model);
@@ -162,7 +163,7 @@ TEST(WorldModel, PlayerStartsWhereTheSaveLeftItWithTheCameraThere) {
     const game::SaveGame save = save_with_player_at(7.0f, -3.0f);
 
     // When
-    const scene::world::WorldModel model(bus, input.handler, save);
+    const scene::world::WorldModel model(bus, input.handler, save, AlwaysHit);
 
     // Then
     EXPECT_FLOAT_EQ(player_position(model).x, 7.0f);
@@ -175,7 +176,7 @@ TEST(WorldModel, SaveGameHoldsThePlayerCurrentPositionAndIdle) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, save_with_player_at(1.0f, 1.0f));
+    scene::world::WorldModel model(bus, input.handler, save_with_player_at(1.0f, 1.0f), AlwaysHit);
     input.keyboard.down = {input::Key::S, input::Key::D}; // world +x
     model.update(0.5f);
 
@@ -196,7 +197,7 @@ TEST(WorldModel, SaveWithoutEntitiesStillSpawnsThePlayerAtTheOrigin) {
     const game::SaveGame save{"Alpha", 0, 1};
 
     // When
-    const scene::world::WorldModel model(bus, input.handler, save);
+    const scene::world::WorldModel model(bus, input.handler, save, AlwaysHit);
 
     // Then
     EXPECT_EQ(model.registry().find(model.player_id())->label, "Player");
@@ -212,7 +213,7 @@ TEST(WorldModel, SaveWithoutAPlayerRecordGetsADefaultPlayer) {
     FakeInput input;
 
     // When
-    const scene::world::WorldModel model(bus, input.handler, save);
+    const scene::world::WorldModel model(bus, input.handler, save, AlwaysHit);
 
     // Then
     EXPECT_EQ(model.registry().find(model.player_id())->label, "Player");
@@ -223,7 +224,7 @@ TEST(WorldModel, ZoomingChangesTheCameraZoom) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
 
     // When
     model.zoom_camera(-2.0f);
@@ -236,7 +237,7 @@ TEST(WorldModel, ZoomingIsIgnoredWhilePaused) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
     model.toggle_pause();
 
     // When
@@ -250,7 +251,7 @@ TEST(WorldModel, ZoomingIsIgnoredWhileThePlayerMenuIsOpen) {
     // Given: the wheel scrolls the menu's pages instead
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
     model.toggle_player_menu();
 
     // When
@@ -265,7 +266,7 @@ TEST(WorldModel, TogglingThePlayerMenuOpensAndClosesIt) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
     const bool open_at_start = model.is_player_menu_open();
 
     // When
@@ -283,7 +284,7 @@ TEST(WorldModel, ThePlayerKeepsWalkingWhileThePlayerMenuIsOpen) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
     model.toggle_player_menu();
     input.keyboard.down.insert(input::Key::D);
 
@@ -299,7 +300,7 @@ TEST(WorldModel, ThePlayerMenuDoesNotOpenWhilePaused) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
     model.toggle_pause();
 
     // When
@@ -313,7 +314,7 @@ TEST(WorldModel, CancelClosesTheOpenPlayerMenuInsteadOfPausing) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
     model.toggle_player_menu();
 
     // When
@@ -328,7 +329,7 @@ TEST(WorldModel, CancelTogglesThePauseWhenThePlayerMenuIsClosed) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
 
     // When
     model.cancel();
@@ -344,7 +345,7 @@ TEST(WorldModel, BuildBarOpensAndClosesWhenToggled) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
 
     // When
     model.toggle_build_bar();
@@ -360,7 +361,7 @@ TEST(WorldModel, BuildBarCannotBeOpenedWhilePaused) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
     model.toggle_pause();
 
     // When
@@ -374,7 +375,7 @@ TEST(WorldModel, ARequestedHeadquartersIsBuiltAndSurvivesASave) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
     const ::world::Construction& hq =
         *::world::find_construction(::world::BuildingType::Headquarters);
     const auto before = model.build_status(hq);
@@ -434,7 +435,7 @@ TEST(WorldModel, ANewPlayerStartsWith200IronOre) {
     // Given / When
     event::EventBus bus;
     FakeInput input;
-    const scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    const scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
 
     // Then
     const auto* inventory = model.registry().get<::world::Inventory>(model.player_id());
@@ -448,7 +449,7 @@ TEST(WorldModel, ThePlayerBuildsTheSiteItWorksOnOnlyWhileWorking) {
     FakeInput input;
     const auto ore = find_ore(::world::Terrain(game::SaveGame{"Alpha", {}}.seed));
     ASSERT_TRUE(ore);
-    scene::world::WorldModel model(bus, input.handler, save_next_to(*ore));
+    scene::world::WorldModel model(bus, input.handler, save_next_to(*ore), AlwaysHit);
     model.request_build(::world::BuildingType::Mine, *ore);
     model.update(scene::world::SimulationTick);
     ASSERT_FLOAT_EQ(site_progress(model, *ore), 0.0f);
@@ -551,7 +552,7 @@ TEST(WorldModel, AFrameShorterThanATickDoesNotAdvanceTheSimulation) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
     input.keyboard.down = {input::Key::S, input::Key::D};
 
     // When
@@ -585,7 +586,7 @@ TEST(WorldModel, ARequestedBuildIsAppliedOnTheNextTickNotWhenRequested) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
     const ::world::Construction& hq =
         *::world::find_construction(::world::BuildingType::Headquarters);
 
@@ -603,7 +604,7 @@ TEST(WorldModel, RequestsMadeWhilePausedWaitForTheSimulationToResume) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
     const ::world::Construction& hq =
         *::world::find_construction(::world::BuildingType::Headquarters);
     model.toggle_pause();
@@ -627,7 +628,7 @@ TEST(WorldModel, ZoomingIsIgnoredWhileATransferIsOpen) {
     game::SaveGame save{"Alpha", 0};
     save.entities.push_back({"building", "Storage",
                              {{"building.type", "Storage"}, {"building.x", "1"}, {"building.y", "0"}}});
-    scene::world::WorldModel model(bus, input.handler, save);
+    scene::world::WorldModel model(bus, input.handler, save, AlwaysHit);
     model.open_transfer({1, 0});
     ASSERT_NE(model.transfer_target(), 0u);
 
@@ -667,7 +668,7 @@ TEST(WorldModel, ANewPlayerStartsWithAWeaponAndAFullStackOfAmmo) {
     // Given / When
     event::EventBus bus;
     FakeInput input;
-    const scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}});
+    const scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
 
     // Then
     const auto* inventory = model.registry().get<::world::Inventory>(model.player_id());
@@ -679,7 +680,7 @@ TEST(WorldModel, ShootingATileWithATargetInRangeHitsIt) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, save_with_soldier_at("2.5", "2.5"));
+    scene::world::WorldModel model(bus, input.handler, save_with_soldier_at("2.5", "2.5"), AlwaysHit);
     const core::EntityId soldier = first_soldier(model);
 
     // When
@@ -696,7 +697,7 @@ TEST(WorldModel, ShootingATargetOutOfRangeDoesNothing) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, save_with_soldier_at("10.5", "10.5"));
+    scene::world::WorldModel model(bus, input.handler, save_with_soldier_at("10.5", "10.5"), AlwaysHit);
     const core::EntityId soldier = first_soldier(model);
 
     // When
@@ -713,7 +714,7 @@ TEST(WorldModel, ShootingAnEmptyTileDoesNothing) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, save_with_soldier_at("2.5", "2.5"));
+    scene::world::WorldModel model(bus, input.handler, save_with_soldier_at("2.5", "2.5"), AlwaysHit);
 
     // When
     model.shoot_at({1, 3});
@@ -727,7 +728,7 @@ TEST(WorldModel, AFiredShotLeavesATraceFromShooterToTargetThatFades) {
     // Given
     event::EventBus bus;
     FakeInput input;
-    scene::world::WorldModel model(bus, input.handler, save_with_soldier_at("2.5", "2.5"));
+    scene::world::WorldModel model(bus, input.handler, save_with_soldier_at("2.5", "2.5"), AlwaysHit);
     model.shoot_at({2, 2});
 
     // When
@@ -752,7 +753,7 @@ TEST(WorldModel, OrderingSelectedSoldiersOntoATargetMakesTheArmedOnesShootIt) {
                              {{"position.x", "1.5"}, {"position.y", "1.5"},
                               {"inventory.0", "Weapon:1"}, {"inventory.1", "Ammo:10"}}});
     save.entities.push_back({"soldier", "Target", {{"position.x", "3.5"}, {"position.y", "3.5"}}});
-    scene::world::WorldModel model(bus, input.handler, std::move(save));
+    scene::world::WorldModel model(bus, input.handler, std::move(save), AlwaysHit);
     const core::EntityId shooter = first_soldier(model);
     const core::EntityId target = shooter + 1;
     const ::world::IsoProjection projection = model.camera().projection(1280.0f, 720.0f);
@@ -779,7 +780,7 @@ TEST(WorldModel, APlayerLoadedFromASaveCanShoot) {
                              {{"player", "1"}, {"position.x", "0.5"}, {"position.y", "0.5"},
                               {"inventory.0", "Weapon:1"}, {"inventory.1", "Ammo:10"}}});
     save.entities.push_back({"soldier", "Soldier", {{"position.x", "2.5"}, {"position.y", "2.5"}}});
-    scene::world::WorldModel model(bus, input.handler, std::move(save));
+    scene::world::WorldModel model(bus, input.handler, std::move(save), AlwaysHit);
 
     // When
     model.shoot_at({2, 2});
@@ -801,7 +802,7 @@ TEST(WorldModel, OrderingSelectedSoldiersOntoABarracksResuppliesThem) {
                               {"building.y", "0"},
                               {"inventory.0", "Weapon:1"},
                               {"inventory.5", "Ammo:100"}}});
-    scene::world::WorldModel model(bus, input.handler, std::move(save));
+    scene::world::WorldModel model(bus, input.handler, std::move(save), AlwaysHit);
     const core::EntityId soldier = first_soldier(model);
     const ::world::IsoProjection projection = model.camera().projection(1280.0f, 720.0f);
     const ::world::ScreenPoint at = projection.world_to_screen({1.5f, 0.5f});
