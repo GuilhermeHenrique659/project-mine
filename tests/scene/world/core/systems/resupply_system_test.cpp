@@ -27,12 +27,22 @@ struct Fixture {
 
     Fixture() {
         world::track_buildings(registry);
-        barracks = registry.create("building");
-        world::make_building(registry, barracks,
-                             *world::find_construction(world::BuildingType::Barracks), {2, 0});
-        registry.remove<world::ConstructionSite>(barracks);
+        barracks = add_barracks({2, 0});
         supply().add(world::items::Weapon, 3);
         supply().add(world::items::Ammo, 300);
+    }
+
+    // A finished, empty barracks on `tile`.
+    core::EntityId add_barracks(world::TileCoord tile) {
+        const core::EntityId id = registry.create("building");
+        world::make_building(registry, id,
+                             *world::find_construction(world::BuildingType::Barracks), tile);
+        registry.remove<world::ConstructionSite>(id);
+        return id;
+    }
+
+    const world::ResupplyOrder* order(core::EntityId id) const {
+        return registry.get<world::ResupplyOrder>(id);
     }
 
     world::Inventory& supply() { return *registry.get<world::Inventory>(barracks); }
@@ -140,4 +150,79 @@ TEST(ResupplySystem, NothingIsTakenFromABarracksStillUnderConstruction) {
     // Then
     EXPECT_TRUE(f.carried(soldier).is_empty());
     EXPECT_FALSE(f.registry.has<world::ResupplyOrder>(soldier));
+}
+
+TEST(ResupplySystem, EveryFiveSecondsAnUnarmedSoldierSeeksTheNearestSupply) {
+    // Given: a second stocked barracks further away, on (-10, 0)
+    Fixture f;
+    const core::EntityId far = f.add_barracks({-10, 0});
+    f.registry.get<world::Inventory>(far)->add(world::items::Weapon, 1);
+    const core::EntityId soldier = world::spawn_soldier(f.registry, "Soldier", {-1.5f, 4.5f});
+
+    // When
+    f.system.update(world::AutoResupplyInterval);
+
+    // Then
+    ASSERT_NE(f.order(soldier), nullptr);
+    EXPECT_EQ(f.order(soldier)->supply, f.barracks);
+    EXPECT_NE(f.registry.get<world::PathFollower>(soldier), nullptr);
+}
+
+TEST(ResupplySystem, NoSoldierSeeksASupplyBeforeFiveSecondsPass) {
+    // Given
+    Fixture f;
+    const core::EntityId soldier = world::spawn_soldier(f.registry, "Soldier", {-1.5f, 4.5f});
+
+    // When
+    f.system.update(world::AutoResupplyInterval - 0.5f);
+
+    // Then
+    EXPECT_EQ(f.order(soldier), nullptr);
+}
+
+TEST(ResupplySystem, ASoldierOutOfAmmoSeeksASupplyButAnArmedOneWithAmmoDoesNot) {
+    // Given
+    Fixture f;
+    const core::EntityId empty = world::spawn_soldier(f.registry, "Soldier", {-1.5f, 4.5f});
+    f.carried(empty).add(world::items::Weapon, 1);
+    const core::EntityId ready = world::spawn_soldier(f.registry, "Soldier", {-1.5f, 5.5f});
+    f.carried(ready).add(world::items::Weapon, 1);
+    f.carried(ready).add(world::items::Ammo, 10);
+
+    // When
+    f.system.update(world::AutoResupplyInterval);
+
+    // Then
+    EXPECT_NE(f.order(empty), nullptr);
+    EXPECT_EQ(f.order(ready), nullptr);
+}
+
+TEST(ResupplySystem, ASupplyWithoutWhatTheSoldierLacksIsSkipped) {
+    // Given: the near barracks has no ammo left, a far one on (-10, 0) has some
+    Fixture f;
+    f.supply().remove(world::items::Ammo, 300);
+    const core::EntityId far = f.add_barracks({-10, 0});
+    f.registry.get<world::Inventory>(far)->add(world::items::Ammo, 50);
+    const core::EntityId soldier = world::spawn_soldier(f.registry, "Soldier", {-1.5f, 4.5f});
+    f.carried(soldier).add(world::items::Weapon, 1);
+
+    // When
+    f.system.update(world::AutoResupplyInterval);
+
+    // Then
+    ASSERT_NE(f.order(soldier), nullptr);
+    EXPECT_EQ(f.order(soldier)->supply, far);
+}
+
+TEST(ResupplySystem, ASoldierWalkingSomewhereIsNotSentToResupply) {
+    // Given: an unarmed soldier on a player's move order
+    Fixture f;
+    const core::EntityId soldier = world::spawn_soldier(f.registry, "Soldier", {-1.5f, 4.5f});
+    f.registry.add(soldier, world::PathFollower{{{-1, 4}, {-1, 8}}});
+
+    // When
+    f.system.update(world::AutoResupplyInterval);
+
+    // Then
+    EXPECT_EQ(f.order(soldier), nullptr);
 }

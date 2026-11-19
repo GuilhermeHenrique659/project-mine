@@ -39,6 +39,17 @@ int distance_squared(TileCoord a, TileCoord b) {
     return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y);
 }
 
+// Whether the soldier lacks a weapon or ammo.
+bool needs_supplies(const Inventory& soldier) {
+    return soldier.count(items::Weapon) == 0 || soldier.count(items::Ammo) == 0;
+}
+
+// Whether `supply` holds something the soldier lacks.
+bool has_what_is_missing(const Inventory& supply, const Inventory& soldier) {
+    return (soldier.count(items::Weapon) == 0 && supply.count(items::Weapon) > 0) ||
+           (soldier.count(items::Ammo) < items::Ammo.max_stack && supply.count(items::Ammo) > 0);
+}
+
 // One weapon when the soldier holds none, then ammo up to one full stack.
 void take_supplies(Inventory& supply, Inventory& soldier) {
     if (soldier.count(items::Weapon) == 0) {
@@ -65,42 +76,79 @@ ResupplySystem::ResupplySystem(core::Registry& registry, event::EventBus& bus,
               }
           })) {}
 
+bool ResupplySystem::is_blocked(TileCoord tile) const {
+    return building_at(registry_, tile) != 0 || terrain_.tile_at(tile) == TileType::Water;
+}
+
 void ResupplySystem::order(const UnitsResupplyRequested& request) {
-    const auto* building = registry_.get<Building>(request.supply);
-    if (building == nullptr || !registry_.has<Supply>(request.supply)) {
+    if (!registry_.has<Building>(request.supply) || !registry_.has<Supply>(request.supply)) {
         return;
     }
-    const BlockedFn is_blocked = [this](TileCoord tile) {
-        return building_at(registry_, tile) != 0 || terrain_.tile_at(tile) == TileType::Water;
-    };
-    const std::vector<TileCoord> around = tiles_around(*building, is_blocked);
     for (const core::EntityId id : request.units) {
-        const auto* position = registry_.get<Position>(id);
-        if (position == nullptr || !registry_.has<Soldier>(id)) {
-            continue;
-        }
-        registry_.remove<PathFollower>(id);
-        registry_.add(id, ResupplyOrder{request.supply});
-        if (distance_to_building(registry_, request.supply, position->point) <= SupplyReach) {
-            continue;
-        }
-        const TileCoord start = tile_containing(position->point);
-        // The nearest free tile beside the building; update() drops the order without a path.
-        std::vector<TileCoord> goals = around;
-        std::sort(goals.begin(), goals.end(), [start](TileCoord a, TileCoord b) {
-            return distance_squared(start, a) < distance_squared(start, b);
-        });
-        for (const TileCoord goal : goals) {
-            auto path = find_path(start, goal, is_blocked);
-            if (path) {
-                registry_.add(id, PathFollower{std::move(*path)});
-                break;
-            }
+        if (registry_.has<Position>(id) && registry_.has<Soldier>(id)) {
+            send(id, request.supply);
         }
     }
 }
 
-void ResupplySystem::update(float) {
+void ResupplySystem::send(core::EntityId soldier, core::EntityId supply) {
+    const WorldPoint point = registry_.get<Position>(soldier)->point;
+    registry_.remove<PathFollower>(soldier);
+    registry_.add(soldier, ResupplyOrder{supply});
+    if (distance_to_building(registry_, supply, point) <= SupplyReach) {
+        return;
+    }
+    const BlockedFn blocked = [this](TileCoord tile) { return is_blocked(tile); };
+    const TileCoord start = tile_containing(point);
+    // The nearest free tile beside the building; update() drops the order without a path.
+    std::vector<TileCoord> goals = tiles_around(*registry_.get<Building>(supply), blocked);
+    std::sort(goals.begin(), goals.end(), [start](TileCoord a, TileCoord b) {
+        return distance_squared(start, a) < distance_squared(start, b);
+    });
+    for (const TileCoord goal : goals) {
+        auto path = find_path(start, goal, blocked);
+        if (path) {
+            registry_.add(soldier, PathFollower{std::move(*path)});
+            return;
+        }
+    }
+}
+
+core::EntityId ResupplySystem::nearest_supply(WorldPoint point, const Inventory& carried) const {
+    core::EntityId nearest = 0;
+    float best = 0.0f;
+    registry_.each<Supply, Inventory>([&](core::EntityId id, const Supply&, const Inventory& stock) {
+        if (!registry_.has<Building>(id) || registry_.has<ConstructionSite>(id) ||
+            !has_what_is_missing(stock, carried)) {
+            return;
+        }
+        const float distance = distance_to_building(registry_, id, point);
+        if (nearest == 0 || distance < best) {
+            nearest = id;
+            best = distance;
+        }
+    });
+    return nearest;
+}
+
+void ResupplySystem::seek_supplies() {
+    std::vector<std::pair<core::EntityId, core::EntityId>> sends;
+    registry_.each<Soldier, Position, Inventory>(
+        [&](core::EntityId id, const Soldier&, const Position& position, const Inventory& carried) {
+            if (registry_.has<ResupplyOrder>(id) || registry_.has<PathFollower>(id) ||
+                !needs_supplies(carried)) {
+                return;
+            }
+            if (const core::EntityId supply = nearest_supply(position.point, carried)) {
+                sends.emplace_back(id, supply);
+            }
+        });
+    for (const auto& [soldier, supply] : sends) {
+        send(soldier, supply);
+    }
+}
+
+void ResupplySystem::update(float delta_time) {
     std::vector<core::EntityId> done;
     registry_.each<ResupplyOrder, Position, Inventory>(
         [&](core::EntityId id, ResupplyOrder& order, Position& position, Inventory& carried) {
@@ -119,6 +167,12 @@ void ResupplySystem::update(float) {
     for (const core::EntityId id : done) {
         registry_.remove<ResupplyOrder>(id);
     }
+    since_search_ += delta_time;
+    if (since_search_ < AutoResupplyInterval) {
+        return;
+    }
+    since_search_ -= AutoResupplyInterval;
+    seek_supplies();
 }
 
 } // namespace world
