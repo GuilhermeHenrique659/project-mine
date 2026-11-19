@@ -14,6 +14,11 @@
 #include "scene/world/core/isometric.hpp"
 #include "scene/world/render/cube.hpp"
 
+#include <optional>
+
+#include "graphics/building_sprites.hpp"
+#include "graphics/sprite.hpp"
+
 namespace scene::world {
 
 namespace {
@@ -30,6 +35,7 @@ constexpr float SelectionOutline = 2.0f;
 
 void EntityRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
     const ::world::IsoProjection projection = camera_.projection(screen.width, screen.height);
+    const float seconds = clock_ ? clock_() : 0.0f;
 
     struct Marker {
         ::world::WorldPoint point;
@@ -38,6 +44,7 @@ void EntityRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
         bool site = false;
         ::world::TileSize footprint;
         bool selected = false;
+        ::world::BuildingType type{};
     };
     std::vector<Marker> markers;
     for (const core::Entity& entity : registry_.entities()) {
@@ -64,7 +71,8 @@ void EntityRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
         const auto* building = registry_.get<::world::Building>(entity.id);
         markers.push_back({position->point, std::move(label), building != nullptr,
                            site != nullptr, building != nullptr ? building->size : ::world::TileSize{},
-                           registry_.has<::world::Selected>(entity.id)});
+                           registry_.has<::world::Selected>(entity.id),
+                           building != nullptr ? building->type : ::world::BuildingType{}});
     }
     // Painter's algorithm on what each entity covers: a building its footprint, anything
     // else its point, so a character beside a big building is drawn on the right side of it.
@@ -88,8 +96,21 @@ void EntityRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
                           : marker.site    ? Cube::footprint(tile, marker.footprint, SiteFront, SiteTop)
                                            : Cube::footprint(tile, marker.footprint, BuildingFront,
                                                              BuildingTop);
-        cube.draw(canvas, center);
-        const ui::Rect body = cube.bounds(center);
+        // A finished building with a sprite is drawn as it; otherwise (or when its texture
+        // does not load) as the cube.
+        std::optional<ui::Rect> sprite_body;
+        if (marker.building && !marker.site) {
+            if (const auto sprite = graphics::building_sprite(marker.type, seconds)) {
+                const ui::Rect dest = sprite->dest({center.x, center.y}, scale);
+                if (graphics::draw_loaded_sprite(canvas, sprite->sprite, dest)) {
+                    sprite_body = dest;
+                }
+            }
+        }
+        if (!sprite_body) {
+            cube.draw(canvas, center);
+        }
+        const ui::Rect body = sprite_body.value_or(cube.bounds(center));
         // Selected units are outlined (box selection, see UnitCommand).
         if (marker.selected) {
             canvas.stroke_rect(body, ui::theme::Accent, SelectionOutline);

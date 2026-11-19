@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "core/registry.hpp"
+#include "graphics/building_sprites.hpp"
 #include "graphics/texture_manager.hpp"
 #include "scene/world/core/camera.hpp"
 #include "scene/world/render/entity_renderer.hpp"
@@ -240,4 +241,52 @@ TEST(EntityRenderer, AWorkerIsLabelledWithTheWorkItDoes) {
     }
     EXPECT_TRUE(miner_label);
     EXPECT_TRUE(idle_label);
+}
+
+TEST_F(EntityRendererTexture, AFinishedHeadquartersIsDrawnAsItsSpriteOnItsFootprint) {
+    // Given: the headquarters sheet loads, 1 s of animation has passed
+    graphics::TextureManager::instance().register_texture(graphics::HeadquartersTexture,
+                                                          "hq.png");
+    core::Registry registry;
+    const core::EntityId hq = registry.create("Headquarters");
+    registry.add(hq, world::Building{world::BuildingType::Headquarters, {0, 0}, {5, 5}});
+    registry.add(hq, world::Position{{0.0f, 0.0f}});
+    const world::Camera camera;
+    const scene::world::EntityRenderer renderer(registry, camera, [] { return 1.0f; });
+    FakeCanvas canvas;
+
+    // When
+    renderer.draw(canvas, Screen);
+
+    // Then: no cube, the anchor on the screen centre, and the current frame
+    EXPECT_TRUE(canvas.triangles.empty());
+    ASSERT_EQ(canvas.textures.size(), 1u);
+    const DrawnTexture& drawn = canvas.textures.front();
+    const auto expected = graphics::building_sprite(world::BuildingType::Headquarters, 1.0f);
+    ASSERT_TRUE(expected && drawn.options.source);
+    EXPECT_FLOAT_EQ(drawn.dest.x + graphics::HeadquartersAnchor.x, Screen.width / 2.0f);
+    EXPECT_FLOAT_EQ(drawn.dest.y + graphics::HeadquartersAnchor.y, Screen.height / 2.0f);
+    EXPECT_FLOAT_EQ(drawn.options.source->x, expected->sprite.source->x);
+    EXPECT_EQ(canvas.texts.size(), 1u); // the label is still shown
+}
+
+TEST_F(EntityRendererTexture, AHeadquartersStillBeingBuiltStaysACube) {
+    // Given
+    graphics::TextureManager::instance().register_texture(graphics::HeadquartersTexture,
+                                                          "hq.png");
+    core::Registry registry;
+    const core::EntityId hq = registry.create("Headquarters");
+    registry.add(hq, world::Building{world::BuildingType::Headquarters, {0, 0}, {5, 5}});
+    registry.add(hq, world::ConstructionSite{0.0f, 100.0f});
+    registry.add(hq, world::Position{{0.0f, 0.0f}});
+    const world::Camera camera;
+    const scene::world::EntityRenderer renderer(registry, camera, [] { return 1.0f; });
+    FakeCanvas canvas;
+
+    // When
+    renderer.draw(canvas, Screen);
+
+    // Then
+    EXPECT_TRUE(canvas.textures.empty());
+    EXPECT_EQ(canvas.triangles.size(), TrianglesPerCube);
 }

@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "graphics/building_sprites.hpp"
 #include "graphics/terrain_sprites.hpp"
 
 namespace graphics {
@@ -18,6 +19,10 @@ void register_game_textures(TextureManager& textures, const std::filesystem::pat
     add(IronOreTexture, "iron_ore.png");
     add(CopperOreTexture, "copper_ore.png");
     add(CoalTexture, "coal.png");
+
+    const std::filesystem::path buildings = data_dir / "sprite" / "buildings";
+    textures.register_texture(HeadquartersTexture,
+                              (buildings / "headquarters_sheet.png").string());
 }
 
 } // namespace graphics

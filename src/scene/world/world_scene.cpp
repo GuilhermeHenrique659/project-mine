@@ -88,11 +88,14 @@ std::unique_ptr<scene::Scene> make_world_scene(game::Game& game, game::SaveGame 
     auto menu = std::make_unique<WorldMenu>(game.event_bus(), *model, pointer);
     WorldMenu& menu_ref = *menu; // owned by the view, which outlives the controller
     std::vector<std::unique_ptr<Renderer>> renderers;
-    renderers.push_back(std::make_unique<TerrainRenderer>(
-        model->terrain(), model->camera(), [start = std::chrono::steady_clock::now()] {
-            return std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count();
-        }));
-    renderers.push_back(std::make_unique<EntityRenderer>(model->registry(), model->camera()));
+    // Animation time (water, the headquarters antenna): seconds since the scene started.
+    const auto animation_clock = [start = std::chrono::steady_clock::now()] {
+        return std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count();
+    };
+    renderers.push_back(
+        std::make_unique<TerrainRenderer>(model->terrain(), model->camera(), animation_clock));
+    renderers.push_back(
+        std::make_unique<EntityRenderer>(model->registry(), model->camera(), animation_clock));
     renderers.push_back(std::make_unique<ShotRenderer>(*model));
     renderers.push_back(std::make_unique<SiteWork>(*model, pointer));
     renderers.push_back(std::make_unique<UnitCommand>(*model, pointer));
