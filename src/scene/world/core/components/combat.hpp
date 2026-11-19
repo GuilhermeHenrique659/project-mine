@@ -1,6 +1,9 @@
 #pragma once
 
+#include <optional>
+
 #include "core/entity.hpp"
+#include "scene/world/core/isometric.hpp"
 
 namespace world {
 
@@ -25,6 +28,9 @@ struct Health {
 // gone, the shooter runs out of ammo or gets a move order (see ShootSystem). Not saved.
 struct AttackOrder {
     core::EntityId target = 0;
+    // The tile last sent as a UnitsApproachRequested goal: asked again only when the target
+    // is on another tile, so an approach that cannot bring it in range is not re-sent each tick.
+    std::optional<TileCoord> approach_goal;
 };
 
 // Marks something to practise shooting on (the Training Target building): shots damage its

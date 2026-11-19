@@ -6,6 +6,8 @@
 #include "event/event_bus.hpp"
 #include "scene/world/core/components/combat.hpp"
 #include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/mover.hpp"
+#include "scene/world/core/components/path_follower.hpp"
 #include "scene/world/core/construction/construction.hpp"
 #include "scene/world/core/entities/building.hpp"
 #include "scene/world/core/components/position.hpp"
@@ -353,4 +355,105 @@ TEST(ShootSystem, AShotNotFiredGivesNoExperience) {
 
     // Then
     EXPECT_EQ(f.registry.get<world::Shooter>(shooter)->experience, 0);
+}
+
+TEST(ShootSystem, AnAttackOrderOutOfRangeAsksTheShooterToApproachTheTarget) {
+    // Given: a target beyond the weapon's range
+    Fixture f;
+    const auto shooter = f.shooter(1, 10);
+    const auto target = f.target(Gun.range + 4.0f);
+    std::vector<world::UnitsApproachRequested> approaches;
+    const auto subscription = event::subscribe_scoped<world::UnitsApproachRequested>(
+        f.bus, [&](const world::UnitsApproachRequested& request) { approaches.push_back(request); });
+    f.bus.publish(world::UnitsAttackRequested{{shooter}, target});
+
+    // When
+    f.system.update(0.1f);
+
+    // Then: no shot, the order is kept and the shooter walks to the target's tile
+    EXPECT_EQ(f.ammo(shooter), 10);
+    EXPECT_TRUE(f.registry.has<world::AttackOrder>(shooter));
+    ASSERT_EQ(approaches.size(), 1u);
+    EXPECT_EQ(approaches[0].units, std::vector<core::EntityId>{shooter});
+    EXPECT_EQ(approaches[0].goal,
+              world::tile_containing(f.registry.get<world::Position>(target)->point));
+}
+
+TEST(ShootSystem, AShooterAlreadyWalkingToTheTargetIsNotAskedAgain) {
+    // Given
+    Fixture f;
+    const auto shooter = f.shooter(1, 10);
+    const auto target = f.target(Gun.range + 4.0f);
+    int approaches = 0;
+    const auto subscription = event::subscribe_scoped<world::UnitsApproachRequested>(
+        f.bus, [&](const world::UnitsApproachRequested& request) {
+            ++approaches;
+            f.registry.add(request.units[0], world::PathFollower{{request.goal}});
+        });
+    f.bus.publish(world::UnitsAttackRequested{{shooter}, target});
+
+    // When
+    f.system.update(0.1f);
+    f.system.update(0.1f);
+
+    // Then
+    EXPECT_EQ(approaches, 1);
+}
+
+TEST(ShootSystem, AShooterThatGetsInRangeStopsAndFires) {
+    // Given: walking towards a target that is now in range
+    Fixture f;
+    const auto shooter = f.shooter(1, 10);
+    const auto target = f.target(1.0f);
+    f.registry.add(shooter, world::PathFollower{{{1, 0}}});
+    f.registry.add(shooter, world::Mover{1.0f, {1.0f, 0.0f}});
+    f.bus.publish(world::UnitsAttackRequested{{shooter}, target});
+
+    // When
+    f.system.update(0.1f);
+
+    // Then
+    EXPECT_FALSE(f.registry.has<world::PathFollower>(shooter));
+    EXPECT_FLOAT_EQ(f.registry.get<world::Mover>(shooter)->direction.x, 0.0f);
+    EXPECT_FLOAT_EQ(f.registry.get<world::Mover>(shooter)->direction.y, 0.0f);
+    EXPECT_EQ(f.health(target), world::MaxHealth - Gun.damage);
+}
+
+TEST(ShootSystem, AnApproachThatGivesNoWalkIsNotRequestedEveryTick) {
+    // Given: nobody paths the shooter (no path, or still out of range at the end of it)
+    Fixture f;
+    const auto shooter = f.shooter(1, 10);
+    const auto target = f.target(Gun.range + 4.0f);
+    int approaches = 0;
+    const auto subscription = event::subscribe_scoped<world::UnitsApproachRequested>(
+        f.bus, [&](const world::UnitsApproachRequested&) { ++approaches; });
+    f.bus.publish(world::UnitsAttackRequested{{shooter}, target});
+
+    // When
+    for (int step = 0; step < 10; ++step) {
+        f.system.update(0.1f);
+    }
+
+    // Then
+    EXPECT_EQ(approaches, 1);
+}
+
+TEST(ShootSystem, ATargetThatMovesToAnotherTileIsApproachedAgain) {
+    // Given
+    Fixture f;
+    const auto shooter = f.shooter(1, 10);
+    const auto target = f.target(Gun.range + 4.0f);
+    std::vector<world::TileCoord> goals;
+    const auto subscription = event::subscribe_scoped<world::UnitsApproachRequested>(
+        f.bus, [&](const world::UnitsApproachRequested& request) { goals.push_back(request.goal); });
+    f.bus.publish(world::UnitsAttackRequested{{shooter}, target});
+    f.system.update(0.1f);
+
+    // When
+    f.registry.get<world::Position>(target)->point.y += 3.0f;
+    f.system.update(0.1f);
+
+    // Then
+    ASSERT_EQ(goals.size(), 2u);
+    EXPECT_FALSE(goals[0] == goals[1]);
 }

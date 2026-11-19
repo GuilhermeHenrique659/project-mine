@@ -35,7 +35,9 @@ float hit_chance(const WeaponStats& weapon, int experience);
 // experience and publishes ShotFired; it hits when `roll` comes below hit_chance(), and
 // only then takes the weapon's damage from the target's Health (destroying it at 0).
 // UnitsAttackRequested gives each unit an AttackOrder: update() then fires it at the target
-// whenever it can, and drops the order once the target is gone or the ammo runs out;
+// whenever it can; while the target is beyond the weapon's range it publishes
+// UnitsApproachRequested to the target's tile (only when that tile differs from the last
+// one asked, AttackOrder::approach_goal) and, once in range, stops the walk to fire. It drops the order once the target is gone or the ammo runs out;
 // UnitsMoveRequested drops it too. update() also counts the cooldowns down. Everything passed must outlive it.
 class ShootSystem : public System {
 public:
@@ -46,6 +48,8 @@ public:
 
 private:
     void shoot(core::EntityId shooter, core::EntityId target);
+    // Whether the shooter's weapon reaches the target; empty when either cannot be measured.
+    std::optional<bool> in_range(core::EntityId shooter, core::EntityId target) const;
 
     core::Registry& registry_;
     event::EventBus& bus_;

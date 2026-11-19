@@ -20,6 +20,14 @@ struct UnitsMoveRequested {
     TileCoord goal;
 };
 
+// Units must walk closer to `goal` without dropping what they are doing (unlike
+// UnitsMoveRequested, which cancels attack and resupply orders): the ShootSystem sends it
+// for an attacker whose target is out of range. The MoveOrderSystem paths them like a move.
+struct UnitsApproachRequested {
+    std::vector<core::EntityId> units;
+    TileCoord goal;
+};
+
 // The player orders units (the selection) to resupply at a Supply building. The
 // ResupplySystem walks each soldier among them next to it, where it takes a weapon and an
 // ammo stack.

@@ -8,7 +8,7 @@
 
 namespace world {
 
-// Carries out UnitsMoveRequested: every soldier of the order gets a PathFollower with the
+// Carries out UnitsMoveRequested and UnitsApproachRequested: every soldier of the order gets a PathFollower with the
 // A* path (find_path, around water and buildings) from its tile to its own tile of the
 // formation around the goal. A soldier with no path there stops where it is. Everything
 // passed must outlive it.
@@ -20,11 +20,12 @@ public:
     void update(float) override {}
 
 private:
-    void order(const UnitsMoveRequested& request);
+    void order(const std::vector<core::EntityId>& units, TileCoord goal);
 
     core::Registry& registry_;
     const Terrain& terrain_;
     event::ScopedSubscription subscription_;
+    event::ScopedSubscription approach_subscription_;
 };
 
 } // namespace world

@@ -17,11 +17,15 @@ MoveOrderSystem::MoveOrderSystem(core::Registry& registry, event::EventBus& bus,
     : registry_(registry),
       terrain_(terrain),
       subscription_(event::subscribe_scoped<UnitsMoveRequested>(
-          bus, [this](const UnitsMoveRequested& request) { order(request); })) {}
+          bus, [this](const UnitsMoveRequested& request) { order(request.units, request.goal); })),
+      approach_subscription_(event::subscribe_scoped<UnitsApproachRequested>(
+          bus, [this](const UnitsApproachRequested& request) {
+              order(request.units, request.goal);
+          })) {}
 
-void MoveOrderSystem::order(const UnitsMoveRequested& request) {
+void MoveOrderSystem::order(const std::vector<core::EntityId>& units, TileCoord goal) {
     std::vector<core::EntityId> soldiers;
-    for (const core::EntityId id : request.units) {
+    for (const core::EntityId id : units) {
         if (registry_.has<Soldier>(id) && registry_.has<Position>(id)) {
             soldiers.push_back(id);
         }
@@ -32,7 +36,7 @@ void MoveOrderSystem::order(const UnitsMoveRequested& request) {
     const BlockedFn is_blocked = [this](TileCoord tile) {
         return building_at(registry_, tile) != 0 || terrain_.tile_at(tile) == TileType::Water;
     };
-    const std::vector<TileCoord> goals = formation_tiles(request.goal, soldiers.size(), is_blocked);
+    const std::vector<TileCoord> goals = formation_tiles(goal, soldiers.size(), is_blocked);
     for (std::size_t i = 0; i < soldiers.size(); ++i) {
         const core::EntityId id = soldiers[i];
         registry_.remove<PathFollower>(id);

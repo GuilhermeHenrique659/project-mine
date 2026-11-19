@@ -106,3 +106,16 @@ TEST(MoveOrderSystem, AWorkerInTheOrderIsIgnored) {
     // Then
     EXPECT_EQ(f.path(worker), nullptr);
 }
+
+TEST(MoveOrderSystem, AnApproachGivesTheSoldierAPathTowardsTheGoal) {
+    // Given
+    Fixture f;
+    const core::EntityId soldier = world::spawn_soldier(f.registry, "Soldier", {0.5f, 0.5f});
+
+    // When
+    f.bus.publish(world::UnitsApproachRequested{{soldier}, {4, 0}});
+
+    // Then
+    ASSERT_NE(f.path(soldier), nullptr);
+    EXPECT_EQ(f.path(soldier)->tiles.back(), (world::TileCoord{4, 0}));
+}
