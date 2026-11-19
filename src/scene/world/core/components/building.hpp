@@ -37,7 +37,8 @@ struct ConstructionSite {
 struct Recipe {
     std::vector<ItemStack> inputs{};
     std::optional<Item> output = std::nullopt;
-    float rate = 0.0f; // outputs per second
+    float rate = 0.0f;     // crafts per second
+    int output_count = 1;  // outputs made by one craft
 };
 
 enum class BuildingState { Working, Idle };

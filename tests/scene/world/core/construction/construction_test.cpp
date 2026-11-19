@@ -289,3 +289,161 @@ TEST(BuildingType, HouseRoundTripsThroughItsSaveKey) {
     EXPECT_EQ(key, "House");
     EXPECT_EQ(parsed, world::BuildingType::House);
 }
+
+namespace {
+
+// Checks a factory catalog entry: cost, effort, crew and power.
+void expect_factory_entry(world::BuildingType type, const char* name,
+                          const std::vector<world::ItemStack>& cost) {
+    const world::Construction* factory = world::find_construction(type);
+    ASSERT_NE(factory, nullptr);
+    EXPECT_EQ(factory->name, name);
+    ASSERT_EQ(factory->cost.size(), cost.size());
+    for (std::size_t i = 0; i < cost.size(); ++i) {
+        EXPECT_EQ(factory->cost[i].item, cost[i].item);
+        EXPECT_EQ(factory->cost[i].count, cost[i].count);
+    }
+    EXPECT_FLOAT_EQ(factory->effort, 1200.0f);
+    ASSERT_NE(factory->blueprint.find<world::Staffing>(), nullptr);
+    EXPECT_EQ(factory->blueprint.find<world::Staffing>()->needed, 50);
+    ASSERT_NE(factory->blueprint.find<world::PowerConsumer>(), nullptr);
+    EXPECT_FLOAT_EQ(factory->blueprint.find<world::PowerConsumer>()->demand_kw, 300.0f);
+}
+
+const world::Recipe* recipe_of(world::BuildingType type) {
+    const world::Construction* factory = world::find_construction(type);
+    if (factory == nullptr || factory->blueprint.find<world::Producer>() == nullptr) {
+        return nullptr;
+    }
+    return &factory->blueprint.find<world::Producer>()->recipe;
+}
+
+} // namespace
+
+TEST(ConstructionCatalog, ToolFactoryCosts200SteelAnd100ElectronicsTakes1200WorkNeeds50WorkersOn300Kw) {
+    // Given / When / Then
+    expect_factory_entry(world::BuildingType::ToolFactory, "Tool Factory",
+                         {{world::items::Steel, 200}, {world::items::Electronics, 100}});
+}
+
+TEST(ConstructionCatalog, AmmoFactoryCosts200SteelAnd100ToolsTakes1200WorkNeeds50WorkersOn300Kw) {
+    // Given / When / Then
+    expect_factory_entry(world::BuildingType::AmmoFactory, "Ammo Factory",
+                         {{world::items::Steel, 200}, {world::items::Tool, 100}});
+}
+
+TEST(ConstructionCatalog, WeaponFactoryCosts200SteelAnd100ToolsTakes1200WorkNeeds50WorkersOn300Kw) {
+    // Given / When / Then
+    expect_factory_entry(world::BuildingType::WeaponFactory, "Weapon Factory",
+                         {{world::items::Steel, 200}, {world::items::Tool, 100}});
+}
+
+TEST(ConstructionCatalog, ToolFactoryMakesOneToolFromOneElectronicsAndOneSteel) {
+    // Given / When
+    const world::Recipe* recipe = recipe_of(world::BuildingType::ToolFactory);
+
+    // Then
+    ASSERT_NE(recipe, nullptr);
+    EXPECT_EQ(recipe->output, world::items::Tool);
+    EXPECT_EQ(recipe->output_count, 1);
+    ASSERT_EQ(recipe->inputs.size(), 2u);
+    EXPECT_EQ(recipe->inputs[0].item, world::items::Electronics);
+    EXPECT_EQ(recipe->inputs[0].count, 1);
+    EXPECT_EQ(recipe->inputs[1].item, world::items::Steel);
+    EXPECT_EQ(recipe->inputs[1].count, 1);
+}
+
+TEST(ConstructionCatalog, AmmoFactoryMakesTwoAmmoFromOneCoalOneIronOreAndOneCopperOre) {
+    // Given / When
+    const world::Recipe* recipe = recipe_of(world::BuildingType::AmmoFactory);
+
+    // Then
+    ASSERT_NE(recipe, nullptr);
+    EXPECT_EQ(recipe->output, world::items::Ammo);
+    EXPECT_EQ(recipe->output_count, 2);
+    ASSERT_EQ(recipe->inputs.size(), 3u);
+    EXPECT_EQ(recipe->inputs[0].item, world::items::Coal);
+    EXPECT_EQ(recipe->inputs[1].item, world::items::IronOre);
+    EXPECT_EQ(recipe->inputs[2].item, world::items::CopperOre);
+    for (const auto& input : recipe->inputs) {
+        EXPECT_EQ(input.count, 1);
+    }
+}
+
+TEST(ConstructionCatalog, WeaponFactoryMakesOneWeaponFromOneSteelAndOneTool) {
+    // Given / When
+    const world::Recipe* recipe = recipe_of(world::BuildingType::WeaponFactory);
+
+    // Then
+    ASSERT_NE(recipe, nullptr);
+    EXPECT_EQ(recipe->output, world::items::Weapon);
+    EXPECT_EQ(recipe->output_count, 1);
+    ASSERT_EQ(recipe->inputs.size(), 2u);
+    EXPECT_EQ(recipe->inputs[0].item, world::items::Steel);
+    EXPECT_EQ(recipe->inputs[1].item, world::items::Tool);
+}
+
+TEST(ConstructionCatalog, AmmoFactoryHasGeneralSlotsAndOneSectionPerInput) {
+    // Given
+    const world::Construction* factory = world::find_construction(world::BuildingType::AmmoFactory);
+    ASSERT_NE(factory, nullptr);
+    world::Inventory inventory = *factory->blueprint.find<world::Inventory>();
+
+    // When
+    const int coal_left = inventory.add(world::items::Coal, 1000);
+    const int iron_left = inventory.add(world::items::IronOre, 1000);
+    const int copper_left = inventory.add(world::items::CopperOre, 1000);
+    const int ammo_left = inventory.add(world::items::Ammo, 2000);
+
+    // Then: 5 slots per input, 10 general slots for the ammo
+    EXPECT_EQ(inventory.capacity(), 25u);
+    EXPECT_EQ(coal_left, 500);
+    EXPECT_EQ(iron_left, 500);
+    EXPECT_EQ(copper_left, 500);
+    EXPECT_EQ(ammo_left, 1000);
+}
+
+TEST(ConstructionCatalog, ToolAndWeaponFactoriesKeepTheirInputsOutOfTheGeneralSlots) {
+    // Given
+    const world::Construction* tool_factory =
+        world::find_construction(world::BuildingType::ToolFactory);
+    const world::Construction* weapon_factory =
+        world::find_construction(world::BuildingType::WeaponFactory);
+    ASSERT_NE(tool_factory, nullptr);
+    ASSERT_NE(weapon_factory, nullptr);
+    world::Inventory tools = *tool_factory->blueprint.find<world::Inventory>();
+    world::Inventory weapons = *weapon_factory->blueprint.find<world::Inventory>();
+
+    // When
+    const int electronics_left = tools.add(world::items::Electronics, 1000);
+    const int tool_steel_left = tools.add(world::items::Steel, 1000);
+    const int tool_left = tools.add(world::items::Tool, 2000);
+    const int weapon_steel_left = weapons.add(world::items::Steel, 1000);
+    const int weapon_tool_left = weapons.add(world::items::Tool, 1000);
+    const int weapon_left = weapons.add(world::items::Weapon, 2000);
+
+    // Then: 5 slots per input, 10 general slots for the output
+    EXPECT_EQ(electronics_left, 500);
+    EXPECT_EQ(tool_steel_left, 500);
+    EXPECT_EQ(tool_left, 1000);
+    EXPECT_EQ(weapon_steel_left, 500);
+    EXPECT_EQ(weapon_tool_left, 500);
+    EXPECT_EQ(weapon_left, 1000);
+}
+
+TEST(BuildingType, NewFactoriesRoundTripThroughTheirSaveKeys) {
+    // Given
+    const std::vector<std::pair<world::BuildingType, std::string_view>> expected{
+        {world::BuildingType::ToolFactory, "ToolFactory"},
+        {world::BuildingType::AmmoFactory, "AmmoFactory"},
+        {world::BuildingType::WeaponFactory, "WeaponFactory"}};
+
+    for (const auto& [type, name] : expected) {
+        // When
+        const std::string_view key = world::building_type_key(type);
+
+        // Then
+        EXPECT_EQ(key, name);
+        EXPECT_EQ(world::parse_building_type(key), type);
+    }
+}

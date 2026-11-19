@@ -128,3 +128,21 @@ TEST(WorkerType, AWorkerAssignedToAnElectronicFactoryIsATechnician) {
     EXPECT_EQ(f.type(), world::WorkerType::Technician);
     EXPECT_STREQ(world::to_string(f.type()), "Technician");
 }
+
+TEST(WorkerType, WorkersOfTheToolAmmoAndWeaponFactoriesAreToolmakersMunitionersAndGunsmiths) {
+    const std::vector<std::pair<world::BuildingType, const char*>> expected{
+        {world::BuildingType::ToolFactory, "Toolmaker"},
+        {world::BuildingType::AmmoFactory, "Munitioner"},
+        {world::BuildingType::WeaponFactory, "Gunsmith"}};
+    for (const auto& [building, label] : expected) {
+        // Given
+        Fixture f;
+        const auto factory = f.add_building(building);
+
+        // When
+        *f.registry.get<world::Worker>(f.worker) = {world::WorkerState::Working, factory};
+
+        // Then
+        EXPECT_STREQ(world::to_string(f.type()), label);
+    }
+}

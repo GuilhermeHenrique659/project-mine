@@ -21,6 +21,9 @@ constexpr float ScrollbarGap = 8.0f;
 // Items that are not a tile (ores reuse their tile color).
 constexpr ui::Color SteelColor{185, 190, 198, 255};
 constexpr ui::Color ElectronicsColor{60, 170, 90, 255};
+constexpr ui::Color ToolColor{210, 150, 60, 255};
+constexpr ui::Color AmmoColor{200, 175, 70, 255};
+constexpr ui::Color WeaponColor{95, 100, 115, 255};
 // Opacity of the item hint in an empty filtered slot.
 constexpr unsigned char FilterHintAlpha = 60;
 } // namespace
@@ -31,6 +34,9 @@ ui::Color item_color(::world::ItemType type) {
     case ::world::ItemType::Coal: return CoalColor;
     case ::world::ItemType::Steel: return SteelColor;
     case ::world::ItemType::Electronics: return ElectronicsColor;
+    case ::world::ItemType::Tool: return ToolColor;
+    case ::world::ItemType::Ammo: return AmmoColor;
+    case ::world::ItemType::Weapon: return WeaponColor;
     case ::world::ItemType::IronOre: break;
     }
     return IronOreColor;
