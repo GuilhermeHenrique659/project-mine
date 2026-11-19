@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "scene/world/core/components/character.hpp"
+#include "scene/world/core/components/facing.hpp"
 #include "scene/world/core/components/mover.hpp"
 #include "scene/world/core/components/player_controlled.hpp"
 #include "scene/world/core/components/route_follower.hpp"
@@ -104,6 +105,10 @@ void CharacterMoveSystem::update(float delta_time) {
                 const float speed = mover.running ? mover.speed * RunSpeedMultiplier : mover.speed;
                 const float step = speed * delta_time / length;
                 move(id, position, {mover.direction.x * step, mover.direction.y * step});
+                // It looks where it walks; standing still keeps the last facing.
+                if (Facing* facing = registry_.get<Facing>(id)) {
+                    facing->direction = facing_of(mover.direction);
+                }
             }
 
             CharacterState state = CharacterState::Idle;

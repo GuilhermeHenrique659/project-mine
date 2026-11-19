@@ -15,6 +15,7 @@ Python 3 from MSYS2 (`python`), stdlib only (no Pillow). Run everything from the
 - `tools/sprites/<category>.py`: one generator per folder of `resource/sprite/`. `environment.py` makes the terrain (`grass_0..3`, `iron_ore`, `copper_ore`, `coal`, `water_sheet`). Add a new script for a new category (e.g. `buildings.py` -> `resource/sprite/buildings/`).
 - `tools/sprites/iso.py`: `IsoCanvas(image, origin)`, a tiny isometric rasterizer in world space (x right-down, y left-down, z = pixels up): `box()` with per-face colors or `(u, v) -> color` texture functions, `line()`, `dot()`; `lit_faces(color)` gives top/left/right shades. Draw back to front.
 - `tools/sprites/buildings.py`: building sheets (`headquarters_sheet.png`: cyberpunk-industrial block, 8 frames of a spinning antenna). A building frame is sized so its footprint diamond is `width x 64` px wide and its **anchor** (the footprint centre) sits at a fixed pixel; size, anchor and frame count must match `src/graphics/building_sprites.hpp`.
+- `tools/sprites/units.py`: `character_sheet.png`, a small 3D figure (capsules in the character's own frame: forward / right / up) turned to each of the 8 facings and projected like the game camera, so directions stay consistent; rows = `world::Direction` order, column 0 standing, then the walk cycle. Must match `src/graphics/unit_sprites.hpp`.
 - `tools/sprites/preview.py`: `strip <out.png> <pngs...>` (side by side) and `tiled <out.png> <tiles...>` (a 6x6 isometric patch like the game). Both enlarge 3x.
 
 ## Workflow

@@ -8,6 +8,8 @@
 
 #include "core/registry.hpp"
 #include "scene/world/core/components/character.hpp"
+#include "scene/world/core/components/facing.hpp"
+#include "scene/world/core/entities/character.hpp"
 #include "scene/world/core/components/mover.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/systems/character_move_system.hpp"
@@ -469,4 +471,25 @@ TEST(CharacterMoveSystem, AUnitWithoutARouteStopsAtAnyBuilding) {
 
     // Then
     EXPECT_LT(registry.get<world::Position>(unit)->point.x, 1.0f);
+}
+
+TEST(CharacterMoveSystem, ACharacterFacesWhereItWalksAndKeepsItWhenItStops) {
+    // Given: a spawned character walking screen right (world (1, -1))
+    core::Registry registry;
+    event::EventBus bus;
+    world::CharacterMoveSystem system(registry, bus);
+    const core::EntityId id = world::spawn_character(registry, "Walker", {0.0f, 0.0f});
+    registry.get<world::Mover>(id)->direction = {1.0f, -1.0f};
+
+    ASSERT_NE(registry.get<world::Facing>(id), nullptr);
+
+    // When: it walks, then stops
+    system.update(0.1f);
+    const world::Direction walking = registry.get<world::Facing>(id)->direction;
+    registry.get<world::Mover>(id)->direction = {0.0f, 0.0f};
+    system.update(0.1f);
+
+    // Then
+    EXPECT_EQ(walking, world::Direction::East);
+    EXPECT_EQ(registry.get<world::Facing>(id)->direction, world::Direction::East);
 }

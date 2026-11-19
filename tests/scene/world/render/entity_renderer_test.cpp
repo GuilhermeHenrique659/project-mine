@@ -5,6 +5,8 @@
 #include "core/registry.hpp"
 #include "graphics/building_sprites.hpp"
 #include "graphics/texture_manager.hpp"
+#include "graphics/unit_sprites.hpp"
+#include "scene/world/core/components/facing.hpp"
 #include "scene/world/core/camera.hpp"
 #include "scene/world/render/entity_renderer.hpp"
 #include "support/fake_canvas.hpp"
@@ -267,6 +269,35 @@ TEST_F(EntityRendererTexture, AFinishedHeadquartersIsDrawnAsItsSpriteOnItsFootpr
     EXPECT_FLOAT_EQ(drawn.dest.x + graphics::HeadquartersAnchor.x, Screen.width / 2.0f);
     EXPECT_FLOAT_EQ(drawn.dest.y + graphics::HeadquartersAnchor.y, Screen.height / 2.0f);
     EXPECT_FLOAT_EQ(drawn.options.source->x, expected->sprite.source->x);
+    EXPECT_EQ(canvas.texts.size(), 1u); // the label is still shown
+}
+
+TEST_F(EntityRendererTexture, ACharacterIsDrawnAsTheFrameOfItsFacingAndState) {
+    // Given: the character sheet loads; a character walking, facing west
+    graphics::TextureManager::instance().register_texture(graphics::CharacterTexture,
+                                                          "character.png");
+    core::Registry registry;
+    const core::EntityId id = world::spawn_character(registry, "Player", {0.0f, 0.0f});
+    registry.get<world::Facing>(id)->direction = world::Direction::West;
+    registry.get<world::Character>(id)->state = world::CharacterState::Moving;
+    const world::Camera camera;
+    const scene::world::EntityRenderer renderer(registry, camera, [] { return 0.25f; });
+    FakeCanvas canvas;
+
+    // When
+    renderer.draw(canvas, Screen);
+
+    // Then: no cube; the frame of that facing and state, feet on the screen centre
+    EXPECT_TRUE(canvas.triangles.empty());
+    ASSERT_EQ(canvas.textures.size(), 1u);
+    const DrawnTexture& drawn = canvas.textures.front();
+    const auto expected = graphics::character_sprite(world::Direction::West,
+                                                     world::CharacterState::Moving, 0.25f);
+    ASSERT_TRUE(drawn.options.source && expected.sprite.source);
+    EXPECT_FLOAT_EQ(drawn.options.source->x, expected.sprite.source->x);
+    EXPECT_FLOAT_EQ(drawn.options.source->y, expected.sprite.source->y);
+    EXPECT_FLOAT_EQ(drawn.dest.x + graphics::CharacterAnchor.x, Screen.width / 2.0f);
+    EXPECT_FLOAT_EQ(drawn.dest.y + graphics::CharacterAnchor.y, Screen.height / 2.0f);
     EXPECT_EQ(canvas.texts.size(), 1u); // the label is still shown
 }
 

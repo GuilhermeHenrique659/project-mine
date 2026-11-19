@@ -18,6 +18,8 @@
 
 #include "graphics/building_sprites.hpp"
 #include "graphics/sprite.hpp"
+#include "graphics/unit_sprites.hpp"
+#include "scene/world/core/components/facing.hpp"
 
 namespace scene::world {
 
@@ -44,7 +46,9 @@ void EntityRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
         bool site = false;
         ::world::TileSize footprint;
         bool selected = false;
-        ::world::BuildingType type{};
+        // Drawn instead of the cube when its texture loads (finished buildings that have
+        // one, characters).
+        std::optional<graphics::AnchoredSprite> sprite;
     };
     std::vector<Marker> markers;
     for (const core::Entity& entity : registry_.entities()) {
@@ -69,10 +73,18 @@ void EntityRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
             label += " (" + std::to_string(percent) + "%)";
         }
         const auto* building = registry_.get<::world::Building>(entity.id);
+        std::optional<graphics::AnchoredSprite> sprite;
+        if (building != nullptr && site == nullptr) {
+            sprite = graphics::building_sprite(building->type, seconds);
+        } else if (const auto* character = registry_.get<::world::Character>(entity.id)) {
+            const auto* facing = registry_.get<::world::Facing>(entity.id);
+            sprite = graphics::character_sprite(
+                facing != nullptr ? facing->direction : ::world::Facing{}.direction,
+                character->state, seconds);
+        }
         markers.push_back({position->point, std::move(label), building != nullptr,
                            site != nullptr, building != nullptr ? building->size : ::world::TileSize{},
-                           registry_.has<::world::Selected>(entity.id),
-                           building != nullptr ? building->type : ::world::BuildingType{}});
+                           registry_.has<::world::Selected>(entity.id), std::move(sprite)});
     }
     // Painter's algorithm on what each entity covers: a building its footprint, anything
     // else its point, so a character beside a big building is drawn on the right side of it.
@@ -96,15 +108,13 @@ void EntityRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
                           : marker.site    ? Cube::footprint(tile, marker.footprint, SiteFront, SiteTop)
                                            : Cube::footprint(tile, marker.footprint, BuildingFront,
                                                              BuildingTop);
-        // A finished building with a sprite is drawn as it; otherwise (or when its texture
-        // does not load) as the cube.
+        // The sprite, anchored on the entity's ground point; the cube when there is none or
+        // its texture does not load.
         std::optional<ui::Rect> sprite_body;
-        if (marker.building && !marker.site) {
-            if (const auto sprite = graphics::building_sprite(marker.type, seconds)) {
-                const ui::Rect dest = sprite->dest({center.x, center.y}, scale);
-                if (graphics::draw_loaded_sprite(canvas, sprite->sprite, dest)) {
-                    sprite_body = dest;
-                }
+        if (marker.sprite) {
+            const ui::Rect dest = marker.sprite->dest({center.x, center.y}, scale);
+            if (graphics::draw_loaded_sprite(canvas, marker.sprite->sprite, dest)) {
+                sprite_body = dest;
             }
         }
         if (!sprite_body) {

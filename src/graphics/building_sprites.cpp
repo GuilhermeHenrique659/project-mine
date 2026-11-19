@@ -20,16 +20,11 @@ const Animation& headquarters_animation() {
 
 } // namespace
 
-ui::Rect BuildingSprite::dest(ui::Point ground, float scale) const {
-    return {ground.x - anchor.x * scale, ground.y - anchor.y * scale, size.width * scale,
-            size.height * scale};
-}
-
-std::optional<BuildingSprite> building_sprite(::world::BuildingType type, float seconds) {
+std::optional<AnchoredSprite> building_sprite(::world::BuildingType type, float seconds) {
     if (type != ::world::BuildingType::Headquarters) {
         return std::nullopt;
     }
-    return BuildingSprite{*headquarters_animation().sprite_at(seconds), HeadquartersFrameSize,
+    return AnchoredSprite{*headquarters_animation().sprite_at(seconds), HeadquartersFrameSize,
                           HeadquartersAnchor};
 }
 
