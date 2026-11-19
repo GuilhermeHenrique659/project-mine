@@ -17,6 +17,10 @@ public:
     virtual bool released() const = 0;
     // True on every frame the main (left) button is held down.
     virtual bool down() const = 0;
+    // True on every frame the secondary (right) button is held down.
+    virtual bool secondary_down() const = 0;
+    // True only on the frame the secondary (right) button was released.
+    virtual bool secondary_released() const = 0;
     // Mouse wheel movement this frame in notches: positive = away from the user (up).
     virtual float scroll() const = 0;
 };

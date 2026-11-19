@@ -13,6 +13,12 @@ bool RaylibPointer::released() const { return IsMouseButtonReleased(MOUSE_BUTTON
 
 bool RaylibPointer::down() const { return IsMouseButtonDown(MOUSE_BUTTON_LEFT); }
 
+bool RaylibPointer::secondary_down() const { return IsMouseButtonDown(MOUSE_BUTTON_RIGHT); }
+
+bool RaylibPointer::secondary_released() const {
+    return IsMouseButtonReleased(MOUSE_BUTTON_RIGHT);
+}
+
 float RaylibPointer::scroll() const { return GetMouseWheelMove(); }
 
 } // namespace input

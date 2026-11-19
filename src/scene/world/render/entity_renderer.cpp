@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "ui/theme.hpp"
+#include "scene/world/core/components/selected.hpp"
 #include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/character.hpp"
 #include "scene/world/core/components/position.hpp"
@@ -24,6 +25,7 @@ const ui::Color SiteFront{120, 120, 120, 255};
 const ui::Color SiteTop{170, 170, 170, 255};
 constexpr float LabelGap = 4.0f;
 constexpr int LabelFontSize = 16;
+constexpr float SelectionOutline = 2.0f;
 } // namespace
 
 void EntityRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
@@ -35,6 +37,7 @@ void EntityRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
         bool building = false;
         bool site = false;
         ::world::TileSize footprint;
+        bool selected = false;
     };
     std::vector<Marker> markers;
     for (const core::Entity& entity : registry_.entities()) {
@@ -60,7 +63,8 @@ void EntityRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
         }
         const auto* building = registry_.get<::world::Building>(entity.id);
         markers.push_back({position->point, std::move(label), building != nullptr,
-                           site != nullptr, building != nullptr ? building->size : ::world::TileSize{}});
+                           site != nullptr, building != nullptr ? building->size : ::world::TileSize{},
+                           registry_.has<::world::Selected>(entity.id)});
     }
     // Painter's algorithm on what each entity covers: a building its footprint, anything
     // else its point, so a character beside a big building is drawn on the right side of it.
@@ -86,6 +90,10 @@ void EntityRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
                                                              BuildingTop);
         cube.draw(canvas, center);
         const ui::Rect body = cube.bounds(center);
+        // Selected units are outlined (box selection, see UnitCommand).
+        if (marker.selected) {
+            canvas.stroke_rect(body, ui::theme::Accent, SelectionOutline);
+        }
         const ui::Size text = canvas.measure_text(marker.label, LabelFontSize);
         canvas.draw_text(marker.label,
                          {center.x - text.width / 2.0f, body.y - LabelGap - text.height},

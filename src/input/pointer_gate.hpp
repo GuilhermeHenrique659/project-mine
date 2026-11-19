@@ -18,6 +18,10 @@ public:
     PointerPosition position() const override { return source_->position(); }
     bool released() const override { return !claimed_ && source_->released(); }
     bool down() const override { return !claimed_ && source_->down(); }
+    bool secondary_down() const override { return !claimed_ && source_->secondary_down(); }
+    bool secondary_released() const override {
+        return !claimed_ && source_->secondary_released();
+    }
     float scroll() const override { return claimed_ ? 0.0f : source_->scroll(); }
 
     void claim() { claimed_ = true; }

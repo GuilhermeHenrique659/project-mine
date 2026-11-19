@@ -95,6 +95,17 @@ public:
     void request_workers(core::EntityId building, int count);
     // Asks to recruit one soldier at a barracks (::world::SoldierRecruitRequested, next tick).
     void request_recruit(core::EntityId building);
+    // Selects the soldiers drawn inside the screen rectangle spanned by `a` and `b` (in the
+    // given projection), replacing the previous selection (::world::Selected).
+    void select_units(const ::world::IsoProjection& projection, ::world::ScreenPoint a,
+                      ::world::ScreenPoint b);
+    // Deselects every unit.
+    void clear_selection();
+    // The units selected now, in entity order.
+    std::vector<core::EntityId> selected_units() const;
+    // Orders the selected units to walk to `goal` (::world::UnitsMoveRequested, next tick);
+    // nothing without a selection.
+    void order_move(::world::TileCoord goal);
     // Asks to make `count` idle workers haulers of a logistic route in `mode`, or with a
     // negative count to send that many of its haulers back (::world::HaulersRequested,
     // next tick).

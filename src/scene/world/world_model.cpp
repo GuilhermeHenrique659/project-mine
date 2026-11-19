@@ -21,6 +21,10 @@
 #include "scene/world/core/systems/haul_system.hpp"
 #include "scene/world/core/systems/player_input_system.hpp"
 #include "scene/world/core/systems/route_follow_system.hpp"
+#include "scene/world/core/components/selected.hpp"
+#include "scene/world/core/selection.hpp"
+#include "scene/world/core/systems/move_order_system.hpp"
+#include "scene/world/core/systems/path_follow_system.hpp"
 #include "scene/world/core/systems/unit_traffic_system.hpp"
 #include "scene/world/core/systems/route_system.hpp"
 #include "scene/world/core/systems/worker_system.hpp"
@@ -53,8 +57,11 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
     // Workers spawn with the headquarters and take free construction sites, then follow
     // the route to them.
     systems_.push_back(std::make_unique<::world::WorkerSystem>(registry_, bus_, factory_));
-    systems_.push_back(std::make_unique<::world::RecruitSystem>(registry_, bus_, factory_));
+    systems_.push_back(std::make_unique<::world::RecruitSystem>(registry_, bus_, factory_, terrain_));
+    // Move orders give the soldiers a path of their own, walked like a route.
+    systems_.push_back(std::make_unique<::world::MoveOrderSystem>(registry_, bus_, terrain_));
     systems_.push_back(std::make_unique<::world::RouteFollowSystem>(registry_, routes_));
+    systems_.push_back(std::make_unique<::world::PathFollowSystem>(registry_));
     systems_.push_back(std::make_unique<::world::UnitTrafficSystem>(registry_));
     systems_.push_back(std::make_unique<::world::CharacterMoveSystem>(registry_, bus_, &terrain_));
     systems_.push_back(std::make_unique<::world::HaulSystem>(registry_, bus_, routes_));
@@ -201,6 +208,38 @@ void WorldModel::request_haulers(::world::RouteKey route, ::world::HaulMode mode
 
 void WorldModel::request_haul_mode(::world::RouteKey route, ::world::HaulMode mode) {
     enqueue(::world::HaulModeRequested{route, mode});
+}
+
+void WorldModel::select_units(const ::world::IsoProjection& projection, ::world::ScreenPoint a,
+                              ::world::ScreenPoint b) {
+    clear_selection();
+    for (const core::EntityId id : ::world::soldiers_in(registry_, projection, a, b)) {
+        registry_.add(id, ::world::Selected{});
+    }
+}
+
+void WorldModel::clear_selection() {
+    for (const core::EntityId id : selected_units()) {
+        registry_.remove<::world::Selected>(id);
+    }
+}
+
+std::vector<core::EntityId> WorldModel::selected_units() const {
+    std::vector<core::EntityId> selected;
+    for (const core::Entity& entity : registry_.entities()) {
+        if (registry_.has<::world::Selected>(entity.id)) {
+            selected.push_back(entity.id);
+        }
+    }
+    return selected;
+}
+
+void WorldModel::order_move(::world::TileCoord goal) {
+    std::vector<core::EntityId> units = selected_units();
+    if (units.empty()) {
+        return;
+    }
+    enqueue(::world::UnitsMoveRequested{std::move(units), goal});
 }
 
 void WorldModel::cancel() {

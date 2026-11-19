@@ -17,7 +17,7 @@ Reusable, raylib-free widget toolkit: `Style` (CSS-like), builders (HTML-like), 
 - `Key`, `Action`, `Keyboard` (interface), `InputMap` (key → action bindings, rebindable) and `InputHandler` (polls the keyboard, runs the handler of each triggered action; `is_held(Action)` for continuous input such as walking).
 - `Keyboard::next_char()` returns the characters typed this frame; `Keyboard::is_down()` is true while a key is held.
 - Bindings: `menu_defaults()`; `text_entry_defaults()` (leaves letters and Space unbound); `world_defaults()`: WASD → `MoveUp/MoveDown/MoveLeft/MoveRight`, arrows/Enter/Space navigate/confirm, Esc → `Pause`, Tab → `ToggleInventory`, B → `ToggleBuildMenu`.
-- `Pointer` (`pointer.hpp`), the mouse counterpart: `position()`, `released()` (left click), `down()` (left button held), `scroll()` (wheel). `PointerGate` (`pointer_gate.hpp`) wraps a pointer for stacked layers: after `claim()` it reports no click, held button or wheel (position only) until `reset()`. The world screen injects it into its renderers; the menu screens inject it into their `scene::PanelController`.
+- `Pointer` (`pointer.hpp`), the mouse counterpart: `position()`, `released()` (left click), `down()` (left button held), `secondary_down()` / `secondary_released()` (right button), `scroll()` (wheel). `PointerGate` (`pointer_gate.hpp`) wraps a pointer for stacked layers: after `claim()` it reports no click, held button (either) or wheel (position only) until `reset()`. The world screen injects it into its renderers; the menu screens inject it into their `scene::PanelController`.
 - Only `raylib_keyboard.cpp` and `raylib_pointer.cpp` touch raylib.
 
 ## graphics
