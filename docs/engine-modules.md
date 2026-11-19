@@ -10,7 +10,7 @@ Header only. `EventBus` (synchronous, type-safe publish/subscribe), `ScopedSubsc
 
 ## ui
 
-Reusable, raylib-free widget toolkit: `Style` (CSS-like), builders (HTML-like), `Widget` base, `Label`, `Button`, `Input`, `Checkbox`, `Dropdown`, `Card`, `TabBar` (a row of button-like tabs, one active; `theme::tab_style()` / `active_tab_style()` (green) / `disabled_tab_style()`; disabled tabs ignore clicks; `on_change(index)`), `draw_raised()` (paints any area like a button face: fill, outline, bevel), `FocusGroup`/`Focusable` (keyboard navigation), `Canvas` (drawing surface). Only `raylib_canvas.cpp` touches raylib.
+Reusable, raylib-free widget toolkit: `Style` (CSS-like), builders (HTML-like), `Widget` base, `Label`, `Button`, `Input`, `Checkbox`, `Dropdown`, `Card`, `Box` (flexbox-like container built with `ui::row()` / `ui::column()` and Tailwind-like chained calls: `.padding()`, `.gap()`, `.align(Align::Start|Center|End|Stretch)`, `.justify(Justify::Start|Center|End|SpaceBetween)`, `.width()`, `.background()`, `.border()`; `.child()` owns a widget, `.child_ref()` places one the caller owns (it must outlive the box); `.style()` replaces the whole style, so call it first; `build()` is single use; `preferred_size()` and `layout()` measure the children with the same rules, so screens describe structure instead of computing positions; `ui::centered(size, area)` centres a rect), `TabBar` (a row of button-like tabs, one active; `theme::tab_style()` / `active_tab_style()` (green) / `disabled_tab_style()`; disabled tabs ignore clicks; `on_change(index)`), `draw_raised()` (paints any area like a button face: fill, outline, bevel), `FocusGroup`/`Focusable` (keyboard navigation), `Canvas` (drawing surface). Only `raylib_canvas.cpp` touches raylib.
 
 ## input
 

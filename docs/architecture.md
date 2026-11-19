@@ -69,7 +69,7 @@ raylib mouse ──────────────────────�
 
 ## Adding a screen
 
-1. Build the widget tree in a `View` with the `ui::` builders (`ui::card().child(...)`, `ui::button("...").on_click(...)`); publish business events from the click handlers.
+1. Build the widget tree in a `View` with the `ui::` builders (`ui::card().child(...)`, or `ui::column()` / `ui::row()` boxes for panels instead of hand-computed positions, `ui::button("...").on_click(...)`); publish business events from the click handlers.
 2. Add a `Controller` that turns input into calls on the view through an `input::InputHandler` (one handler per `input::Action`).
 3. Put the rules in a `Model` or in an event subscriber, and test them without a window (fake `Keyboard`, `FakeCanvas`, a real `EventBus`).
 4. Compose them in a `make_<name>_scene(game::Game&)` factory returning a `scene::Scene`.

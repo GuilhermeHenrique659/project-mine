@@ -1,13 +1,12 @@
 #pragma once
 
 #include <memory>
-#include <string>
-#include <vector>
 
 #include "input/pointer.hpp"
 #include "scene/world/render/inventory_grid.hpp"
 #include "scene/world/render/renderer.hpp"
 #include "scene/world/world_model.hpp"
+#include "ui/box.hpp"
 #include "ui/button.hpp"
 
 namespace scene::world {
@@ -36,7 +35,8 @@ public:
     ui::Rect player_slot_bounds(std::size_t index) const;
     ui::Rect building_slot_bounds(std::size_t index) const;
     ui::Rect close_bounds() const { return close_button_->bounds(); }
-    ui::Rect recruit_bounds() const { return recruit_button_->bounds(); }
+    // Empty while the button is hidden (the target does not recruit).
+    ui::Rect recruit_bounds() const;
     // Whether the current building recruits soldiers (the Recruit button is shown).
     bool recruit_visible() const;
 
@@ -45,6 +45,10 @@ private:
     void move_stack(core::EntityId from, core::EntityId to, std::size_t slot) const;
     // The grid of the current target, recreated when the target changes.
     InventoryGrid& building_grid() const;
+    // The panel's widget tree for the current target, rebuilt by every layout() so the
+    // name, details and Recruit button follow the building. It points at building_grid_,
+    // so building_grid() drops it whenever it replaces that grid.
+    std::unique_ptr<ui::Box> build_tree() const;
 
     WorldModel& model_;
     std::shared_ptr<const input::Pointer> pointer_;
@@ -54,12 +58,7 @@ private:
     // Layout state, recomputed by every layout(); mutable because draw() is const.
     mutable std::unique_ptr<InventoryGrid> building_grid_;
     mutable core::EntityId building_ = 0;
-    mutable ui::Rect panel_;
-    mutable ui::Point player_title_;
-    mutable ui::Point building_title_;
-    // The building's detail lines (see building_details()) and where the first one goes.
-    mutable std::vector<std::string> details_;
-    mutable float details_top_ = 0.0f;
+    mutable std::unique_ptr<ui::Box> root_;
 };
 
 } // namespace scene::world

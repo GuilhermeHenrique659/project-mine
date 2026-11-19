@@ -1,6 +1,6 @@
 #include "scene/world/render/building_panel.hpp"
 
-#include <algorithm>
+#include <string>
 
 #include "scene/world/core/components/inventory.hpp"
 #include "scene/world/core/components/military.hpp"
@@ -46,10 +46,16 @@ bool BuildingPanel::visible() const { return model_.transfer_target() != 0 && !m
 InventoryGrid& BuildingPanel::building_grid() const {
     const core::EntityId target = model_.transfer_target();
     if (!building_grid_ || building_ != target) {
+        // The tree points at the old grid: drop it before the grid goes away.
+        root_.reset();
         building_grid_ = std::make_unique<InventoryGrid>(model_.registry(), target, BuildingVisibleRows);
         building_ = target;
     }
     return *building_grid_;
+}
+
+ui::Rect BuildingPanel::recruit_bounds() const {
+    return recruit_visible() ? recruit_button_->bounds() : ui::Rect{};
 }
 
 ui::Rect BuildingPanel::player_slot_bounds(std::size_t index) const {
@@ -106,61 +112,69 @@ void BuildingPanel::update() {
 }
 
 void BuildingPanel::layout(const ui::Canvas& canvas, ui::Size screen) const {
-    InventoryGrid& building = building_grid();
-    const ui::Size player_size = player_grid_->preferred_size(canvas);
-    const ui::Size building_size = building.preferred_size(canvas);
-    const ui::Size close = close_button_->preferred_size(canvas);
-    const ui::Size recruit = recruit_visible() ? recruit_button_->preferred_size(canvas) : ui::Size{};
-    const float recruit_height = recruit_visible() ? SectionGap + recruit.height : 0.0f;
-    const float title = static_cast<float>(TitleFontSize);
-    details_ = building_details(model_.registry(), model_.transfer_target());
-    const float detail_line = static_cast<float>(DetailFontSize) + DetailGap;
-    const float details_height = static_cast<float>(details_.size()) * detail_line;
-    const float width =
-        std::max(player_size.width, building_size.width) + 2.0f * Padding;
-    const float height = 2.0f * Padding + std::max(title, close.height) + TitleGap +
-                         player_size.height + SectionGap + title + TitleGap + details_height +
-                         building_size.height + recruit_height;
-    panel_ = {(screen.width - width) / 2.0f, (screen.height - height) / 2.0f, width, height};
+    root_ = build_tree();
+    root_->layout(ui::centered(root_->preferred_size(canvas), screen), canvas);
+}
 
-    close_button_->layout({panel_.x + width - Padding - close.width, panel_.y + Padding,
-                           close.width, close.height},
-                          canvas);
-    float y = panel_.y + Padding;
-    player_title_ = {panel_.x + Padding, y};
-    y += std::max(title, close.height) + TitleGap;
-    player_grid_->layout({panel_.x + Padding, y, player_size.width, player_size.height}, canvas);
-    y += player_size.height + SectionGap;
-    building_title_ = {panel_.x + Padding, y};
-    y += title + TitleGap;
-    details_top_ = y;
-    y += details_height;
-    building.layout({panel_.x + Padding, y, building_size.width, building_size.height}, canvas);
-    y += building_size.height + SectionGap;
-    recruit_button_->layout({panel_.x + Padding, y, recruit.width, recruit.height}, canvas);
+// Player section (title + X, inventory), then the building section (name, details,
+// inventory) and, for a recruiter, the Recruit button.
+std::unique_ptr<ui::Box> BuildingPanel::build_tree() const {
+    const auto title = [](std::string text) {
+        return ui::label(std::move(text))
+            .style(ui::theme::label_style().with_font_size(TitleFontSize))
+            .build();
+    };
+    const core::Entity* building = model_.registry().find(model_.transfer_target());
+
+    ui::BoxBuilder details = ui::column();
+    details.gap(DetailGap);
+    const auto lines = building_details(model_.registry(), model_.transfer_target());
+    for (const std::string& line : lines) {
+        details.child(ui::label(line)
+                          .style(ui::theme::label_style().with_font_size(DetailFontSize))
+                          .build());
+    }
+
+    ui::BoxBuilder building_section = ui::column();
+    building_section.gap(TitleGap).child(
+        title(building != nullptr ? entity_name(building->label, building->id) : ""));
+    if (!lines.empty()) {
+        building_section.child(details.build());
+    }
+    // A building without slots gets no grid (and no gap above it).
+    const auto* inventory = model_.registry().get<::world::Inventory>(model_.transfer_target());
+    if (inventory != nullptr && inventory->capacity() > 0) {
+        building_section.child_ref(building_grid());
+    }
+
+    ui::BoxBuilder panel = ui::column();
+    panel.padding(Padding)
+        .gap(SectionGap)
+        .align(ui::Align::Stretch)
+        .background(ui::theme::Panel)
+        .border(ui::theme::Outline, BorderWidth)
+        .child(ui::column()
+                   .gap(TitleGap)
+                   .align(ui::Align::Stretch)
+                   .child(ui::row()
+                              .justify(ui::Justify::SpaceBetween)
+                              .align(ui::Align::Center)
+                              .child(title("Player"))
+                              .child_ref(*close_button_)
+                              .build())
+                   .child_ref(*player_grid_)
+                   .build())
+        .child(building_section.build());
+    if (recruit_visible()) {
+        // Wrapped in a row so the stretch of the panel does not widen the button.
+        panel.child(ui::row().child_ref(*recruit_button_).build());
+    }
+    return panel.build();
 }
 
 void BuildingPanel::draw(ui::Canvas& canvas, ui::Size screen) const {
     layout(canvas, screen);
-    canvas.fill_rect(panel_, ui::theme::Panel);
-    canvas.stroke_rect(panel_, ui::theme::Outline, BorderWidth);
-    canvas.draw_text("Player", player_title_, TitleFontSize, ui::theme::Text);
-    const core::Entity* building = model_.registry().find(model_.transfer_target());
-    canvas.draw_text(building != nullptr ? entity_name(building->label, building->id) : "",
-                     building_title_, TitleFontSize,
-                     ui::theme::Text);
-    for (std::size_t i = 0; i < details_.size(); ++i) {
-        const float line = static_cast<float>(DetailFontSize) + DetailGap;
-        canvas.draw_text(details_[i],
-                         {building_title_.x, details_top_ + static_cast<float>(i) * line},
-                         DetailFontSize, ui::theme::Text);
-    }
-    player_grid_->draw(canvas);
-    building_grid().draw(canvas);
-    close_button_->draw(canvas);
-    if (recruit_visible()) {
-        recruit_button_->draw(canvas);
-    }
+    root_->draw(canvas);
 }
 
 } // namespace scene::world

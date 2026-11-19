@@ -256,3 +256,25 @@ TEST_F(BuildingPanel, AMineHasNoRecruitButton) {
     // Given / When / Then
     EXPECT_FALSE(panel.recruit_visible());
 }
+
+TEST(BuildingPanelRecruit, TheRecruitButtonHasNoBoundsOnceTheBarracksIsNoLongerShown) {
+    // Given: a barracks panel laid out with its Recruit button
+    graphics::TextureManager::instance().reset();
+    graphics::TextureManager::instance().set_loader(std::make_unique<FakeTextureLoader>());
+    event::EventBus bus;
+    FakeInput input;
+    FakeCanvas canvas;
+    auto pointer = std::make_shared<FakePointer>();
+    scene::world::WorldModel model(bus, input.handler, save_with_barracks());
+    scene::world::BuildingPanel panel(model, pointer);
+    model.open_transfer(MineTile);
+    panel.layout(canvas, Screen);
+    ASSERT_GT(panel.recruit_bounds().width, 0.0f);
+
+    // When
+    model.close_transfer();
+
+    // Then
+    EXPECT_FLOAT_EQ(panel.recruit_bounds().width, 0.0f);
+    graphics::TextureManager::instance().reset();
+}
