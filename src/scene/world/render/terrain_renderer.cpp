@@ -4,6 +4,8 @@
 #include <cmath>
 
 #include "scene/world/core/isometric.hpp"
+#include "graphics/sprite.hpp"
+#include "graphics/terrain_sprites.hpp"
 
 namespace scene::world {
 
@@ -26,6 +28,7 @@ ui::Color tile_color(::world::TileType type) {
 
 void TerrainRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
     const ::world::IsoProjection projection = camera_.projection(screen.width, screen.height);
+    const float seconds = clock_ ? clock_() : 0.0f;
 
     // The tiles that can be on screen: the world-space bounds of the four screen corners,
     // plus one tile of margin because a diamond sticks out of its tile's centre.
@@ -54,6 +57,12 @@ void TerrainRenderer::draw(ui::Canvas& canvas, ui::Size screen) const {
                                  to_point(diamond.bottom), color);
             canvas.fill_triangle(to_point(diamond.top), to_point(diamond.bottom),
                                  to_point(diamond.right), color);
+
+            // The sprite covers the colour; a texture that does not load keeps the colour.
+            const ui::Rect dest{diamond.left.x, diamond.top.y, diamond.right.x - diamond.left.x,
+                                diamond.bottom.y - diamond.top.y};
+            graphics::draw_loaded_sprite(
+                canvas, graphics::tile_sprite(terrain_.tile_at(tile), tile, seconds), dest);
         }
     }
 }

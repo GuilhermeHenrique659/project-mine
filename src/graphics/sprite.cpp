@@ -21,4 +21,15 @@ bool draw_sprite(ui::Canvas& canvas, const Sprite& sprite, ui::Rect dest,
     return true;
 }
 
+bool draw_loaded_sprite(ui::Canvas& canvas, const Sprite& sprite, ui::Rect dest,
+                        ui::TextureDraw options) {
+    const Texture* texture = TextureManager::instance().find(sprite.texture);
+    if (texture == nullptr) {
+        return false;
+    }
+    options.source = sprite.source;
+    canvas.draw_texture(*texture, dest, options);
+    return true;
+}
+
 } // namespace graphics

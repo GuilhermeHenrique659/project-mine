@@ -72,6 +72,7 @@ private:
     // Declared after bus_ so it unsubscribes before the bus is destroyed.
     persistence::SettingsPersistence settings_persistence_;
     persistence::SaveStore save_store_;
+    std::filesystem::path data_dir_;
     Clock clock_;
     SeedSource seed_source_;
     bool running_ = false;

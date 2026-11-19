@@ -20,4 +20,9 @@ struct Sprite {
 bool draw_sprite(ui::Canvas& canvas, const Sprite& sprite, ui::Rect dest,
                  ui::TextureDraw options = {});
 
+// Like draw_sprite(), but a texture that does not exist draws nothing (no fallback), so
+// the caller can keep what is already under it. Returns whether the sprite was drawn.
+bool draw_loaded_sprite(ui::Canvas& canvas, const Sprite& sprite, ui::Rect dest,
+                        ui::TextureDraw options = {});
+
 } // namespace graphics

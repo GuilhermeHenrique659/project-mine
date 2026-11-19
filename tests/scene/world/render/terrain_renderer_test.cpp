@@ -5,7 +5,10 @@
 #include "scene/world/core/isometric.hpp"
 #include "scene/world/core/camera.hpp"
 #include "scene/world/render/terrain_renderer.hpp"
+#include "graphics/texture_manager.hpp"
+#include "graphics/terrain_sprites.hpp"
 #include "support/fake_canvas.hpp"
+#include "support/fake_texture_loader.hpp"
 
 namespace {
 
@@ -115,4 +118,40 @@ TEST(TerrainRenderer, TilesAroundTheCameraAreDrawnWhenItIsFarFromTheOrigin) {
     ASSERT_EQ(middle, (world::TileCoord{500, -300}));
     const ui::Color color = scene::world::tile_color(terrain.tile_at(middle));
     EXPECT_TRUE(tile_is_drawn_with(canvas, projection.tile_corners(middle).top, color));
+}
+
+TEST(TerrainRenderer, TilesWithATextureAreDrawnWithTheirSpriteOverTheDiamond) {
+    // Given: every terrain texture loads, and 1.3 s of animation have passed
+    auto& textures = graphics::TextureManager::instance();
+    textures.reset();
+    textures.set_loader(std::make_unique<FakeTextureLoader>());
+    for (const char* name : graphics::GrassTextures) {
+        textures.register_texture(name, std::string(name) + ".png");
+    }
+    for (const char* name : {graphics::WaterTexture, graphics::IronOreTexture,
+                             graphics::CopperOreTexture, graphics::CoalTexture}) {
+        textures.register_texture(name, std::string(name) + ".png");
+    }
+    const world::Terrain terrain(2024);
+    const world::Camera camera;
+    const scene::world::TerrainRenderer renderer(terrain, camera, [] { return 1.3f; });
+    FakeCanvas canvas;
+    const world::IsoProjection projection = camera.projection(Screen.width, Screen.height);
+
+    // When
+    renderer.draw(canvas, Screen);
+
+    // Then: the centre tile's sprite fills the box around its diamond
+    const world::TileCorners diamond = projection.tile_corners({0, 0});
+    const graphics::Sprite expected =
+        graphics::tile_sprite(terrain.tile_at({0, 0}), {0, 0}, 1.3f);
+    const bool found = std::any_of(
+        canvas.textures.begin(), canvas.textures.end(), [&](const DrawnTexture& drawn) {
+            return drawn.dest.x == diamond.left.x && drawn.dest.y == diamond.top.y &&
+                   drawn.dest.width == diamond.right.x - diamond.left.x &&
+                   drawn.dest.height == diamond.bottom.y - diamond.top.y &&
+                   drawn.options.source.has_value() == expected.source.has_value();
+        });
+    textures.reset();
+    EXPECT_TRUE(found);
 }

@@ -5,6 +5,7 @@
 #include "game/fixed_step.hpp"
 #include "game/game_events.hpp"
 #include "graphics/raylib_texture_loader.hpp"
+#include "graphics/texture_catalog.hpp"
 #include "graphics/texture_manager.hpp"
 #include "logging/logger.hpp"
 #include "scene/load_game/load_game_scene.hpp"
@@ -19,11 +20,12 @@ namespace {
 constexpr int TargetFps = 60;
 constexpr const char* WindowTitle = "Project Mine";
 
-// Textures the game knows about (none yet: the player is drawn as a cube). Files load
-// lazily on first use; a missing name gives the fallback texture.
-void register_textures() {
+// Every texture the game draws (graphics/texture_catalog.hpp). Files load lazily on
+// first use; a missing terrain file just leaves the tile's colour.
+void register_textures(const std::filesystem::path& data_dir) {
     auto& textures = graphics::TextureManager::instance();
     textures.set_loader(std::make_unique<graphics::RaylibTextureLoader>());
+    graphics::register_game_textures(textures, data_dir);
 }
 } // namespace
 
@@ -31,6 +33,7 @@ Game::Game(const std::filesystem::path& data_dir, Clock clock, SeedSource seed_s
     : display_settings_(persistence::SettingsStore(data_dir).load().value_or(DisplaySettings{})),
       settings_persistence_(bus_, persistence::SettingsStore(data_dir)),
       save_store_(data_dir),
+      data_dir_(data_dir),
       clock_(std::move(clock)),
       seed_source_(std::move(seed_source)) {
     subscriptions_.push_back(event::subscribe_scoped<QuitRequested>(
@@ -71,7 +74,7 @@ void Game::start_up() {
     // Raylib closes the window on Esc by default; Esc is the Pause/Cancel action here.
     SetExitKey(KEY_NULL);
     SetTargetFPS(TargetFps);
-    register_textures();
+    register_textures(data_dir_);
     running_ = true;
     change_scene(scene::menu::make_title_scene(*this));
 }

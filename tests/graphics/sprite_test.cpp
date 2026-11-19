@@ -84,3 +84,22 @@ TEST_F(DrawSprite, DrawsNothingAndReportsItWhenThereIsNoFallbackEither) {
     EXPECT_FALSE(drawn);
     EXPECT_TRUE(canvas.textures.empty());
 }
+
+TEST_F(DrawSprite, ALoadedSpriteIsNotReplacedByTheFallbackWhenMissing) {
+    // Given
+    graphics::TextureManager::instance().register_texture("gone", "missing.png");
+
+    // When
+    const bool missing = graphics::draw_loaded_sprite(canvas, {"gone", std::nullopt},
+                                                      {0.0f, 0.0f, 16.0f, 16.0f});
+    const bool present = graphics::draw_loaded_sprite(
+        canvas, {"hero", ui::Rect{0.0f, 0.0f, 8.0f, 8.0f}}, {0.0f, 0.0f, 16.0f, 16.0f});
+
+    // Then: only the existing one is drawn, with its region
+    EXPECT_FALSE(missing);
+    EXPECT_TRUE(present);
+    ASSERT_EQ(canvas.textures.size(), 1u);
+    EXPECT_NE(canvas.textures.front().texture.id, FakeTextureLoader::PlaceholderId);
+    ASSERT_TRUE(canvas.textures.front().options.source.has_value());
+    EXPECT_FLOAT_EQ(canvas.textures.front().options.source->width, 8.0f);
+}
