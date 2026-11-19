@@ -2,3 +2,4 @@ build/
 resource/
 .vscode/
 *.exe
+__pycache__/
