@@ -72,6 +72,47 @@ void CharacterMoveSystem::move(core::EntityId id, Position& position, WorldPoint
     position.point = at;
 }
 
+void CharacterMoveSystem::spread(core::EntityId id, Position& position,
+                                 float delta_time) const {
+    const UnitTraffic* traffic = registry_.get<UnitTraffic>(id);
+    if (traffic == nullptr || (traffic->spread.x == 0.0f && traffic->spread.y == 0.0f)) {
+        return;
+    }
+    const WorldPoint step{traffic->spread.x * delta_time, traffic->spread.y * delta_time};
+    if (terrain_ == nullptr) {
+        position.point = {position.point.x + step.x, position.point.y + step.y};
+        return;
+    }
+    // A unit inside a building (a worker at work, or waiting in the headquarters) spreads
+    // only over that building; others only drift into free space.
+    const core::EntityId inside = building_at(registry_, tile_containing(position.point));
+    if (inside != 0) {
+        const auto within = [&](WorldPoint point) {
+            for (const float dx : {-PlayerRadius, PlayerRadius}) {
+                for (const float dy : {-PlayerRadius, PlayerRadius}) {
+                    if (building_at(registry_, tile_containing({point.x + dx, point.y + dy})) !=
+                        inside) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        };
+        WorldPoint at = position.point;
+        if (const WorldPoint x{at.x + step.x, at.y}; within(x)) at = x;
+        if (const WorldPoint y{at.x, at.y + step.y}; within(y)) at = y;
+        position.point = at;
+        return;
+    }
+    if (blocked(registry_, *terrain_, position.point, {})) {
+        return;
+    }
+    WorldPoint at = position.point;
+    at.x = furthest(at, {step.x, 0.0f}, {}).x;
+    at.y = furthest(at, {0.0f, step.y}, {}).y;
+    position.point = at;
+}
+
 WorldPoint CharacterMoveSystem::furthest(WorldPoint from, WorldPoint step,
                                          RouteKey passable) const {
     const auto along = [from, step](float fraction) {
@@ -109,6 +150,8 @@ void CharacterMoveSystem::update(float delta_time) {
                 if (Facing* facing = registry_.get<Facing>(id)) {
                     facing->direction = facing_of(mover.direction);
                 }
+            } else {
+                spread(id, position, delta_time);
             }
 
             CharacterState state = CharacterState::Idle;

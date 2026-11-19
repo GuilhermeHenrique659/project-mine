@@ -219,3 +219,18 @@ TEST(RouteFollowSystem, AStopWalkerEndsOnTheCentreOfTheLastTileNotOnItsLane) {
     EXPECT_NEAR(at.x, 3.5f, 0.01f);
     EXPECT_NEAR(at.y, 0.5f, 0.01f);
 }
+
+TEST(RouteFollowSystem, AWalkerThatArrivedStaysWhereItIsNudgedNearTheEnd) {
+    // Given: a walker that reached its Stop end, then got spread a little aside
+    Fixture f;
+    const auto walker = f.add_walker({3.5f, 0.5f}, world::RouteEnd::Stop);
+    f.system.update(Frame);
+    f.registry.get<world::Position>(walker)->point = {3.7f, 0.4f};
+
+    // When
+    f.system.update(Frame);
+
+    // Then: it does not walk back to the centre
+    EXPECT_FLOAT_EQ(f.direction(walker).x, 0.0f);
+    EXPECT_FLOAT_EQ(f.direction(walker).y, 0.0f);
+}

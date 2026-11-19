@@ -79,7 +79,7 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
         std::make_unique<::world::RouteSystem>(registry_, bus_, terrain_, routes_));
     // Workers spawn with the headquarters and take free construction sites, then follow
     // the route to them.
-    systems_.push_back(std::make_unique<::world::WorkerSystem>(registry_, bus_, factory_));
+    systems_.push_back(std::make_unique<::world::WorkerSystem>(registry_, bus_, factory_, terrain_));
     systems_.push_back(std::make_unique<::world::RecruitSystem>(registry_, bus_, factory_, terrain_));
     // Move orders give the soldiers a path of their own, walked like a route.
     systems_.push_back(std::make_unique<::world::ShootSystem>(registry_, bus_, std::move(roll)));

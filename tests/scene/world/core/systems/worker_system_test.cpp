@@ -1,5 +1,10 @@
 #include <gtest/gtest.h>
 
+#include <set>
+#include <utility>
+
+#include "scene/world/core/occupancy.hpp"
+
 #include <memory>
 
 #include "core/registry.hpp"
@@ -33,7 +38,7 @@ struct Fixture {
     event::EventBus bus;
     world::Terrain terrain{7};
     world::EntityFactory factory = world::make_entity_factory();
-    world::WorkerSystem system{registry, bus, factory};
+    world::WorkerSystem system{registry, bus, factory, terrain};
 
     core::EntityId add_building(world::BuildingType type, world::TileCoord tile) {
         const core::EntityId id = registry.create("building");
@@ -57,6 +62,19 @@ struct Fixture {
 
     core::EntityId add_worker(world::WorldPoint at) {
         return world::spawn_worker(registry, "Worker", at);
+    }
+
+    // Whether every worker stands off any building, each on a tile of its own.
+    bool workers_spread_outside_buildings() {
+        std::set<std::pair<int, int>> tiles;
+        bool ok = true;
+        registry.each<world::Worker, world::Position>(
+            [&](core::EntityId, world::Worker&, world::Position& at) {
+                const world::TileCoord tile = world::tile_containing(at.point);
+                ok = ok && world::building_at(registry, tile) == 0 &&
+                     tiles.insert({tile.x, tile.y}).second;
+            });
+        return ok;
     }
 
     int workers_in(world::WorkerState state) {
@@ -84,7 +102,7 @@ TEST(WorkerSystem, ASiteTakesOneWorkerPerTenEffort) {
     EXPECT_EQ(tiny_workers, 0);
 }
 
-TEST(WorkerSystem, PlacingTheHeadquartersSpawnsAHundredIdleWorkersOnIt) {
+TEST(WorkerSystem, PlacingTheHeadquartersSpawnsAHundredIdleWorkersAroundIt) {
     // Given
     Fixture f;
     f.add_building(world::BuildingType::Headquarters, HqTile);
@@ -95,11 +113,10 @@ TEST(WorkerSystem, PlacingTheHeadquartersSpawnsAHundredIdleWorkersOnIt) {
     // Then
     EXPECT_EQ(f.workers_in(world::WorkerState::Idle), world::HeadquartersWorkers);
     f.registry.each<world::Worker, world::Position, world::Persistent>(
-        [](core::EntityId, world::Worker&, world::Position& at, world::Persistent& persistent) {
-            EXPECT_FLOAT_EQ(at.point.x, 0.5f);
-            EXPECT_FLOAT_EQ(at.point.y, 0.5f);
+        [](core::EntityId, world::Worker&, world::Position&, world::Persistent& persistent) {
             EXPECT_EQ(persistent.archetype, world::WorkerArchetype);
         });
+    EXPECT_TRUE(f.workers_spread_outside_buildings());
 }
 
 TEST(WorkerSystem, PlacingAnotherBuildingSpawnsNoWorkers) {
@@ -373,7 +390,7 @@ TEST(WorkerAtWork, AWorkerAtItsWorkplaceOrSiteIsAtWorkButNotWhileWalkingOrIdle) 
     EXPECT_FALSE(world::is_at_work(f.registry, idle));
 }
 
-TEST(WorkerSystem, CompletingAHouseSpawnsItsFiftyIdleWorkersOnIt) {
+TEST(WorkerSystem, CompletingAHouseSpawnsItsFiftyIdleWorkersAroundIt) {
     // Given
     Fixture f;
     const auto house = f.add_building(world::BuildingType::House, SiteTile);
@@ -384,11 +401,7 @@ TEST(WorkerSystem, CompletingAHouseSpawnsItsFiftyIdleWorkersOnIt) {
 
     // Then
     EXPECT_EQ(f.workers_in(world::WorkerState::Idle), 50);
-    f.registry.each<world::Worker, world::Position>(
-        [](core::EntityId, world::Worker&, world::Position& at) {
-            EXPECT_FLOAT_EQ(at.point.x, SiteTile.x + 0.5f);
-            EXPECT_FLOAT_EQ(at.point.y, SiteTile.y + 0.5f);
-        });
+    EXPECT_TRUE(f.workers_spread_outside_buildings());
 }
 
 TEST(WorkerSystem, CompletingABuildingWithoutHousingSpawnsNoWorkers) {

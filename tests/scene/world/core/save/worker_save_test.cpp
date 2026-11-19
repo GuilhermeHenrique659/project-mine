@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include "scene/world/core/terrain/terrain.hpp"
+
 #include <vector>
 
 #include "core/registry.hpp"
@@ -32,7 +34,8 @@ struct Fixture {
     core::Registry saved;
     core::Registry loaded;
     event::EventBus bus;
-    world::WorkerSystem system{loaded, bus, factory};
+    world::Terrain terrain{7};
+    world::WorkerSystem system{loaded, bus, factory, terrain};
 
     core::EntityId build(world::BuildingType type, world::TileCoord tile, bool finished) {
         const core::EntityId id = *factory.spawn(saved, world::BuildingArchetype, "Building");

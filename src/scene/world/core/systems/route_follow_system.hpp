@@ -21,6 +21,10 @@ inline constexpr float LaneOffset = 0.2f;
 // the next one, so a follower pushed off its lane never circles a point it cannot reach.
 inline constexpr float ArriveRadius = 0.3f;
 
+// How far (tiles) a follower settled on its Stop end may be spread from it before it walks
+// back.
+inline constexpr float SettleRadius = 1.0f;
+
 class RouteFollowSystem : public System {
 public:
     RouteFollowSystem(core::Registry& registry, const RouteNetwork& network);

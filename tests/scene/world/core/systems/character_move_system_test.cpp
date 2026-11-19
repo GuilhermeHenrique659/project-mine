@@ -493,3 +493,69 @@ TEST(CharacterMoveSystem, ACharacterFacesWhereItWalksAndKeepsItWhenItStops) {
     EXPECT_EQ(walking, world::Direction::East);
     EXPECT_EQ(registry.get<world::Facing>(id)->direction, world::Direction::East);
 }
+
+namespace {
+
+core::EntityId spawn_spread_unit(core::Registry& registry, world::WorldPoint at,
+                                 world::WorldPoint spread) {
+    const core::EntityId id = spawn_walker(registry, 1.0f, {});
+    registry.get<world::Position>(id)->point = at;
+    registry.add(id, world::Unit{});
+    world::UnitTraffic traffic;
+    traffic.spread = spread;
+    registry.add(id, traffic);
+    return id;
+}
+
+} // namespace
+
+TEST(CharacterMoveSystem, AStandingUnitIsSpreadIntoFreeSpaceAndStaysIdle) {
+    // Given
+    core::Registry registry;
+    event::EventBus bus;
+    const world::Terrain terrain(777);
+    world::CharacterMoveSystem system(registry, bus, &terrain);
+    const core::EntityId id = spawn_spread_unit(registry, {0.5f, 0.5f}, {0.0f, 0.2f});
+
+    // When
+    system.update(0.5f);
+
+    // Then
+    EXPECT_FLOAT_EQ(registry.get<world::Position>(id)->point.y, 0.6f);
+    EXPECT_EQ(registry.get<world::Character>(id)->state, world::CharacterState::Idle);
+}
+
+TEST(CharacterMoveSystem, AStandingUnitIsNotSpreadIntoABuilding) {
+    // Given: a building right of a unit touching it, spread towards it
+    core::Registry registry;
+    event::EventBus bus;
+    const world::Terrain terrain(777);
+    world::CharacterMoveSystem system(registry, bus, &terrain);
+    place_building(registry, {1, 0});
+    const core::EntityId id =
+        spawn_spread_unit(registry, {1.0f - world::UnitRadius - 0.01f, 0.5f}, {1.0f, 0.0f});
+
+    // When
+    for (int step = 0; step < 10; ++step) system.update(0.1f);
+
+    // Then
+    EXPECT_LT(registry.get<world::Position>(id)->point.x, 1.0f - world::UnitRadius);
+}
+
+TEST(CharacterMoveSystem, AUnitInsideABuildingSpreadsOnlyWithinIt) {
+    // Given: a worker at work on a 1x1 building, spread towards its edge
+    core::Registry registry;
+    event::EventBus bus;
+    const world::Terrain terrain(777);
+    world::CharacterMoveSystem system(registry, bus, &terrain);
+    place_building(registry, {1, 0});
+    const core::EntityId id = spawn_spread_unit(registry, {1.5f, 0.5f}, {1.0f, 0.0f});
+
+    // When
+    for (int step = 0; step < 20; ++step) system.update(0.1f);
+
+    // Then: it moved, but its body is still on the building
+    const float x = registry.get<world::Position>(id)->point.x;
+    EXPECT_GT(x, 1.5f);
+    EXPECT_LE(x, 2.0f - world::UnitRadius);
+}

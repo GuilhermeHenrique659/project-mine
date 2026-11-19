@@ -1,5 +1,7 @@
 #include "scene/world/core/systems/worker_system.hpp"
 
+#include "scene/world/core/spawn.hpp"
+
 #include <algorithm>
 #include <unordered_map>
 #include <vector>
@@ -74,9 +76,10 @@ void WorkerSystem::resolve_loaded(core::EntityId headquarters) {
 }
 
 WorkerSystem::WorkerSystem(core::Registry& registry, event::EventBus& bus,
-                           const EntityFactory& factory)
+                           const EntityFactory& factory, const Terrain& terrain)
     : registry_(registry),
       factory_(factory),
+      terrain_(terrain),
       subscription_(event::subscribe_scoped<BuildingPlaced>(bus, [this](const BuildingPlaced& placed) {
           const core::EntityId id = building_at(registry_, placed.tile);
           const auto* building = registry_.get<Building>(id);
@@ -155,8 +158,16 @@ void WorkerSystem::spawn_workers(core::EntityId building, int count) {
     if (at == nullptr) {
         return;
     }
-    const WorldPoint point = at->point;
+    const WorldPoint centre = at->point;
+    const auto* footprint = registry_.get<Building>(building);
     for (int i = 0; i < count; ++i) {
+        // Out of the building on a free tile; on the building itself only when none is free.
+        WorldPoint point = centre;
+        if (footprint != nullptr) {
+            if (const auto tile = spawn_tile(registry_, terrain_, *footprint)) {
+                point = {tile->x + 0.5f, tile->y + 0.5f};
+            }
+        }
         const auto id = factory_.spawn(registry_, WorkerArchetype, "Worker");
         if (!id) {
             return;

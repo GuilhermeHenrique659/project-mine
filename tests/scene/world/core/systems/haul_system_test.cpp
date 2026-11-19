@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include "scene/world/core/occupancy.hpp"
+
 #include <memory>
 
 #include "core/registry.hpp"
@@ -69,7 +71,7 @@ struct Fixture {
     world::Terrain terrain{7};
     world::EntityFactory factory = world::make_entity_factory();
     world::RouteNetwork network{world::default_route_planner()};
-    world::WorkerSystem workers{registry, bus, factory};
+    world::WorkerSystem workers{registry, bus, factory, terrain};
     world::RouteFollowSystem follow{registry, network};
     world::CharacterMoveSystem move{registry, bus};
     world::HaulSystem haul{registry, bus, network};
@@ -311,7 +313,7 @@ TEST(HaulSystem, SeveralHaulersOnOneRouteWithCollisionAndTrafficStillDeliverEver
     EXPECT_EQ(f.inventory(f.mine).count(world::items::Coal), 0);
 }
 
-TEST(HaulSystem, WorkersWaitingAtTheHeadquartersStayWhereTheyAre) {
+TEST(HaulSystem, WorkersWaitingAtTheHeadquartersSpreadOverItWithoutLeaving) {
     // Given: a crowd of idle workers on one spot, with traffic and collision running
     Fixture f;
     for (int i = 0; i < 100; ++i) f.add_worker();
@@ -326,12 +328,14 @@ TEST(HaulSystem, WorkersWaitingAtTheHeadquartersStayWhereTheyAre) {
         colliding.update(Frame);
     }
 
-    // Then
+    // Then: none left the headquarters, and they no longer share one spot
+    int on_the_spot = 0;
     f.registry.each<world::Worker>([&](core::EntityId id, world::Worker&) {
         const auto& at = f.registry.get<world::Position>(id)->point;
-        EXPECT_FLOAT_EQ(at.x, 0.5f);
-        EXPECT_FLOAT_EQ(at.y, 0.5f);
+        EXPECT_EQ(world::building_at(f.registry, world::tile_containing(at)), f.hq);
+        if (at.x == 0.5f && at.y == 0.5f) ++on_the_spot;
     });
+    EXPECT_LT(on_the_spot, 100);
 }
 
 TEST(HaulSystem, TakeModeLeavesTheProducersFilteredInputSlotsAlone) {

@@ -125,10 +125,18 @@ void RouteFollowSystem::update(float delta_time) {
             const float speed = mover.running ? mover.speed * RunSpeedMultiplier : mover.speed;
             const float step = std::max(speed * delta_time, ArriveEpsilon);
             WorldPoint target = target_of(*route, follower, follower.waypoint);
+            const bool final = is_final(follower, follower.waypoint, route->tiles.size());
+            if (!final) {
+                follower.settled = false;
+            }
+            if (follower.settled && distance(position.point, target) <= SettleRadius) {
+                return;
+            }
             if (arrived(*route, follower, follower.waypoint, position.point, target, step)) {
                 // Only a Stop end is stood on exactly; lane points are passed through.
-                if (is_final(follower, follower.waypoint, route->tiles.size())) {
+                if (final) {
                     position.point = target;
+                    follower.settled = true;
                 }
                 if (!advance(follower, route->tiles.size())) {
                     return;

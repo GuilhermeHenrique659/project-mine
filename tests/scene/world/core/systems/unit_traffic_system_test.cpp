@@ -186,3 +186,71 @@ TEST(UnitTrafficSystem, AStandingUnitIsNeverTakenForStuck) {
     const auto* traffic = f.registry.get<world::UnitTraffic>(waiting);
     EXPECT_TRUE(traffic == nullptr || !traffic->ghost);
 }
+
+namespace {
+
+const world::WorldPoint& spread_of(core::Registry& registry, core::EntityId id) {
+    return registry.get<world::UnitTraffic>(id)->spread;
+}
+
+} // namespace
+
+TEST(UnitTrafficSystem, OverlappingStandingUnitsSpreadApart) {
+    // Given: two units standing almost on the same spot, side by side on x
+    Fixture f;
+    const auto left = f.add_unit({1.0f, 0.5f}, {});
+    const auto right = f.add_unit({1.1f, 0.5f}, {});
+
+    // When
+    f.system.update(Frame);
+
+    // Then: each is pushed away from the other, and neither starts walking
+    EXPECT_LT(spread_of(f.registry, left).x, 0.0f);
+    EXPECT_GT(spread_of(f.registry, right).x, 0.0f);
+    EXPECT_FLOAT_EQ(f.direction(left).x, 0.0f);
+    EXPECT_FLOAT_EQ(f.direction(right).x, 0.0f);
+}
+
+TEST(UnitTrafficSystem, StandingUnitsOnTheExactSameSpotStillSpreadApart) {
+    // Given
+    Fixture f;
+    const auto first = f.add_unit({1.0f, 0.5f}, {});
+    const auto second = f.add_unit({1.0f, 0.5f}, {});
+
+    // When
+    f.system.update(Frame);
+
+    // Then: pushed in opposite directions
+    const world::WorldPoint a = spread_of(f.registry, first);
+    const world::WorldPoint b = spread_of(f.registry, second);
+    EXPECT_GT(std::hypot(a.x, a.y), 0.0f);
+    EXPECT_LT(a.x * b.x + a.y * b.y, 0.0f);
+}
+
+TEST(UnitTrafficSystem, StandingUnitsWithRoomBetweenThemDoNotSpread) {
+    // Given
+    Fixture f;
+    const auto first = f.add_unit({1.0f, 0.5f}, {});
+    f.add_unit({1.0f + world::SeparationRadius, 0.5f}, {});
+
+    // When
+    f.system.update(Frame);
+
+    // Then
+    EXPECT_FLOAT_EQ(spread_of(f.registry, first).x, 0.0f);
+    EXPECT_FLOAT_EQ(spread_of(f.registry, first).y, 0.0f);
+}
+
+TEST(UnitTrafficSystem, AWalkingUnitIsNotSpread) {
+    // Given: a walking unit right next to a standing one
+    Fixture f;
+    const auto walking = f.add_unit({1.0f, 0.5f}, {1.0f, 0.0f});
+    f.add_unit({1.05f, 0.5f}, {});
+
+    // When
+    f.system.update(Frame);
+
+    // Then
+    EXPECT_FLOAT_EQ(spread_of(f.registry, walking).x, 0.0f);
+    EXPECT_FLOAT_EQ(spread_of(f.registry, walking).y, 0.0f);
+}

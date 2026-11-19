@@ -25,6 +25,9 @@ struct RouteFollower {
     bool forward = true;
     // The network revision the waypoint index belongs to (0 = not joined yet).
     std::uint64_t revision = 0;
+    // Set once it stood on its Stop end: from then on it stays anywhere within SettleRadius
+    // of it (where the UnitTrafficSystem spreads it) instead of walking back to the centre.
+    bool settled = false;
 };
 
 } // namespace world

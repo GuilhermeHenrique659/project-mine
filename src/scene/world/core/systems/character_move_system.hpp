@@ -35,6 +35,8 @@ private:
     bool collides(core::EntityId id) const;
     // Moves `position` by `step`, unless that puts a colliding body into an obstacle.
     void move(core::EntityId id, Position& position, WorldPoint step) const;
+    // Drifts a standing unit by its UnitTraffic::spread, never into water or a building.
+    void spread(core::EntityId id, Position& position, float delta_time) const;
     // The furthest point from `from` towards `from + step` the body fits at, with the
     // `passable` buildings walkable.
     WorldPoint furthest(WorldPoint from, WorldPoint step, RouteKey passable) const;

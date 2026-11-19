@@ -4,12 +4,14 @@
 #include "event/event_bus.hpp"
 #include "scene/world/core/entities/entity_factory.hpp"
 #include "scene/world/core/system.hpp"
+#include "scene/world/core/terrain/terrain.hpp"
 
 namespace world {
 
 // Drives the workers:
-// - when a headquarters is placed (BuildingPlaced) it spawns HeadquartersWorkers on it;
-// - when a building with Housing is finished (BuildingCompleted) it spawns its workers on it;
+// - when a headquarters is placed (BuildingPlaced) it spawns HeadquartersWorkers around it
+//   (like soldiers, see spawn_tile: on the building only when no tile is free);
+// - when a building with Housing is finished (BuildingCompleted) it spawns its workers around it;
 // - each update, an idle worker takes the first construction site with room (max_workers):
 //   it becomes Working, the site becomes its Builder's site and it follows the route
 //   headquarters -> site (the ConstructionWorkSystem builds once it is in reach);
@@ -21,7 +23,8 @@ namespace world {
 // Runs before RouteFollowSystem. Everything passed must outlive it.
 class WorkerSystem : public System {
 public:
-    WorkerSystem(core::Registry& registry, event::EventBus& bus, const EntityFactory& factory);
+    WorkerSystem(core::Registry& registry, event::EventBus& bus, const EntityFactory& factory,
+                 const Terrain& terrain);
 
     void update(float delta_time) override;
 
@@ -36,6 +39,7 @@ private:
 
     core::Registry& registry_;
     const EntityFactory& factory_;
+    const Terrain& terrain_;
     event::ScopedSubscription subscription_;
     event::ScopedSubscription assignment_subscription_;
     event::ScopedSubscription completion_subscription_;

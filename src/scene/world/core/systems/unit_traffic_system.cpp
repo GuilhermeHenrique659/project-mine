@@ -14,12 +14,6 @@ namespace world {
 
 namespace {
 
-struct Walker {
-    core::EntityId id;
-    WorldPoint at;
-    WorldPoint heading; // unit length
-};
-
 // Below this share of its normal step a walking unit counts as not getting anywhere.
 constexpr float StuckProgress = 0.1f;
 
@@ -57,6 +51,8 @@ void UnitTrafficSystem::track(UnitTraffic& traffic, WorldPoint at, const Mover& 
 void UnitTrafficSystem::update(float delta_time) {
     // Every moving unit that is not a ghost, indexed by the tile it stands on.
     std::vector<Walker> walkers;
+    // Every unit that is not a ghost, walking or standing (heading unused).
+    std::vector<Walker> bodies;
     registry_.each<Unit, Position, Mover>(
         [&](core::EntityId id, Unit&, Position& position, Mover& mover) {
             const float length = std::hypot(mover.direction.x, mover.direction.y);
@@ -65,6 +61,10 @@ void UnitTrafficSystem::update(float delta_time) {
             }
             UnitTraffic& traffic = *registry_.get<UnitTraffic>(id);
             track(traffic, position.point, mover, length > 0.0f, delta_time);
+            traffic.spread = {};
+            if (!traffic.ghost) {
+                bodies.push_back({id, position.point, {}});
+            }
             if (length <= 0.0f || traffic.ghost) {
                 return;
             }
@@ -112,6 +112,57 @@ void UnitTrafficSystem::update(float delta_time) {
         sideways = std::clamp(sideways, -MaxSidewaysPush, MaxSidewaysPush);
         registry_.get<Mover>(walker.id)->direction = {walker.heading.x + right.x * sideways,
                                                        walker.heading.y + right.y * sideways};
+    }
+    spread(bodies);
+}
+
+void UnitTrafficSystem::spread(const std::vector<Walker>& bodies) {
+    std::unordered_map<std::uint64_t, std::vector<std::size_t>> by_tile;
+    for (std::size_t i = 0; i < bodies.size(); ++i) {
+        by_tile[key_of(tile_containing(bodies[i].at))].push_back(i);
+    }
+    for (const Walker& body : bodies) {
+        const Mover* mover = registry_.get<Mover>(body.id);
+        if (std::hypot(mover->direction.x, mover->direction.y) > 0.0f) {
+            continue; // only standing units are spread
+        }
+        WorldPoint push{};
+        const TileCoord tile = tile_containing(body.at);
+        for (int dy = -1; dy <= 1; ++dy) {
+            for (int dx = -1; dx <= 1; ++dx) {
+                const auto found = by_tile.find(key_of({tile.x + dx, tile.y + dy}));
+                if (found == by_tile.end()) {
+                    continue;
+                }
+                for (const std::size_t j : found->second) {
+                    const Walker& other = bodies[j];
+                    if (other.id == body.id) {
+                        continue;
+                    }
+                    WorldPoint away{body.at.x - other.at.x, body.at.y - other.at.y};
+                    float length = std::hypot(away.x, away.y);
+                    if (length >= SeparationRadius) {
+                        continue;
+                    }
+                    if (length <= 0.0f) {
+                        // Same spot: split them by id so they go opposite ways.
+                        away = {body.id < other.id ? -1.0f : 1.0f, 0.0f};
+                        length = 1.0f;
+                    }
+                    const float strength = 1.0f - std::hypot(body.at.x - other.at.x,
+                                                             body.at.y - other.at.y) /
+                                                      SeparationRadius;
+                    push.x += away.x / length * strength;
+                    push.y += away.y / length * strength;
+                }
+            }
+        }
+        const float length = std::hypot(push.x, push.y);
+        if (length <= 0.0f) {
+            continue;
+        }
+        const float speed = SpreadSpeed * std::min(length, 1.0f) / length;
+        registry_.get<UnitTraffic>(body.id)->spread = {push.x * speed, push.y * speed};
     }
 }
 

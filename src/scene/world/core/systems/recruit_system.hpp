@@ -12,7 +12,6 @@
 namespace world {
 
 // How many rings of tiles around a recruiter's footprint are searched for a free spawn tile.
-inline constexpr int MaxSpawnRing = 8;
 
 // Recruits soldiers: on SoldierRecruitRequested at a finished (no ConstructionSite) and
 // powered Recruiter, it spawns one soldier on the centre of the nearest free tile around
@@ -27,7 +26,6 @@ public:
 
 private:
     void recruit(core::EntityId building);
-    std::optional<TileCoord> spawn_tile(const Building& building) const;
 
     core::Registry& registry_;
     const EntityFactory& factory_;

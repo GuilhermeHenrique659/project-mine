@@ -13,13 +13,15 @@ struct Unit {};
 // update; not saved). `stuck` counts the seconds it has tried to walk without getting
 // anywhere; past StuckTime it becomes a `ghost`: it walks through units and buildings until
 // it is a tile away from `ghost_from`, so no jam lasts. `last` is where it stood on the
-// previous update.
+// previous update. `spread` is how far (tiles per second) a standing unit is pushed away
+// from the units it overlaps; the CharacterMoveSystem applies it only into free space.
 struct UnitTraffic {
     WorldPoint last{};
     bool tracked = false;
     float stuck = 0.0f;
     bool ghost = false;
     WorldPoint ghost_from{};
+    WorldPoint spread{};
 };
 
 } // namespace world

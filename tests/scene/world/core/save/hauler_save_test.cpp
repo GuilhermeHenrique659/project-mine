@@ -85,7 +85,7 @@ struct Fixture {
     core::Registry loaded;
     event::EventBus bus;
     world::RouteNetwork network{world::default_route_planner()};
-    world::WorkerSystem workers{loaded, bus, factory};
+    world::WorkerSystem workers{loaded, bus, factory, terrain};
     world::HaulSystem haul{loaded, bus, network};
     core::EntityId storage = 0;
     core::EntityId mine = 0;
