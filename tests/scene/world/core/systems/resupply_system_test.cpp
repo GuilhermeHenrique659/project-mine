@@ -3,7 +3,7 @@
 #include "core/registry.hpp"
 #include "event/event_bus.hpp"
 #include "scene/world/core/components/building.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/military.hpp"
 #include "scene/world/core/components/path_follower.hpp"
 #include "scene/world/core/construction/construction.hpp"
@@ -45,8 +45,8 @@ struct Fixture {
         return registry.get<world::ResupplyOrder>(id);
     }
 
-    world::Inventory& supply() { return *registry.get<world::Inventory>(barracks); }
-    world::Inventory& carried(core::EntityId id) { return *registry.get<world::Inventory>(id); }
+    world::SolidInventory& supply() { return *registry.get<world::SolidInventory>(barracks); }
+    world::SolidInventory& carried(core::EntityId id) { return *registry.get<world::SolidInventory>(id); }
 };
 
 } // namespace
@@ -156,7 +156,7 @@ TEST(ResupplySystem, EveryFiveSecondsAnUnarmedSoldierSeeksTheNearestSupply) {
     // Given: a second stocked barracks further away, on (-10, 0)
     Fixture f;
     const core::EntityId far = f.add_barracks({-10, 0});
-    f.registry.get<world::Inventory>(far)->add(world::items::Weapon, 1);
+    f.registry.get<world::SolidInventory>(far)->add(world::items::Weapon, 1);
     const core::EntityId soldier = world::spawn_soldier(f.registry, "Soldier", {-1.5f, 4.5f});
 
     // When
@@ -202,7 +202,7 @@ TEST(ResupplySystem, ASupplyWithoutWhatTheSoldierLacksIsSkipped) {
     Fixture f;
     f.supply().remove(world::items::Ammo, 300);
     const core::EntityId far = f.add_barracks({-10, 0});
-    f.registry.get<world::Inventory>(far)->add(world::items::Ammo, 50);
+    f.registry.get<world::SolidInventory>(far)->add(world::items::Ammo, 50);
     const core::EntityId soldier = world::spawn_soldier(f.registry, "Soldier", {-1.5f, 4.5f});
     f.carried(soldier).add(world::items::Weapon, 1);
 

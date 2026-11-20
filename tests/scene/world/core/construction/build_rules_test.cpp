@@ -4,7 +4,7 @@
 
 #include "core/registry.hpp"
 #include "scene/world/core/components/building.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/construction/build_rules.hpp"
 
 namespace {
@@ -108,7 +108,7 @@ TEST(BuildRules, WaterAndOccupiedTilesAreBlocked) {
     const auto water = find_water(terrain);
     ASSERT_TRUE(water);
     place(registry, world::BuildingType::Headquarters, Grass);
-    world::Inventory inventory(10);
+    world::SolidInventory inventory(10);
     inventory.add(world::items::IronOre, 10);
 
     // When
@@ -125,7 +125,7 @@ TEST(BuildRules, TheCostMustBeInThePayersInventory) {
     core::Registry registry;
     const world::Terrain terrain(7);
     place(registry, world::BuildingType::Headquarters, {5, 5});
-    world::Inventory inventory(10);
+    world::SolidInventory inventory(10);
     inventory.add(world::items::IronOre, 9);
 
     // When
@@ -173,7 +173,7 @@ TEST(BuildRules, AMineMustStandOnAnOreTile) {
     core::Registry registry;
     const world::Terrain terrain(7);
     place(registry, world::BuildingType::Headquarters, {5, 5});
-    world::Inventory inventory(10);
+    world::SolidInventory inventory(10);
     inventory.add(world::items::IronOre, 100);
     const auto ore = find_ore(terrain);
     ASSERT_TRUE(ore);

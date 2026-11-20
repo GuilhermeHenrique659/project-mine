@@ -5,7 +5,7 @@
 
 #include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/hauler.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/components/route_follower.hpp"
 #include "scene/world/core/components/worker.hpp"
@@ -37,7 +37,7 @@ void follow(core::Registry& registry, core::EntityId id, RouteFollower follower)
 
 // Whether `destination` wants the item: a building with input sections wants only its
 // inputs, and only while they have room; one without (a storage, a mine) takes anything.
-bool wants(const Inventory& destination, Item item) {
+bool wants(const SolidInventory& destination, Item item) {
     bool has_sections = false;
     bool is_input = false;
     for (std::size_t i = 0; i < destination.capacity(); ++i) {
@@ -48,14 +48,14 @@ bool wants(const Inventory& destination, Item item) {
     if (!has_sections) {
         return true;
     }
-    Inventory probe = destination;
+    SolidInventory probe = destination;
     return is_input && probe.add(item, 1) == 0;
 }
 
 // Fills the hauler's empty inventory with the first item in a general slot of `source`
 // (filtered slots hold a building's inputs and stay) that `destination` wants, as much
 // as fits.
-void load(Inventory& hauler, Inventory& source, const Inventory& destination) {
+void load(SolidInventory& hauler, SolidInventory& source, const SolidInventory& destination) {
     if (!hauler.is_empty()) {
         return;
     }
@@ -72,7 +72,7 @@ void load(Inventory& hauler, Inventory& source, const Inventory& destination) {
 }
 
 // Moves everything the hauler carries into `destination`, as much as fits.
-void unload(Inventory& hauler, Inventory& destination) {
+void unload(SolidInventory& hauler, SolidInventory& destination) {
     for (const auto& slot : hauler.slots()) {
         if (!slot) {
             continue;
@@ -206,7 +206,7 @@ void HaulSystem::update(float) {
             continue;
         }
         const Position* position = registry_.get<Position>(id);
-        Inventory* carried = registry_.get<Inventory>(id);
+        SolidInventory* carried = registry_.get<SolidInventory>(id);
         if (!route->reachable() || position == nullptr || carried == nullptr) {
             continue;
         }
@@ -223,10 +223,10 @@ void HaulSystem::update(float) {
         if (!at_storage && !at_producer) {
             continue;
         }
-        Inventory* here =
-            registry_.get<Inventory>(at_storage ? hauler.route.from : hauler.route.to);
-        const Inventory* there =
-            registry_.get<Inventory>(at_storage ? hauler.route.to : hauler.route.from);
+        SolidInventory* here =
+            registry_.get<SolidInventory>(at_storage ? hauler.route.from : hauler.route.to);
+        const SolidInventory* there =
+            registry_.get<SolidInventory>(at_storage ? hauler.route.to : hauler.route.from);
         if (here == nullptr || there == nullptr) {
             continue;
         }

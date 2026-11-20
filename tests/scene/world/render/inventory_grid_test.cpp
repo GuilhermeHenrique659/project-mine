@@ -4,7 +4,7 @@
 #include <string>
 
 #include "core/registry.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/render/inventory_grid.hpp"
 #include "scene/world/render/terrain_renderer.hpp"
 #include "support/fake_canvas.hpp"
@@ -21,11 +21,11 @@ bool inside(const ui::Rect& inner, const ui::Rect& outer) {
 // An entity with a 40-slot inventory and a grid showing it, laid out at (0, 0).
 struct Grid {
     Grid() : id(registry.create("Player")) {
-        registry.add(id, world::Inventory{40});
+        registry.add(id, world::SolidInventory{40});
         grid = std::make_unique<scene::world::InventoryGrid>(registry, id);
     }
 
-    world::Inventory& inventory() { return *registry.get<world::Inventory>(id); }
+    world::SolidInventory& inventory() { return *registry.get<world::SolidInventory>(id); }
 
     void draw() {
         grid->layout({0.0f, 0.0f, 0.0f, 0.0f}, canvas);

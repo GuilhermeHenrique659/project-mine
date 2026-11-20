@@ -22,7 +22,7 @@ enum class ConstructionCategory { Special, Mine, Factory, Military };
 // inventory when the construction is placed; `effort` is the work (units, one per second
 // today) needed to finish it, 0 = finished at once. What differs between buildings lives
 // in two open lists: `rules` (extra conditions to place it, see BuildRule) and `blueprint`
-// (the components it is made of: Inventory, Producer, Generator, PowerConsumer...).
+// (the components it is made of: SolidInventory, Producer, Generator, PowerConsumer...).
 struct Construction {
     std::string name;
     std::string icon;

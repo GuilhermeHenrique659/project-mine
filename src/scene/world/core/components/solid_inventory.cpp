@@ -1,18 +1,18 @@
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 
 #include <algorithm>
 
 namespace world {
 
-Inventory::Inventory(std::size_t capacity) : slots_(capacity), filters_(capacity) {}
+SolidInventory::SolidInventory(std::size_t capacity) : slots_(capacity), filters_(capacity) {}
 
-std::size_t Inventory::capacity() const { return slots_.size(); }
+std::size_t SolidInventory::capacity() const { return slots_.size(); }
 
-const std::vector<std::optional<ItemStack>>& Inventory::slots() const { return slots_; }
+const std::vector<std::optional<ItemStack>>& SolidInventory::slots() const { return slots_; }
 
-int Inventory::add(Item item, int count) {
+int SolidInventory::add(Item item, int count) {
     if (count <= 0) return 0;
-    if (item.max_stack <= 0) return count;
+    if (item.max_stack <= 0 || item.category != ItemCategory::Solid) return count;
 
     for (std::size_t i = 0; i < slots_.size(); ++i) {
         auto& slot = slots_[i];
@@ -33,7 +33,7 @@ int Inventory::add(Item item, int count) {
     return count;
 }
 
-int Inventory::remove(Item item, int count) {
+int SolidInventory::remove(Item item, int count) {
     if (count <= 0) return 0;
 
     int removed = 0;
@@ -47,7 +47,7 @@ int Inventory::remove(Item item, int count) {
     return removed;
 }
 
-int Inventory::count(Item item) const {
+int SolidInventory::count(Item item) const {
     int total = 0;
     for (const auto& slot : slots_) {
         if (slot && slot->item.type == item.type) total += slot->count;
@@ -55,30 +55,31 @@ int Inventory::count(Item item) const {
     return total;
 }
 
-void Inventory::set_slot(std::size_t index, std::optional<ItemStack> stack) {
+void SolidInventory::set_slot(std::size_t index, std::optional<ItemStack> stack) {
     if (index >= slots_.size()) {
         return;
     }
-    if (stack && !accepts(index, stack->item.type)) {
+    if (stack && (stack->item.category != ItemCategory::Solid ||
+                  !accepts(index, stack->item.type))) {
         return;
     }
     slots_[index] = stack;
 }
 
-Inventory& Inventory::append(std::size_t count, ItemType filter) {
+SolidInventory& SolidInventory::append(std::size_t count, ItemType filter) {
     slots_.resize(slots_.size() + count);
     filters_.resize(filters_.size() + count, filter);
     return *this;
 }
 
-std::optional<ItemType> Inventory::filter(std::size_t index) const {
+std::optional<ItemType> SolidInventory::filter(std::size_t index) const {
     if (index >= filters_.size()) {
         return std::nullopt;
     }
     return filters_[index];
 }
 
-bool Inventory::accepts(std::size_t index, ItemType type) const {
+bool SolidInventory::accepts(std::size_t index, ItemType type) const {
     if (filters_[index]) {
         return *filters_[index] == type;
     }
@@ -87,12 +88,12 @@ bool Inventory::accepts(std::size_t index, ItemType type) const {
            filters_.end();
 }
 
-std::size_t Inventory::free_slots() const {
+std::size_t SolidInventory::free_slots() const {
     return static_cast<std::size_t>(
         std::count_if(slots_.begin(), slots_.end(), [](const auto& slot) { return !slot; }));
 }
 
-bool Inventory::is_empty() const { return free_slots() == slots_.size(); }
+bool SolidInventory::is_empty() const { return free_slots() == slots_.size(); }
 
 int transfer_items(Inventory& from, Inventory& to, Item item, int count) {
     const int taken = from.remove(item, count);

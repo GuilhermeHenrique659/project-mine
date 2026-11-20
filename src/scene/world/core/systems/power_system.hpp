@@ -7,7 +7,7 @@ namespace world {
 
 // Balances the single power network every frame. Finished generators (Generator, no
 // ConstructionSite) supply their power_kw; one with an input burns input.count items of
-// it from its Inventory every 1 / rate seconds and supplies nothing while it lacks them.
+// it from its SolidInventory every 1 / rate seconds and supplies nothing while it lacks them.
 // Finished consumers (PowerConsumer, no ConstructionSite) are all unpowered when their
 // total demand exceeds the supply, and powered again once it is covered. The registry must
 // outlive it. Runs before the ProductionSystem.

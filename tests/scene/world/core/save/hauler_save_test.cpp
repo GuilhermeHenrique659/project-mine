@@ -6,7 +6,7 @@
 #include "event/event_bus.hpp"
 #include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/hauler.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/components/route_follower.hpp"
 #include "scene/world/core/components/worker.hpp"
@@ -159,14 +159,14 @@ TEST(HaulerSave, AHaulerKeepsWhatItCarries) {
     // Given
     Fixture f;
     f.make_hauler(world::HaulMode::Take, true);
-    f.saved.get<world::Inventory>(f.worker)->add(world::items::Coal, 60);
+    f.saved.get<world::SolidInventory>(f.worker)->add(world::items::Coal, 60);
 
     // When
     f.save();
     f.load_systems();
 
     // Then
-    const auto* carried = f.loaded.get<world::Inventory>(f.loaded_worker());
+    const auto* carried = f.loaded.get<world::SolidInventory>(f.loaded_worker());
     ASSERT_NE(carried, nullptr);
     EXPECT_EQ(carried->count(world::items::Coal), 60);
 }

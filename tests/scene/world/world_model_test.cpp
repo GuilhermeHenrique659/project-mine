@@ -7,7 +7,7 @@
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/components/builder.hpp"
 #include "scene/world/core/components/building.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/combat.hpp"
 #include "scene/world/core/components/military.hpp"
 #include "scene/world/core/components/path_follower.hpp"
@@ -438,7 +438,7 @@ TEST(WorldModel, ANewPlayerStartsWith200IronOre) {
     const scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
 
     // Then
-    const auto* inventory = model.registry().get<::world::Inventory>(model.player_id());
+    const auto* inventory = model.registry().get<::world::SolidInventory>(model.player_id());
     ASSERT_NE(inventory, nullptr);
     EXPECT_EQ(inventory->count(::world::items::IronOre), 200);
 }
@@ -486,7 +486,7 @@ struct MineWorld {
     scene::world::WorldModel model{bus, input.handler, save_with_mine(ore)};
 
     int coal(core::EntityId id) const {
-        return model.registry().get<::world::Inventory>(id)->count(::world::items::Coal);
+        return model.registry().get<::world::SolidInventory>(id)->count(::world::items::Coal);
     }
 };
 
@@ -659,7 +659,7 @@ core::EntityId first_soldier(const scene::world::WorldModel& model) {
 }
 
 int player_ammo(const scene::world::WorldModel& model) {
-    return model.registry().get<::world::Inventory>(model.player_id())->count(::world::items::Ammo);
+    return model.registry().get<::world::SolidInventory>(model.player_id())->count(::world::items::Ammo);
 }
 
 } // namespace
@@ -671,7 +671,7 @@ TEST(WorldModel, ANewPlayerStartsWithAWeaponAndAFullStackOfAmmo) {
     const scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
 
     // Then
-    const auto* inventory = model.registry().get<::world::Inventory>(model.player_id());
+    const auto* inventory = model.registry().get<::world::SolidInventory>(model.player_id());
     EXPECT_EQ(inventory->count(::world::items::Weapon), 1);
     EXPECT_EQ(inventory->count(::world::items::Ammo), ::world::items::Ammo.max_stack);
 }
@@ -767,7 +767,7 @@ TEST(WorldModel, OrderingSelectedSoldiersOntoATargetMakesTheArmedOnesShootIt) {
     // Then
     const int damage = ::world::weapon_stats(::world::ItemType::Weapon)->damage;
     EXPECT_EQ(model.registry().get<::world::Health>(target)->current, ::world::MaxHealth - damage);
-    EXPECT_EQ(model.registry().get<::world::Inventory>(shooter)->count(::world::items::Ammo), 9);
+    EXPECT_EQ(model.registry().get<::world::SolidInventory>(shooter)->count(::world::items::Ammo), 9);
     EXPECT_FALSE(model.registry().has<::world::PathFollower>(shooter));
 }
 
@@ -813,7 +813,7 @@ TEST(WorldModel, OrderingSelectedSoldiersOntoABarracksResuppliesThem) {
     model.update(scene::world::SimulationTick);
 
     // Then
-    const auto* carried = model.registry().get<::world::Inventory>(soldier);
+    const auto* carried = model.registry().get<::world::SolidInventory>(soldier);
     EXPECT_EQ(carried->count(::world::items::Weapon), 1);
     EXPECT_EQ(carried->count(::world::items::Ammo), 100);
 }

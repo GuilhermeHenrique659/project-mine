@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/events/item_transfer_requested.hpp"
 #include "scene/world/core/occupancy.hpp"
@@ -13,8 +13,8 @@ InventoryTransferSystem::InventoryTransferSystem(core::Registry& registry, event
     : registry_(registry),
       subscription_(event::subscribe_scoped<ItemTransferRequested>(
           bus, [this](const ItemTransferRequested& request) {
-              Inventory* from = registry_.get<Inventory>(request.from);
-              Inventory* to = registry_.get<Inventory>(request.to);
+              SolidInventory* from = registry_.get<SolidInventory>(request.from);
+              SolidInventory* to = registry_.get<SolidInventory>(request.to);
               if (from == nullptr || to == nullptr || request.from == request.to ||
                   !within_transfer_reach(registry_, request.from, request.to)) {
                   return;

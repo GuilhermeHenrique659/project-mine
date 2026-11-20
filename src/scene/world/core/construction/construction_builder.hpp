@@ -21,7 +21,7 @@ namespace world {
 //       .crafts_per_second(2.0f).storage(10).workers(50).power(200.0f)
 //       .build();
 //
-// build() turns the facts into the Construction and its Blueprint: an Inventory (general
+// build() turns the facts into the Construction and its Blueprint: a SolidInventory (general
 // slots + one filtered section per input or fuel), a Producer + BuildingStatus when it
 // produces, Staffing, PowerConsumer, Generator, Housing, Recruiter, Supply and
 // Health + TrainingTarget when given.

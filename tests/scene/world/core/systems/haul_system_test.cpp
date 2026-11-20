@@ -8,7 +8,7 @@
 #include "event/event_bus.hpp"
 #include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/hauler.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/components/route_follower.hpp"
 #include "scene/world/core/components/worker.hpp"
@@ -43,13 +43,13 @@ struct Fixture {
         const core::EntityId id = registry.create("building");
         registry.add(id, world::Building{type, tile});
         registry.add(id, world::Position{{tile.x + 0.5f, tile.y + 0.5f}});
-        registry.add(id, world::Inventory{10});
+        registry.add(id, world::SolidInventory{10});
         return id;
     }
 
     core::EntityId add_worker() { return world::spawn_worker(registry, "Worker", {0.5f, 0.5f}); }
 
-    world::Inventory& inventory(core::EntityId id) { return *registry.get<world::Inventory>(id); }
+    world::SolidInventory& inventory(core::EntityId id) { return *registry.get<world::SolidInventory>(id); }
 
     void run(int frames) {
         for (int i = 0; i < frames; ++i) {
@@ -185,8 +185,8 @@ TEST(Worker, HasAnInventoryOfOneSlot) {
     const auto worker = world::spawn_worker(registry, "Worker", {0.5f, 0.5f});
 
     // Then
-    ASSERT_NE(registry.get<world::Inventory>(worker), nullptr);
-    EXPECT_EQ(registry.get<world::Inventory>(worker)->capacity(), world::WorkerInventorySlots);
+    ASSERT_NE(registry.get<world::SolidInventory>(worker), nullptr);
+    EXPECT_EQ(registry.get<world::SolidInventory>(worker)->capacity(), world::WorkerInventorySlots);
     EXPECT_EQ(world::WorkerInventorySlots, 1u);
 }
 
@@ -290,7 +290,7 @@ TEST(HaulSystem, SeveralHaulersOnOneRouteWithCollisionAndTrafficStillDeliverEver
     Fixture f;
     for (int i = 0; i < 3; ++i) f.add_worker();
     f.inventory(f.mine).add(world::items::Coal, 250);
-    f.inventory(f.storage) = world::Inventory{10};
+    f.inventory(f.storage) = world::SolidInventory{10};
     f.bus.publish(world::HaulersRequested{f.route, world::HaulMode::Take, 3});
     world::UnitTrafficSystem traffic{f.registry};
     world::CharacterMoveSystem colliding{f.registry, f.bus, &f.terrain};
@@ -342,7 +342,7 @@ TEST(HaulSystem, TakeModeLeavesTheProducersFilteredInputSlotsAlone) {
     // Given: a producer with iron in an input slot and steel in its general slots
     Fixture f;
     f.add_worker();
-    world::Inventory producer{2};
+    world::SolidInventory producer{2};
     producer.append(1, world::ItemType::IronOre);
     producer.add(world::items::IronOre, 40);
     producer.add(world::items::Steel, 30);
@@ -364,7 +364,7 @@ TEST(HaulSystem, PutModeCarriesOnlyTheItemsTheProducerTakesAsInputs) {
     f.add_worker();
     f.inventory(f.storage).add(world::items::Coal, 100);
     f.inventory(f.storage).add(world::items::CopperOre, 150);
-    world::Inventory producer{2};
+    world::SolidInventory producer{2};
     producer.append(2, world::ItemType::CopperOre);
     f.inventory(f.mine) = producer;
     f.bus.publish(world::HaulersRequested{f.route, world::HaulMode::Put, 1});
@@ -383,7 +383,7 @@ TEST(HaulSystem, PutModeLeavesAnInputInTheStorageWhileTheProducersSectionIsFull)
     Fixture f;
     const auto worker = f.add_worker();
     f.inventory(f.storage).add(world::items::CopperOre, 80);
-    world::Inventory producer{2};
+    world::SolidInventory producer{2};
     producer.append(1, world::ItemType::CopperOre);
     producer.add(world::items::CopperOre, 100);
     f.inventory(f.mine) = producer;
@@ -403,7 +403,7 @@ TEST(HaulSystem, TakeAndPutBringsTheInputsAndCarriesTheOutputBack) {
     f.add_worker();
     f.inventory(f.storage).add(world::items::IronOre, 50);
     f.inventory(f.storage).add(world::items::Coal, 50);
-    world::Inventory producer{2};
+    world::SolidInventory producer{2};
     producer.append(1, world::ItemType::IronOre).append(1, world::ItemType::Coal);
     producer.add(world::items::Steel, 150);
     f.inventory(f.mine) = producer;
@@ -423,7 +423,7 @@ TEST(HaulSystem, TakeModeNeverUnloadsIntoTheProducer) {
     // Given: a Take hauler still carrying steel (the storage was full)
     Fixture f;
     const auto worker = f.add_worker();
-    f.inventory(f.storage) = world::Inventory{0};
+    f.inventory(f.storage) = world::SolidInventory{0};
     f.inventory(f.mine).add(world::items::Steel, 40);
     f.bus.publish(world::HaulersRequested{f.route, world::HaulMode::Take, 1});
 

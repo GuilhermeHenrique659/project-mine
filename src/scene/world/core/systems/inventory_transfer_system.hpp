@@ -11,7 +11,7 @@ namespace world {
 inline constexpr float TransferReach = 2.0f;
 
 // Moves items between inventories: on each ItemTransferRequested whose two entities both
-// have an Inventory and a Position within TransferReach, it runs transfer_items(). Other
+// have a SolidInventory and a Position within TransferReach, it runs transfer_items(). Other
 // requests change nothing. The registry and bus must outlive it.
 class InventoryTransferSystem : public System {
 public:

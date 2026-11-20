@@ -8,7 +8,7 @@
 #include <utility>
 
 #include "scene/world/core/components/combat.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/mover.hpp"
 #include "scene/world/core/components/path_follower.hpp"
 #include "scene/world/core/components/position.hpp"
@@ -18,7 +18,7 @@
 
 namespace world {
 
-std::optional<WeaponStats> held_weapon(const Inventory& inventory) {
+std::optional<WeaponStats> held_weapon(const SolidInventory& inventory) {
     for (const auto& slot : inventory.slots()) {
         if (!slot) {
             continue;
@@ -88,7 +88,7 @@ void ShootSystem::update(float delta_time) {
             }
         }
         shoot(id, target);
-        const auto* inventory = registry_.get<Inventory>(id);
+        const auto* inventory = registry_.get<SolidInventory>(id);
         if (!registry_.is_alive(target) || inventory == nullptr ||
             inventory->count(items::Ammo) == 0) {
             registry_.remove<AttackOrder>(id);
@@ -98,7 +98,7 @@ void ShootSystem::update(float delta_time) {
 
 std::optional<bool> ShootSystem::in_range(core::EntityId shooter_id,
                                           core::EntityId target) const {
-    const auto* inventory = registry_.get<Inventory>(shooter_id);
+    const auto* inventory = registry_.get<SolidInventory>(shooter_id);
     const auto* from = registry_.get<Position>(shooter_id);
     const auto* to = registry_.get<Position>(target);
     if (inventory == nullptr || from == nullptr || to == nullptr) {
@@ -114,7 +114,7 @@ std::optional<bool> ShootSystem::in_range(core::EntityId shooter_id,
 
 void ShootSystem::shoot(core::EntityId shooter_id, core::EntityId target) {
     auto* shooter = registry_.get<Shooter>(shooter_id);
-    auto* inventory = registry_.get<Inventory>(shooter_id);
+    auto* inventory = registry_.get<SolidInventory>(shooter_id);
     const auto* from = registry_.get<Position>(shooter_id);
     const auto* to = registry_.get<Position>(target);
     if (shooter == nullptr || inventory == nullptr || from == nullptr || to == nullptr ||

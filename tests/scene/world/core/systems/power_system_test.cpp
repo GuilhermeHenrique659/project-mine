@@ -5,7 +5,7 @@
 
 #include "core/registry.hpp"
 #include "scene/world/core/components/building.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/power.hpp"
 #include "scene/world/core/entities/building.hpp"
 #include "scene/world/core/systems/power_system.hpp"
@@ -19,7 +19,7 @@ struct Fixture {
     core::EntityId generator(world::GeneratorSpec spec) {
         const core::EntityId id = registry.create("Generator");
         registry.add(id, world::Generator{spec});
-        registry.add(id, world::Inventory{4});
+        registry.add(id, world::SolidInventory{4});
         return id;
     }
 
@@ -162,7 +162,7 @@ void run(Fixture& f, core::EntityId generator, float seconds, float coal_every) 
     float until_coal = 0.0f;
     for (int frame = 0; frame < static_cast<int>(seconds * 10.0f + 0.5f); ++frame) {
         if (coal_every > 0.0f && until_coal <= 0.0f) {
-            f.registry.get<world::Inventory>(generator)->add(world::items::Coal, 1);
+            f.registry.get<world::SolidInventory>(generator)->add(world::items::Coal, 1);
             until_coal += coal_every;
         }
         until_coal -= 0.1f;
@@ -176,14 +176,14 @@ TEST(PowerSystem, AFullyFuelledCoalGeneratorBurnsOneCoalPerSecondFor1000Kw) {
     // Given
     Fixture f;
     const core::EntityId id = f.generator(coal_spec());
-    f.registry.get<world::Inventory>(id)->add(world::items::Coal, 100);
+    f.registry.get<world::SolidInventory>(id)->add(world::items::Coal, 100);
 
     // When
     run(f, id, 60.0f, 0.0f);
 
     // Then
     EXPECT_NEAR(f.system.supply_kw(), 1000.0f, 5.0f); // still finishing its warm-up
-    EXPECT_NEAR(f.registry.get<world::Inventory>(id)->count(world::items::Coal), 40, 1);
+    EXPECT_NEAR(f.registry.get<world::SolidInventory>(id)->count(world::items::Coal), 40, 1);
 }
 
 TEST(PowerSystem, ACoalGeneratorFedHalfItsCoalRateProducesAboutHalfItsPower) {
@@ -217,12 +217,12 @@ TEST(PowerSystem, ACoalGeneratorThatRunsOutOfCoalFadesToNothing) {
     // Given: 10 s of coal
     Fixture f;
     const core::EntityId id = f.generator(coal_spec());
-    f.registry.get<world::Inventory>(id)->add(world::items::Coal, 10);
+    f.registry.get<world::SolidInventory>(id)->add(world::items::Coal, 10);
 
     // When
     run(f, id, 60.0f, 0.0f);
 
     // Then
-    EXPECT_EQ(f.registry.get<world::Inventory>(id)->count(world::items::Coal), 0);
+    EXPECT_EQ(f.registry.get<world::SolidInventory>(id)->count(world::items::Coal), 0);
     EXPECT_LT(f.system.supply_kw(), 50.0f);
 }

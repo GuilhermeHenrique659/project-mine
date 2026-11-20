@@ -3,7 +3,7 @@
 #include "scene/world/core/construction/construction_builder.hpp"
 
 #include "scene/world/core/components/building.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/power.hpp"
 #include "scene/world/core/components/worker.hpp"
 

@@ -5,7 +5,7 @@
 #include "scene/world/core/components/builder.hpp"
 #include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/combat.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/entities/character.hpp"
 #include "scene/world/core/components/player_controlled.hpp"
 #include "scene/world/core/components/position.hpp"
@@ -53,11 +53,11 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
     if (player_ == 0) {
         player_ = *factory_.spawn(registry_, "character", "Player");
         registry_.add(player_, ::world::PlayerControlled{});
-        registry_.get<::world::Inventory>(player_)->add(::world::items::IronOre,
+        registry_.get<::world::SolidInventory>(player_)->add(::world::items::IronOre,
                                                         ::world::StartingIronOre);
-        registry_.get<::world::Inventory>(player_)->add(::world::items::Weapon,
+        registry_.get<::world::SolidInventory>(player_)->add(::world::items::Weapon,
                                                         ::world::StartingWeapons);
-        registry_.get<::world::Inventory>(player_)->add(::world::items::Ammo,
+        registry_.get<::world::SolidInventory>(player_)->add(::world::items::Ammo,
                                                         ::world::StartingAmmo);
     }
     shot_subscription_ = event::subscribe_scoped<::world::ShotFired>(
@@ -192,7 +192,7 @@ void WorldModel::request_build(::world::BuildingType type, ::world::TileCoord ti
 ::world::BuildResult WorldModel::placement_status(const ::world::Construction& construction,
                                                   ::world::TileCoord tile) const {
     return ::world::can_build(registry_, construction, tile, terrain_,
-                              registry_.get<::world::Inventory>(player_));
+                              registry_.get<::world::SolidInventory>(player_));
 }
 
 void WorldModel::work_on(std::optional<::world::TileCoord> tile) {
@@ -213,7 +213,7 @@ void WorldModel::work_on(std::optional<::world::TileCoord> tile) {
 void WorldModel::open_transfer(::world::TileCoord tile) {
     const core::EntityId building = ::world::building_at(registry_, tile);
     if (building == 0 || registry_.has<::world::ConstructionSite>(building) ||
-        !registry_.has<::world::Inventory>(building) ||
+        !registry_.has<::world::SolidInventory>(building) ||
         !::world::within_transfer_reach(registry_, player_, building)) {
         return;
     }
@@ -282,7 +282,7 @@ void WorldModel::shoot_at(::world::TileCoord tile) {
 }
 
 void WorldModel::hold_trigger(::world::TileCoord tile) {
-    const auto* inventory = registry_.get<::world::Inventory>(player_);
+    const auto* inventory = registry_.get<::world::SolidInventory>(player_);
     if (inventory == nullptr) {
         return;
     }

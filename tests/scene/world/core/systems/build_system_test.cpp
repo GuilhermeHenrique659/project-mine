@@ -4,7 +4,7 @@
 #include "event/event_bus.hpp"
 #include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/builder.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/persistent.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/construction/build_rules.hpp"
@@ -30,7 +30,7 @@ struct Fixture {
     world::EntityFactory factory = world::make_entity_factory();
     core::EntityId player = registry.create("Player");
 
-    Fixture() { registry.add(player, world::Inventory{10}); }
+    Fixture() { registry.add(player, world::SolidInventory{10}); }
 
     std::size_t building_count() const {
         std::size_t count = 0;
@@ -113,7 +113,7 @@ TEST(Build, PaysTheCostAndStartsAConstructionSite) {
     Fixture f;
     world::build(f.registry, f.factory, *world::find_construction(world::BuildingType::Headquarters),
                  {-3, -3}, f.terrain, f.player); // 5x5: clear of Grass
-    world::Inventory* inventory = f.registry.get<world::Inventory>(f.player);
+    world::SolidInventory* inventory = f.registry.get<world::SolidInventory>(f.player);
     inventory->add(world::items::IronOre, 15);
 
     // When
@@ -134,7 +134,7 @@ TEST(Build, WithoutEnoughResourcesTakesNothing) {
     Fixture f;
     world::build(f.registry, f.factory, *world::find_construction(world::BuildingType::Headquarters),
                  {-3, -3}, f.terrain, f.player); // 5x5: clear of Grass
-    world::Inventory* inventory = f.registry.get<world::Inventory>(f.player);
+    world::SolidInventory* inventory = f.registry.get<world::SolidInventory>(f.player);
     inventory->add(world::items::IronOre, 9);
 
     // When
@@ -231,8 +231,8 @@ TEST(MakeBuilding, AMineHasAnInventoryAndTheHeadquartersNone) {
                          *world::find_construction(world::BuildingType::Headquarters), {2, 2});
 
     // Then
-    const world::Inventory* inventory = registry.get<world::Inventory>(mine);
+    const world::SolidInventory* inventory = registry.get<world::SolidInventory>(mine);
     ASSERT_NE(inventory, nullptr);
     EXPECT_EQ(inventory->capacity(), 10u);
-    EXPECT_FALSE(registry.has<world::Inventory>(hq));
+    EXPECT_FALSE(registry.has<world::SolidInventory>(hq));
 }

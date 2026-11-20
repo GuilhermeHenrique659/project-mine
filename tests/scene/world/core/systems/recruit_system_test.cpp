@@ -5,7 +5,7 @@
 #include "core/registry.hpp"
 #include "event/event_bus.hpp"
 #include "scene/world/core/components/building.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/military.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/components/power.hpp"
@@ -69,8 +69,8 @@ TEST(RecruitSystem, RecruitingAtAFinishedBarracksSpawnsASoldierWithTwoSlots) {
     ASSERT_EQ(f.soldiers(), 1);
     f.registry.each<world::Soldier>([&](core::EntityId id, world::Soldier&) {
         EXPECT_TRUE(f.registry.has<world::Unit>(id));
-        ASSERT_NE(f.registry.get<world::Inventory>(id), nullptr);
-        EXPECT_EQ(f.registry.get<world::Inventory>(id)->capacity(), 2u);
+        ASSERT_NE(f.registry.get<world::SolidInventory>(id), nullptr);
+        EXPECT_EQ(f.registry.get<world::SolidInventory>(id)->capacity(), 2u);
     });
 }
 

@@ -3,7 +3,7 @@
 #include <set>
 
 #include "scene/world/core/components/combat.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/military.hpp"
 #include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/power.hpp"
@@ -54,7 +54,7 @@ TEST(ConstructionCatalog, StorageCosts200IronOreTakes600WorkAndHolds120SlotsOn20
     EXPECT_EQ(storage->cost[0].item, world::items::IronOre);
     EXPECT_EQ(storage->cost[0].count, 200);
     EXPECT_FLOAT_EQ(storage->effort, 600.0f);
-    const auto* inventory = storage->blueprint.find<world::Inventory>();
+    const auto* inventory = storage->blueprint.find<world::SolidInventory>();
     ASSERT_NE(inventory, nullptr);
     EXPECT_EQ(inventory->capacity(), 120u);
     const auto* power = storage->blueprint.find<world::PowerConsumer>();
@@ -125,8 +125,8 @@ TEST(BuildingType, SteelworksRoundTripsThroughItsSaveKey) {
 
 TEST(ConstructionCatalog, SteelworksHasGeneralSlotsAndOneSectionForIronOreAndOneForCoal) {
     // Given
-    world::Inventory inventory =
-        *world::find_construction(world::BuildingType::Steelworks)->blueprint.find<world::Inventory>();
+    world::SolidInventory inventory =
+        *world::find_construction(world::BuildingType::Steelworks)->blueprint.find<world::SolidInventory>();
 
     // When
     const int iron_left = inventory.add(world::items::IronOre, 1000);
@@ -166,8 +166,8 @@ TEST(ConstructionCatalog, CoalGeneratorCosts200Steel100CopperOreTakes1200WorkMak
 
 TEST(ConstructionCatalog, CoalGeneratorStoresOnlyCoalInFiveSlots) {
     // Given
-    world::Inventory inventory = *world::find_construction(world::BuildingType::CoalGenerator)
-                                      ->blueprint.find<world::Inventory>();
+    world::SolidInventory inventory = *world::find_construction(world::BuildingType::CoalGenerator)
+                                      ->blueprint.find<world::SolidInventory>();
 
     // When
     const int coal_left = inventory.add(world::items::Coal, 1000);
@@ -247,7 +247,7 @@ TEST(ConstructionCatalog, ElectronicFactoryHasGeneralSlotsAndOneSectionForCopper
     const world::Construction* factory =
         world::find_construction(world::BuildingType::ElectronicFactory);
     ASSERT_NE(factory, nullptr);
-    world::Inventory inventory = *factory->blueprint.find<world::Inventory>();
+    world::SolidInventory inventory = *factory->blueprint.find<world::SolidInventory>();
 
     // When
     const int copper_left = inventory.add(world::items::CopperOre, 1000);
@@ -389,7 +389,7 @@ TEST(ConstructionCatalog, AmmoFactoryHasGeneralSlotsAndOneSectionPerInput) {
     // Given
     const world::Construction* factory = world::find_construction(world::BuildingType::AmmoFactory);
     ASSERT_NE(factory, nullptr);
-    world::Inventory inventory = *factory->blueprint.find<world::Inventory>();
+    world::SolidInventory inventory = *factory->blueprint.find<world::SolidInventory>();
 
     // When
     const int coal_left = inventory.add(world::items::Coal, 1000);
@@ -413,8 +413,8 @@ TEST(ConstructionCatalog, ToolAndWeaponFactoriesKeepTheirInputsOutOfTheGeneralSl
         world::find_construction(world::BuildingType::WeaponFactory);
     ASSERT_NE(tool_factory, nullptr);
     ASSERT_NE(weapon_factory, nullptr);
-    world::Inventory tools = *tool_factory->blueprint.find<world::Inventory>();
-    world::Inventory weapons = *weapon_factory->blueprint.find<world::Inventory>();
+    world::SolidInventory tools = *tool_factory->blueprint.find<world::SolidInventory>();
+    world::SolidInventory weapons = *weapon_factory->blueprint.find<world::SolidInventory>();
 
     // When
     const int electronics_left = tools.add(world::items::Electronics, 1000);
@@ -473,8 +473,8 @@ TEST(ConstructionCatalog, BarracksIsASupplyHolding5WeaponsAnd5AmmoStacksOnly) {
     // Given
     const world::Construction* barracks = world::find_construction(world::BuildingType::Barracks);
     ASSERT_NE(barracks, nullptr);
-    ASSERT_NE(barracks->blueprint.find<world::Inventory>(), nullptr);
-    world::Inventory inventory = *barracks->blueprint.find<world::Inventory>();
+    ASSERT_NE(barracks->blueprint.find<world::SolidInventory>(), nullptr);
+    world::SolidInventory inventory = *barracks->blueprint.find<world::SolidInventory>();
 
     // When
     const int weapons_left = inventory.add(world::items::Weapon, 600);

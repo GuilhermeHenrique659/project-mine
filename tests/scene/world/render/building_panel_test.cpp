@@ -4,7 +4,7 @@
 
 #include "event/event_bus.hpp"
 #include "graphics/texture_manager.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/military.hpp"
 #include "scene/world/render/building_panel.hpp"
 #include "support/fake_canvas.hpp"
@@ -55,7 +55,7 @@ protected:
     }
 
     int count(core::EntityId id, ::world::Item item) const {
-        return model.registry().get<::world::Inventory>(id)->count(item);
+        return model.registry().get<::world::SolidInventory>(id)->count(item);
     }
 
     event::EventBus bus;
@@ -196,7 +196,7 @@ TEST(BuildingPanelScroll, AStackScrolledOutOfViewCannotBeClicked) {
     p.model.update(scene::world::SimulationTick);
 
     // Then: nothing reached the player
-    EXPECT_EQ(p.model.registry().get<::world::Inventory>(p.model.player_id())->count(::world::items::Coal), 0);
+    EXPECT_EQ(p.model.registry().get<::world::SolidInventory>(p.model.player_id())->count(::world::items::Coal), 0);
 }
 
 TEST(BuildingPanelScroll, TheWheelOutsideTheBuildingInventoryDoesNotScrollIt) {

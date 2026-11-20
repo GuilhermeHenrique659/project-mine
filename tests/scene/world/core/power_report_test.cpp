@@ -5,7 +5,7 @@
 
 #include "core/registry.hpp"
 #include "scene/world/core/components/building.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/power.hpp"
 #include "scene/world/core/power_report.hpp"
 #include "scene/world/core/systems/power_system.hpp"
@@ -19,7 +19,7 @@ struct Network {
     core::EntityId generator(std::string name, world::GeneratorSpec spec) {
         const core::EntityId id = registry.create(std::move(name));
         registry.add(id, world::Generator{spec});
-        registry.add(id, world::Inventory{4});
+        registry.add(id, world::SolidInventory{4});
         return id;
     }
 

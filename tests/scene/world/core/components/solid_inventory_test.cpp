@@ -1,25 +1,25 @@
 #include <gtest/gtest.h>
 
 #include "core/registry.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/items/item.hpp"
 
 namespace {
 
-using world::Inventory;
+using world::SolidInventory;
 using world::Item;
 using world::ItemType;
 
-int stack_count(const Inventory& inventory, std::size_t slot) {
+int stack_count(const SolidInventory& inventory, std::size_t slot) {
     const auto& stack = inventory.slots()[slot];
     return stack ? stack->count : 0;
 }
 
 } // namespace
 
-TEST(Inventory, AddingMoreThanOneStackSplitsAcrossSlots) {
+TEST(SolidInventory, AddingMoreThanOneStackSplitsAcrossSlots) {
     // Given
-    Inventory inventory{5};
+    SolidInventory inventory{5};
 
     // When
     const int leftover = inventory.add(world::items::IronOre, 150);
@@ -31,9 +31,9 @@ TEST(Inventory, AddingMoreThanOneStackSplitsAcrossSlots) {
     EXPECT_EQ(inventory.free_slots(), 3u);
 }
 
-TEST(Inventory, AddingTopsUpAPartialStackBeforeUsingANewSlot) {
+TEST(SolidInventory, AddingTopsUpAPartialStackBeforeUsingANewSlot) {
     // Given
-    Inventory inventory{5};
+    SolidInventory inventory{5};
     inventory.add(world::items::IronOre, 50);
 
     // When
@@ -45,9 +45,9 @@ TEST(Inventory, AddingTopsUpAPartialStackBeforeUsingANewSlot) {
     EXPECT_EQ(stack_count(inventory, 1), 20);
 }
 
-TEST(Inventory, DifferentItemsNeverShareASlot) {
+TEST(SolidInventory, DifferentItemsNeverShareASlot) {
     // Given
-    Inventory inventory{3};
+    SolidInventory inventory{3};
     inventory.add(world::items::IronOre, 10);
 
     // When
@@ -59,9 +59,9 @@ TEST(Inventory, DifferentItemsNeverShareASlot) {
     EXPECT_EQ(inventory.count(world::items::Coal), 10);
 }
 
-TEST(Inventory, ItemWithSmallerMaxStackSplitsAtItsOwnLimit) {
+TEST(SolidInventory, ItemWithSmallerMaxStackSplitsAtItsOwnLimit) {
     // Given
-    Inventory inventory{3};
+    SolidInventory inventory{3};
     const Item small_coal{ItemType::Coal, 50};
 
     // When
@@ -73,9 +73,9 @@ TEST(Inventory, ItemWithSmallerMaxStackSplitsAtItsOwnLimit) {
     EXPECT_EQ(stack_count(inventory, 2), 20);
 }
 
-TEST(Inventory, AddingToAFullInventoryReturnsTheWholeCount) {
+TEST(SolidInventory, AddingToAFullInventoryReturnsTheWholeCount) {
     // Given
-    Inventory inventory{1};
+    SolidInventory inventory{1};
     inventory.add(world::items::IronOre, 100);
 
     // When
@@ -86,9 +86,9 @@ TEST(Inventory, AddingToAFullInventoryReturnsTheWholeCount) {
     EXPECT_EQ(inventory.count(world::items::IronOre), 100);
 }
 
-TEST(Inventory, AddingMoreThanFitsReturnsOnlyTheExcess) {
+TEST(SolidInventory, AddingMoreThanFitsReturnsOnlyTheExcess) {
     // Given
-    Inventory inventory{1};
+    SolidInventory inventory{1};
 
     // When
     const int leftover = inventory.add(world::items::CopperOre, 150);
@@ -98,9 +98,9 @@ TEST(Inventory, AddingMoreThanFitsReturnsOnlyTheExcess) {
     EXPECT_EQ(inventory.count(world::items::CopperOre), 100);
 }
 
-TEST(Inventory, AddingZeroOrNegativeChangesNothing) {
+TEST(SolidInventory, AddingZeroOrNegativeChangesNothing) {
     // Given
-    Inventory inventory{2};
+    SolidInventory inventory{2};
 
     // When
     const int zero = inventory.add(world::items::IronOre, 0);
@@ -112,9 +112,9 @@ TEST(Inventory, AddingZeroOrNegativeChangesNothing) {
     EXPECT_TRUE(inventory.is_empty());
 }
 
-TEST(Inventory, ItemWithNoStackSizeCannotBeAdded) {
+TEST(SolidInventory, ItemWithNoStackSizeCannotBeAdded) {
     // Given
-    Inventory inventory{2};
+    SolidInventory inventory{2};
 
     // When
     const int leftover = inventory.add(Item{ItemType::Coal, 0}, 10);
@@ -124,9 +124,9 @@ TEST(Inventory, ItemWithNoStackSizeCannotBeAdded) {
     EXPECT_TRUE(inventory.is_empty());
 }
 
-TEST(Inventory, CountSumsTheItemAcrossSlots) {
+TEST(SolidInventory, CountSumsTheItemAcrossSlots) {
     // Given
-    Inventory inventory{4};
+    SolidInventory inventory{4};
     inventory.add(world::items::IronOre, 130);
     inventory.add(world::items::Coal, 40);
 
@@ -137,9 +137,9 @@ TEST(Inventory, CountSumsTheItemAcrossSlots) {
     EXPECT_EQ(iron, 130);
 }
 
-TEST(Inventory, RemovingMoreThanHeldRemovesOnlyWhatExistsAndFreesSlots) {
+TEST(SolidInventory, RemovingMoreThanHeldRemovesOnlyWhatExistsAndFreesSlots) {
     // Given
-    Inventory inventory{3};
+    SolidInventory inventory{3};
     inventory.add(world::items::IronOre, 150);
 
     // When
@@ -151,9 +151,9 @@ TEST(Inventory, RemovingMoreThanHeldRemovesOnlyWhatExistsAndFreesSlots) {
     EXPECT_EQ(inventory.free_slots(), 3u);
 }
 
-TEST(Inventory, RemovingTakesFromThePartialStackFirst) {
+TEST(SolidInventory, RemovingTakesFromThePartialStackFirst) {
     // Given
-    Inventory inventory{3};
+    SolidInventory inventory{3};
     inventory.add(world::items::IronOre, 150);
 
     // When
@@ -165,9 +165,9 @@ TEST(Inventory, RemovingTakesFromThePartialStackFirst) {
     EXPECT_FALSE(inventory.slots()[1].has_value());
 }
 
-TEST(Inventory, RemovingZeroOrAnItemNotHeldRemovesNothing) {
+TEST(SolidInventory, RemovingZeroOrAnItemNotHeldRemovesNothing) {
     // Given
-    Inventory inventory{2};
+    SolidInventory inventory{2};
     inventory.add(world::items::IronOre, 10);
 
     // When
@@ -180,26 +180,26 @@ TEST(Inventory, RemovingZeroOrAnItemNotHeldRemovesNothing) {
     EXPECT_EQ(inventory.count(world::items::IronOre), 10);
 }
 
-TEST(Inventory, EntitiesInARegistryKeepIndependentInventories) {
+TEST(SolidInventory, EntitiesInARegistryKeepIndependentInventories) {
     // Given
     core::Registry registry;
     const core::EntityId chest = registry.create("Chest");
     const core::EntityId player = registry.create("Player");
-    registry.add(chest, Inventory{4});
-    registry.add(player, Inventory{4});
+    registry.add(chest, SolidInventory{4});
+    registry.add(player, SolidInventory{4});
 
     // When
-    registry.get<Inventory>(chest)->add(world::items::IronOre, 80);
+    registry.get<SolidInventory>(chest)->add(world::items::IronOre, 80);
 
     // Then
-    EXPECT_EQ(registry.get<Inventory>(chest)->count(world::items::IronOre), 80);
-    EXPECT_TRUE(registry.get<Inventory>(player)->is_empty());
+    EXPECT_EQ(registry.get<SolidInventory>(chest)->count(world::items::IronOre), 80);
+    EXPECT_TRUE(registry.get<SolidInventory>(player)->is_empty());
 }
 
 TEST(TransferItems, MovesTheItemsFromOneInventoryToTheOther) {
     // Given
-    world::Inventory from(4);
-    world::Inventory to(4);
+    world::SolidInventory from(4);
+    world::SolidInventory to(4);
     from.add(world::items::IronOre, 50);
 
     // When
@@ -213,8 +213,8 @@ TEST(TransferItems, MovesTheItemsFromOneInventoryToTheOther) {
 
 TEST(TransferItems, MovesNoMoreThanTheSourceHolds) {
     // Given
-    world::Inventory from(4);
-    world::Inventory to(4);
+    world::SolidInventory from(4);
+    world::SolidInventory to(4);
     from.add(world::items::Coal, 5);
 
     // When
@@ -227,8 +227,8 @@ TEST(TransferItems, MovesNoMoreThanTheSourceHolds) {
 
 TEST(TransferItems, LeavesWhatDoesNotFitInTheSource) {
     // Given: the target has one free slot, so it takes one stack (100) of the 150
-    world::Inventory from(4);
-    world::Inventory to(2);
+    world::SolidInventory from(4);
+    world::SolidInventory to(2);
     to.add(world::items::Coal, 100);
     from.add(world::items::IronOre, 150);
 
@@ -241,9 +241,9 @@ TEST(TransferItems, LeavesWhatDoesNotFitInTheSource) {
     EXPECT_EQ(to.count(world::items::IronOre), 100);
 }
 
-TEST(Inventory, AppendingAFilteredSectionAddsSlotsThatOnlyAcceptTheirItem) {
+TEST(SolidInventory, AppendingAFilteredSectionAddsSlotsThatOnlyAcceptTheirItem) {
     // Given: no general slot, 2 slots for iron ore only
-    Inventory inventory{0};
+    SolidInventory inventory{0};
     inventory.append(2, ItemType::IronOre);
 
     // When
@@ -257,9 +257,9 @@ TEST(Inventory, AppendingAFilteredSectionAddsSlotsThatOnlyAcceptTheirItem) {
     EXPECT_EQ(inventory.filter(0), ItemType::IronOre);
 }
 
-TEST(Inventory, AnItemWithFilteredSlotsNeverSpillsIntoGeneralSlots) {
+TEST(SolidInventory, AnItemWithFilteredSlotsNeverSpillsIntoGeneralSlots) {
     // Given: 2 general slots, then 1 slot for iron ore only
-    Inventory inventory{2};
+    SolidInventory inventory{2};
     inventory.append(1, ItemType::IronOre);
 
     // When
@@ -272,9 +272,9 @@ TEST(Inventory, AnItemWithFilteredSlotsNeverSpillsIntoGeneralSlots) {
     EXPECT_EQ(stack_count(inventory, 2), 100);
 }
 
-TEST(Inventory, ItemsWithoutAFilteredSectionFillTheGeneralSlots) {
+TEST(SolidInventory, ItemsWithoutAFilteredSectionFillTheGeneralSlots) {
     // Given
-    Inventory inventory{1};
+    SolidInventory inventory{1};
     inventory.append(1, ItemType::IronOre);
 
     // When
@@ -286,9 +286,9 @@ TEST(Inventory, ItemsWithoutAFilteredSectionFillTheGeneralSlots) {
     EXPECT_FALSE(inventory.filter(0).has_value());
 }
 
-TEST(Inventory, SetSlotIgnoresAStackTheSlotsFilterRefuses) {
+TEST(SolidInventory, SetSlotIgnoresAStackTheSlotsFilterRefuses) {
     // Given
-    Inventory inventory{0};
+    SolidInventory inventory{0};
     inventory.append(1, ItemType::Coal);
 
     // When

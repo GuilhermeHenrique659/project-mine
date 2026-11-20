@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/registry.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/construction/build_rule.hpp"
 #include "scene/world/core/construction/construction.hpp"
 #include "scene/world/core/entities/entity_factory.hpp"
@@ -18,9 +18,9 @@ BuildResult check_unlocked(const core::Registry& registry, const Construction& c
 // so only an empty cost passes), in order: check_unlocked(), TileBlocked, the
 // check_site() of each of its rules, NotEnoughResources.
 BuildResult can_build(const core::Registry& registry, const Construction& construction,
-                      TileCoord tile, const Terrain& terrain, const Inventory* payer);
+                      TileCoord tile, const Terrain& terrain, const SolidInventory* payer);
 
-// Applies every rule of can_build(), with the cost paid from the Inventory of `payer`;
+// Applies every rule of can_build(), with the cost paid from the SolidInventory of `payer`;
 // when they pass, takes the cost and spawns the building (through the factory, so it is
 // saved), labelled with the construction's name.
 BuildResult build(core::Registry& registry, const EntityFactory& factory,

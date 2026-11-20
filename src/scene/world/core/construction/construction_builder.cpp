@@ -3,7 +3,7 @@
 #include "scene/world/core/components/combat.hpp"
 #include "scene/world/core/components/military.hpp"
 
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/power.hpp"
 #include "scene/world/core/components/worker.hpp"
 
@@ -131,7 +131,7 @@ Construction ConstructionBuilder::build() const {
     Construction construction = construction_;
     Blueprint& blueprint = construction.blueprint;
     if (general_slots_ || !sections_.empty()) {
-        Inventory inventory{general_slots_.value_or(0)};
+        SolidInventory inventory{general_slots_.value_or(0)};
         for (const auto& [slots, item] : sections_) {
             inventory.append(slots, item);
         }

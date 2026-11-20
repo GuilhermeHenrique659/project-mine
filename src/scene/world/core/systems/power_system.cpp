@@ -3,7 +3,7 @@
 #include <algorithm>
 
 #include "scene/world/core/components/building.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/power.hpp"
 
 namespace world {
@@ -11,7 +11,7 @@ namespace world {
 namespace {
 
 // Burns what a fuelled generator needs for dt and returns the share of it that was there.
-float burn_fuel(Generator& generator, Inventory* inventory, float delta_time) {
+float burn_fuel(Generator& generator, SolidInventory* inventory, float delta_time) {
     const ItemStack& input = *generator.spec.input;
     const float needed = generator.spec.rate * delta_time;
     if (needed <= 0.0f) {
@@ -27,7 +27,7 @@ float burn_fuel(Generator& generator, Inventory* inventory, float delta_time) {
     return used / needed;
 }
 
-void run_generator(Generator& generator, Inventory* inventory, float delta_time) {
+void run_generator(Generator& generator, SolidInventory* inventory, float delta_time) {
     if (!generator.spec.input) {
         generator.efficiency = 1.0f;
     } else {
@@ -53,7 +53,7 @@ void PowerSystem::update(float delta_time) {
         if (registry_.has<ConstructionSite>(id)) {
             return;
         }
-        run_generator(generator, registry_.get<Inventory>(id), delta_time);
+        run_generator(generator, registry_.get<SolidInventory>(id), delta_time);
         supply_kw_ += generator.output_kw;
     });
     registry_.each<PowerConsumer>([&](core::EntityId id, PowerConsumer& consumer) {

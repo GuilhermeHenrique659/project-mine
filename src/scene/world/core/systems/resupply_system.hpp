@@ -2,7 +2,7 @@
 
 #include "core/registry.hpp"
 #include "event/event_bus.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/events/military_events.hpp"
 #include "scene/world/core/system.hpp"
 #include "scene/world/core/terrain/terrain.hpp"
@@ -37,7 +37,7 @@ private:
     // Sends every idle soldier lacking a weapon or ammo to its nearest_supply().
     void seek_supplies();
     // The nearest finished Supply holding something `carried` lacks; 0 = none.
-    core::EntityId nearest_supply(WorldPoint point, const Inventory& carried) const;
+    core::EntityId nearest_supply(WorldPoint point, const SolidInventory& carried) const;
     bool is_blocked(TileCoord tile) const;
 
     core::Registry& registry_;

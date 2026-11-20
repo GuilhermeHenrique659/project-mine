@@ -2,7 +2,7 @@
 
 #include "core/registry.hpp"
 #include "event/event_bus.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/events/item_transfer_requested.hpp"
 #include "scene/world/core/systems/inventory_transfer_system.hpp"
@@ -18,14 +18,14 @@ struct Fixture {
 
     explicit Fixture(world::WorldPoint mine_at) {
         registry.add(player, world::Position{{0.0f, 0.0f}});
-        registry.add(player, world::Inventory{4});
+        registry.add(player, world::SolidInventory{4});
         registry.add(mine, world::Position{mine_at});
-        registry.add(mine, world::Inventory{4});
-        registry.get<world::Inventory>(mine)->add(world::items::Coal, 60);
+        registry.add(mine, world::SolidInventory{4});
+        registry.get<world::SolidInventory>(mine)->add(world::items::Coal, 60);
     }
 
     int count(core::EntityId id) const {
-        return registry.get<world::Inventory>(id)->count(world::items::Coal);
+        return registry.get<world::SolidInventory>(id)->count(world::items::Coal);
     }
 };
 
@@ -58,7 +58,7 @@ TEST(InventoryTransferSystem, IgnoresARequestBetweenEntitiesTooFarApart) {
 TEST(InventoryTransferSystem, IgnoresARequestToAnEntityWithoutAnInventory) {
     // Given
     Fixture f({1.0f, 0.0f});
-    f.registry.remove<world::Inventory>(f.player);
+    f.registry.remove<world::SolidInventory>(f.player);
 
     // When
     f.bus.publish(world::ItemTransferRequested{f.mine, f.player, world::items::Coal, 60});

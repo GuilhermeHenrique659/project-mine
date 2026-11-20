@@ -4,7 +4,7 @@
 #include <cmath>
 #include <string>
 
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/render/terrain_renderer.hpp"
 #include "ui/grid.hpp"
 #include "ui/theme.hpp"
@@ -23,6 +23,8 @@ constexpr ui::Color ElectronicsColor{60, 170, 90, 255};
 constexpr ui::Color ToolColor{210, 150, 60, 255};
 constexpr ui::Color AmmoColor{200, 175, 70, 255};
 constexpr ui::Color WeaponColor{95, 100, 115, 255};
+constexpr ui::Color OilColor{30, 25, 35, 255};
+constexpr ui::Color DieselColor{220, 190, 60, 255};
 // Opacity of the item hint in an empty filtered slot.
 constexpr unsigned char FilterHintAlpha = 60;
 } // namespace
@@ -36,6 +38,8 @@ ui::Color item_color(::world::ItemType type) {
     case ::world::ItemType::Tool: return ToolColor;
     case ::world::ItemType::Ammo: return AmmoColor;
     case ::world::ItemType::Weapon: return WeaponColor;
+    case ::world::ItemType::Oil: return OilColor;
+    case ::world::ItemType::Diesel: return DieselColor;
     case ::world::ItemType::IronOre: break;
     }
     return IronOreColor;
@@ -50,7 +54,7 @@ ui::Size InventorySlot::preferred_size(const ui::Canvas&) const {
 }
 
 void InventorySlot::draw(ui::Canvas& canvas) const {
-    const auto* inventory = registry_.get<::world::Inventory>(entity_);
+    const auto* inventory = registry_.get<::world::SolidInventory>(entity_);
     if (inventory == nullptr || index_ >= inventory->slots().size()) {
         return;
     }
@@ -83,7 +87,7 @@ InventoryGrid::InventoryGrid(const core::Registry& registry, core::EntityId enti
     : ui::Composite(ui::theme::slot_style()), registry_(registry), entity_(entity) {}
 
 std::size_t InventoryGrid::capacity() const {
-    const auto* inventory = registry_.get<::world::Inventory>(entity_);
+    const auto* inventory = registry_.get<::world::SolidInventory>(entity_);
     return inventory == nullptr ? 0 : inventory->capacity();
 }
 

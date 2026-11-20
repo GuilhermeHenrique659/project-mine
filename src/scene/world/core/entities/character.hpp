@@ -22,7 +22,7 @@ constexpr int StartingWeapons = 1;
 constexpr int StartingAmmo = items::Ammo.max_stack;
 
 // A character is an archetype, not a class: an entity with the Character marker,
-// Position, Mover, an Inventory of CharacterInventorySlots and a Builder.
+// Position, Mover, a SolidInventory of CharacterInventorySlots and a Builder.
 core::EntityId spawn_character(core::Registry& registry, std::string label, WorldPoint position);
 
 } // namespace world

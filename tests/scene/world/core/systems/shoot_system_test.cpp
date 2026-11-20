@@ -5,7 +5,7 @@
 #include "core/registry.hpp"
 #include "event/event_bus.hpp"
 #include "scene/world/core/components/combat.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/mover.hpp"
 #include "scene/world/core/components/path_follower.hpp"
 #include "scene/world/core/construction/construction.hpp"
@@ -34,7 +34,7 @@ struct Fixture {
         const core::EntityId id = registry.create("Shooter");
         registry.add(id, world::Position{at});
         registry.add(id, world::Shooter{});
-        auto& inventory = registry.add(id, world::Inventory{2});
+        auto& inventory = registry.add(id, world::SolidInventory{2});
         inventory.add(world::items::Weapon, weapons);
         inventory.add(world::items::Ammo, ammo);
         return id;
@@ -49,7 +49,7 @@ struct Fixture {
 
     void shoot(core::EntityId from, core::EntityId at) { bus.publish(world::ShotRequested{from, at}); }
 
-    int ammo(core::EntityId id) { return registry.get<world::Inventory>(id)->count(world::items::Ammo); }
+    int ammo(core::EntityId id) { return registry.get<world::SolidInventory>(id)->count(world::items::Ammo); }
 
     int health(core::EntityId id) { return registry.get<world::Health>(id)->current; }
 };
@@ -154,8 +154,8 @@ TEST(ShootSystem, SoldierAndPlayerCharacterCanShootEachOther) {
     const auto player = world::spawn_character(f.registry, "Player", {1.0f, 0.0f});
     f.registry.add(player, world::Shooter{}); // the WorldModel arms the player
     for (const auto id : {soldier, player}) {
-        f.registry.get<world::Inventory>(id)->add(world::items::Weapon, 1);
-        f.registry.get<world::Inventory>(id)->add(world::items::Ammo, 3);
+        f.registry.get<world::SolidInventory>(id)->add(world::items::Weapon, 1);
+        f.registry.get<world::SolidInventory>(id)->add(world::items::Ammo, 3);
     }
 
     // When
@@ -241,12 +241,12 @@ TEST(ShootSystem, AWorkerCanBeShotButCannotShootEvenWhenArmed) {
     // Given
     Fixture f;
     const auto worker = world::spawn_worker(f.registry, "Worker", {0.0f, 0.0f});
-    f.registry.add(worker, world::Inventory{2}); // room for a weapon and its ammo
-    f.registry.get<world::Inventory>(worker)->add(world::items::Weapon, 1);
-    f.registry.get<world::Inventory>(worker)->add(world::items::Ammo, 5);
+    f.registry.add(worker, world::SolidInventory{2}); // room for a weapon and its ammo
+    f.registry.get<world::SolidInventory>(worker)->add(world::items::Weapon, 1);
+    f.registry.get<world::SolidInventory>(worker)->add(world::items::Ammo, 5);
     const auto soldier = world::spawn_soldier(f.registry, "Soldier", {1.0f, 0.0f});
-    f.registry.get<world::Inventory>(soldier)->add(world::items::Weapon, 1);
-    f.registry.get<world::Inventory>(soldier)->add(world::items::Ammo, 5);
+    f.registry.get<world::SolidInventory>(soldier)->add(world::items::Weapon, 1);
+    f.registry.get<world::SolidInventory>(soldier)->add(world::items::Ammo, 5);
 
     // When
     f.shoot(worker, soldier);

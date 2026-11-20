@@ -7,7 +7,7 @@
 #include "scene/world/core/construction/build_rules.hpp"
 #include "scene/world/core/entities/building.hpp"
 #include "scene/world/core/save/codecs.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/persistent.hpp"
 #include "scene/world/core/components/player_controlled.hpp"
 #include "scene/world/core/components/position.hpp"
@@ -183,7 +183,7 @@ TEST(WorldSerializer, SnapshotWritesEachFilledInventorySlotWithItsIndex) {
     // Given
     Fixture f;
     const core::EntityId id = f.spawn_player({0.0f, 0.0f});
-    world::Inventory& inventory = *f.registry.get<world::Inventory>(id);
+    world::SolidInventory& inventory = *f.registry.get<world::SolidInventory>(id);
     inventory.set_slot(0, world::ItemStack{world::items::IronOre, 100});
     inventory.set_slot(3, world::ItemStack{world::items::Coal, 7});
 
@@ -202,7 +202,7 @@ TEST(WorldSerializer, SteelInAnInventorySurvivesASaveAndLoad) {
     // Given
     Fixture saved;
     const core::EntityId id = saved.spawn_player({0.0f, 0.0f});
-    saved.registry.get<world::Inventory>(id)->set_slot(
+    saved.registry.get<world::SolidInventory>(id)->set_slot(
         0, world::ItemStack{world::items::Steel, 12});
     const auto records = saved.serializer.snapshot(saved.registry);
     Fixture loaded;
@@ -213,7 +213,7 @@ TEST(WorldSerializer, SteelInAnInventorySurvivesASaveAndLoad) {
     // Then
     EXPECT_EQ(records[0].fields.at("inventory.0"), "Steel:12");
     const auto& slots =
-        loaded.registry.get<world::Inventory>(loaded.registry.entities()[0].id)->slots();
+        loaded.registry.get<world::SolidInventory>(loaded.registry.entities()[0].id)->slots();
     ASSERT_TRUE(slots[0].has_value());
     EXPECT_EQ(slots[0]->item, world::items::Steel);
     EXPECT_EQ(slots[0]->count, 12);
@@ -223,7 +223,7 @@ TEST(WorldSerializer, ElectronicsInAnInventorySurviveASaveAndLoad) {
     // Given
     Fixture saved;
     const core::EntityId id = saved.spawn_player({0.0f, 0.0f});
-    saved.registry.get<world::Inventory>(id)->set_slot(
+    saved.registry.get<world::SolidInventory>(id)->set_slot(
         0, world::ItemStack{world::items::Electronics, 7});
     const auto records = saved.serializer.snapshot(saved.registry);
     Fixture loaded;
@@ -234,7 +234,7 @@ TEST(WorldSerializer, ElectronicsInAnInventorySurviveASaveAndLoad) {
     // Then
     EXPECT_EQ(records[0].fields.at("inventory.0"), "Electronics:7");
     const auto& slots =
-        loaded.registry.get<world::Inventory>(loaded.registry.entities()[0].id)->slots();
+        loaded.registry.get<world::SolidInventory>(loaded.registry.entities()[0].id)->slots();
     ASSERT_TRUE(slots[0].has_value());
     EXPECT_EQ(slots[0]->item, world::items::Electronics);
     EXPECT_EQ(slots[0]->count, 7);
@@ -244,7 +244,7 @@ TEST(WorldSerializer, InventoryRoundTripKeepsEveryStackInItsSlot) {
     // Given
     Fixture saved;
     const core::EntityId id = saved.spawn_player({0.0f, 0.0f});
-    world::Inventory& inventory = *saved.registry.get<world::Inventory>(id);
+    world::SolidInventory& inventory = *saved.registry.get<world::SolidInventory>(id);
     inventory.set_slot(2, world::ItemStack{world::items::CopperOre, 42});
     inventory.set_slot(39, world::ItemStack{world::items::IronOre, 1});
     const auto records = saved.serializer.snapshot(saved.registry);
@@ -255,7 +255,7 @@ TEST(WorldSerializer, InventoryRoundTripKeepsEveryStackInItsSlot) {
 
     // Then
     const auto& slots =
-        loaded.registry.get<world::Inventory>(loaded.registry.entities()[0].id)->slots();
+        loaded.registry.get<world::SolidInventory>(loaded.registry.entities()[0].id)->slots();
     ASSERT_EQ(slots.size(), 40u);
     for (std::size_t i = 0; i < slots.size(); ++i) {
         if (i == 2 || i == 39) {
@@ -289,8 +289,8 @@ TEST(WorldSerializer, BadInventoryEntriesAreSkippedAndTheValidOnesKept) {
     f.serializer.restore(f.registry, records);
 
     // Then
-    const world::Inventory& inventory =
-        *f.registry.get<world::Inventory>(f.registry.entities()[0].id);
+    const world::SolidInventory& inventory =
+        *f.registry.get<world::SolidInventory>(f.registry.entities()[0].id);
     EXPECT_EQ(inventory.count(world::items::Coal), 100);
     EXPECT_EQ(inventory.count(world::items::IronOre), 0);
     EXPECT_EQ(inventory.free_slots(), 39u);
@@ -364,7 +364,7 @@ TEST(WorldSerializer, AMineKeepsItsInventoryThroughASave) {
     const core::EntityId id = *saved.factory.spawn(saved.registry, world::BuildingArchetype, "Mine");
     world::make_building(saved.registry, id, *world::find_construction(world::BuildingType::Mine),
                          {30, 2});
-    saved.registry.get<world::Inventory>(id)->set_slot(2, world::ItemStack{world::items::Coal, 40});
+    saved.registry.get<world::SolidInventory>(id)->set_slot(2, world::ItemStack{world::items::Coal, 40});
     const auto records = saved.serializer.snapshot(saved.registry);
 
     // When
@@ -373,7 +373,7 @@ TEST(WorldSerializer, AMineKeepsItsInventoryThroughASave) {
 
     // Then
     const core::EntityId mine = loaded.registry.entities().front().id;
-    const world::Inventory* inventory = loaded.registry.get<world::Inventory>(mine);
+    const world::SolidInventory* inventory = loaded.registry.get<world::SolidInventory>(mine);
     ASSERT_NE(inventory, nullptr);
     EXPECT_EQ(inventory->capacity(), 10u);
     ASSERT_TRUE(inventory->slots()[2].has_value());
@@ -402,7 +402,7 @@ TEST(WorldSerializer, ToolsAmmoAndWeaponsInAnInventorySurviveASaveAndLoad) {
     // Given
     Fixture saved;
     const core::EntityId id = saved.spawn_player({0.0f, 0.0f});
-    auto* inventory = saved.registry.get<world::Inventory>(id);
+    auto* inventory = saved.registry.get<world::SolidInventory>(id);
     inventory->set_slot(0, world::ItemStack{world::items::Tool, 3});
     inventory->set_slot(1, world::ItemStack{world::items::Ammo, 4});
     inventory->set_slot(2, world::ItemStack{world::items::Weapon, 1});
@@ -417,7 +417,7 @@ TEST(WorldSerializer, ToolsAmmoAndWeaponsInAnInventorySurviveASaveAndLoad) {
     EXPECT_EQ(records[0].fields.at("inventory.1"), "Ammo:4");
     EXPECT_EQ(records[0].fields.at("inventory.2"), "Weapon:1");
     const auto& slots =
-        loaded.registry.get<world::Inventory>(loaded.registry.entities()[0].id)->slots();
+        loaded.registry.get<world::SolidInventory>(loaded.registry.entities()[0].id)->slots();
     ASSERT_TRUE(slots[0].has_value() && slots[1].has_value() && slots[2].has_value());
     EXPECT_EQ(slots[0]->item, world::items::Tool);
     EXPECT_EQ(slots[1]->item, world::items::Ammo);

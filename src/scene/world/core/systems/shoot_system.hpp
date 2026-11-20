@@ -4,7 +4,7 @@
 #include <optional>
 
 #include "core/registry.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/items/item.hpp"
 #include "event/event_bus.hpp"
 #include "scene/world/core/system.hpp"
@@ -12,7 +12,7 @@
 namespace world {
 
 // The stats of the first weapon in the inventory; empty when it holds none.
-std::optional<WeaponStats> held_weapon(const Inventory& inventory);
+std::optional<WeaponStats> held_weapon(const SolidInventory& inventory);
 
 // A dice roll for a shot: a uniform number in [0, 1). The shot hits when it is below the
 // hit chance.

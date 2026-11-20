@@ -11,7 +11,7 @@
 #include "scene/world/core/components/hauler.hpp"
 #include "scene/world/core/components/route_follower.hpp"
 #include "scene/world/core/components/worker.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/entities/building.hpp"
 #include "scene/world/core/components/player_controlled.hpp"
 #include "scene/world/core/components/position.hpp"
@@ -43,7 +43,7 @@ CharacterState parse_state(const std::string& text) {
 constexpr std::string_view InventoryPrefix = "inventory.";
 
 // Save-file names of the item types: stable keys, not the names shown to the player.
-constexpr std::array<std::pair<ItemType, std::string_view>, 8> ItemKeys{{
+constexpr std::array<std::pair<ItemType, std::string_view>, 10> ItemKeys{{
     {ItemType::IronOre, "IronOre"},
     {ItemType::CopperOre, "CopperOre"},
     {ItemType::Coal, "Coal"},
@@ -52,6 +52,8 @@ constexpr std::array<std::pair<ItemType, std::string_view>, 8> ItemKeys{{
     {ItemType::Tool, "Tool"},
     {ItemType::Ammo, "Ammo"},
     {ItemType::Weapon, "Weapon"},
+    {ItemType::Oil, "Oil"},
+    {ItemType::Diesel, "Diesel"},
 }};
 
 std::string_view item_key(ItemType type) {
@@ -258,7 +260,7 @@ void PlayerControlledCodec::read(core::Registry& registry, core::EntityId id,
 
 void InventoryCodec::write(const core::Registry& registry, core::EntityId id,
                            Fields& fields) const {
-    const Inventory* inventory = registry.get<Inventory>(id);
+    const SolidInventory* inventory = registry.get<SolidInventory>(id);
     if (inventory == nullptr) {
         return;
     }
@@ -274,7 +276,7 @@ void InventoryCodec::write(const core::Registry& registry, core::EntityId id,
 
 void InventoryCodec::read(core::Registry& registry, core::EntityId id,
                           const Fields& fields) const {
-    Inventory* inventory = registry.get<Inventory>(id);
+    SolidInventory* inventory = registry.get<SolidInventory>(id);
     if (inventory == nullptr) {
         return;
     }

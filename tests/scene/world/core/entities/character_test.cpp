@@ -2,7 +2,7 @@
 
 #include "core/registry.hpp"
 #include "scene/world/core/entities/character.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/mover.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/systems/character_move_system.hpp"
@@ -35,7 +35,7 @@ TEST(Character, SpawnedCharacterCarriesAnEmptyFortySlotInventory) {
     const core::EntityId id = world::spawn_character(registry, "Hero", {0.0f, 0.0f});
 
     // Then
-    const world::Inventory* inventory = registry.get<world::Inventory>(id);
+    const world::SolidInventory* inventory = registry.get<world::SolidInventory>(id);
     ASSERT_NE(inventory, nullptr);
     EXPECT_EQ(inventory->capacity(), 40u);
     EXPECT_TRUE(inventory->is_empty());

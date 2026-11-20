@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/military.hpp"
 #include "scene/world/render/building_details.hpp"
 #include "scene/world/render/entity_name.hpp"
@@ -72,7 +72,7 @@ ui::Rect BuildingPanel::building_slot_bounds(std::size_t index) const {
 }
 
 void BuildingPanel::move_stack(core::EntityId from, core::EntityId to, std::size_t slot) const {
-    const auto* inventory = model_.registry().get<::world::Inventory>(from);
+    const auto* inventory = model_.registry().get<::world::SolidInventory>(from);
     if (inventory == nullptr || slot >= inventory->capacity() || !inventory->slots()[slot]) {
         return;
     }
@@ -111,7 +111,7 @@ void BuildingPanel::sync_tree() const {
     }
     details_->set_visible(!lines.empty());
     // A building without slots shows no grid (and no gap above it).
-    const auto* inventory = model_.registry().get<::world::Inventory>(target);
+    const auto* inventory = model_.registry().get<::world::SolidInventory>(target);
     building_view_->set_visible(inventory != nullptr && inventory->capacity() > 0);
     recruit_row_->set_visible(recruit_visible());
 }

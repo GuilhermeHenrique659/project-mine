@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "scene/world/core/components/building.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/military.hpp"
 #include "scene/world/core/components/path_follower.hpp"
 #include "scene/world/core/components/position.hpp"
@@ -40,18 +40,18 @@ int distance_squared(TileCoord a, TileCoord b) {
 }
 
 // Whether the soldier lacks a weapon or ammo.
-bool needs_supplies(const Inventory& soldier) {
+bool needs_supplies(const SolidInventory& soldier) {
     return soldier.count(items::Weapon) == 0 || soldier.count(items::Ammo) == 0;
 }
 
 // Whether `supply` holds something the soldier lacks.
-bool has_what_is_missing(const Inventory& supply, const Inventory& soldier) {
+bool has_what_is_missing(const SolidInventory& supply, const SolidInventory& soldier) {
     return (soldier.count(items::Weapon) == 0 && supply.count(items::Weapon) > 0) ||
            (soldier.count(items::Ammo) < items::Ammo.max_stack && supply.count(items::Ammo) > 0);
 }
 
 // One weapon when the soldier holds none, then ammo up to one full stack.
-void take_supplies(Inventory& supply, Inventory& soldier) {
+void take_supplies(SolidInventory& supply, SolidInventory& soldier) {
     if (soldier.count(items::Weapon) == 0) {
         transfer_items(supply, soldier, items::Weapon, 1);
     }
@@ -114,10 +114,10 @@ void ResupplySystem::send(core::EntityId soldier, core::EntityId supply) {
     }
 }
 
-core::EntityId ResupplySystem::nearest_supply(WorldPoint point, const Inventory& carried) const {
+core::EntityId ResupplySystem::nearest_supply(WorldPoint point, const SolidInventory& carried) const {
     core::EntityId nearest = 0;
     float best = 0.0f;
-    registry_.each<Supply, Inventory>([&](core::EntityId id, const Supply&, const Inventory& stock) {
+    registry_.each<Supply, SolidInventory>([&](core::EntityId id, const Supply&, const SolidInventory& stock) {
         if (!registry_.has<Building>(id) || registry_.has<ConstructionSite>(id) ||
             !has_what_is_missing(stock, carried)) {
             return;
@@ -133,8 +133,8 @@ core::EntityId ResupplySystem::nearest_supply(WorldPoint point, const Inventory&
 
 void ResupplySystem::seek_supplies() {
     std::vector<std::pair<core::EntityId, core::EntityId>> sends;
-    registry_.each<Soldier, Position, Inventory>(
-        [&](core::EntityId id, const Soldier&, const Position& position, const Inventory& carried) {
+    registry_.each<Soldier, Position, SolidInventory>(
+        [&](core::EntityId id, const Soldier&, const Position& position, const SolidInventory& carried) {
             if (registry_.has<ResupplyOrder>(id) || registry_.has<PathFollower>(id) ||
                 !needs_supplies(carried)) {
                 return;
@@ -150,13 +150,13 @@ void ResupplySystem::seek_supplies() {
 
 void ResupplySystem::update(float delta_time) {
     std::vector<core::EntityId> done;
-    registry_.each<ResupplyOrder, Position, Inventory>(
-        [&](core::EntityId id, ResupplyOrder& order, Position& position, Inventory& carried) {
+    registry_.each<ResupplyOrder, Position, SolidInventory>(
+        [&](core::EntityId id, ResupplyOrder& order, Position& position, SolidInventory& carried) {
             if (registry_.has<PathFollower>(id)) {
                 return;
             }
             done.push_back(id);
-            auto* supply = registry_.get<Inventory>(order.supply);
+            auto* supply = registry_.get<SolidInventory>(order.supply);
             if (supply == nullptr || !registry_.has<Supply>(order.supply) ||
                 registry_.has<ConstructionSite>(order.supply) ||
                 distance_to_building(registry_, order.supply, position.point) > SupplyReach) {

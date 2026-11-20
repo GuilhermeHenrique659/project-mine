@@ -4,7 +4,7 @@
 #include <unordered_map>
 
 #include "scene/world/core/components/building.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/power.hpp"
 #include "scene/world/core/components/worker.hpp"
 #include "scene/world/core/worker_report.hpp"
@@ -26,7 +26,7 @@ namespace {
 
 // Makes one craft (output_count outputs) when every input is there and all of it fits;
 // otherwise nothing changes and the reason is returned (None = made one).
-IdleReason produce_one(Inventory& inventory, const std::vector<ItemStack>& inputs, Item output,
+IdleReason produce_one(SolidInventory& inventory, const std::vector<ItemStack>& inputs, Item output,
                        int output_count) {
     for (const ItemStack& input : inputs) {
         if (inventory.count(input.item) < input.count) {
@@ -58,7 +58,7 @@ float crew_share(const Staffing* staffing, int present) {
 }
 
 // Advances one producer by dt; the reason it is idle, None while it works.
-IdleReason run(Producer& producer, Inventory& inventory, const std::optional<Item>& output,
+IdleReason run(Producer& producer, SolidInventory& inventory, const std::optional<Item>& output,
                const PowerConsumer* power, float crew, float delta_time) {
     if (power != nullptr && !power->powered) {
         return IdleReason::NoPower;
@@ -96,8 +96,8 @@ void ProductionSystem::update(float delta_time) {
             ++present[worker.workplace];
         }
     });
-    registry_.each<Building, Producer, Inventory>(
-        [&](core::EntityId id, Building& building, Producer& producer, Inventory& inventory) {
+    registry_.each<Building, Producer, SolidInventory>(
+        [&](core::EntityId id, Building& building, Producer& producer, SolidInventory& inventory) {
             if (registry_.has<ConstructionSite>(id)) {
                 return;
             }

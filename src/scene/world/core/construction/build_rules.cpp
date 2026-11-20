@@ -19,7 +19,7 @@ bool footprint_blocked(const core::Registry& registry, const Construction& const
     return false;
 }
 
-bool can_pay(const std::vector<ItemStack>& cost, const Inventory* payer) {
+bool can_pay(const std::vector<ItemStack>& cost, const SolidInventory* payer) {
     for (const ItemStack& stack : cost) {
         if (payer == nullptr || payer->count(stack.item) < stack.count) {
             return false;
@@ -44,7 +44,7 @@ BuildResult check_unlocked(const core::Registry& registry, const Construction& c
 }
 
 BuildResult can_build(const core::Registry& registry, const Construction& construction,
-                      TileCoord tile, const Terrain& terrain, const Inventory* payer) {
+                      TileCoord tile, const Terrain& terrain, const SolidInventory* payer) {
     const BuildResult unlocked = check_unlocked(registry, construction);
     if (unlocked != BuildResult::Ok) {
         return unlocked;
@@ -67,7 +67,7 @@ BuildResult can_build(const core::Registry& registry, const Construction& constr
 BuildResult build(core::Registry& registry, const EntityFactory& factory,
                   const Construction& construction, TileCoord tile, const Terrain& terrain,
                   core::EntityId payer) {
-    Inventory* inventory = registry.get<Inventory>(payer);
+    SolidInventory* inventory = registry.get<SolidInventory>(payer);
     const BuildResult result = can_build(registry, construction, tile, terrain, inventory);
     if (result != BuildResult::Ok) {
         return result;

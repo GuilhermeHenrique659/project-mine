@@ -4,7 +4,7 @@
 
 #include "core/registry.hpp"
 #include "scene/world/core/components/building.hpp"
-#include "scene/world/core/components/inventory.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/power.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/components/worker.hpp"
@@ -62,7 +62,7 @@ struct Fixture {
     core::EntityId producer(world::Recipe recipe, std::size_t slots) {
         const core::EntityId id = registry.create("Smelter");
         registry.add(id, world::Building{world::BuildingType::Mine, {1, 1}});
-        registry.add(id, world::Inventory{slots});
+        registry.add(id, world::SolidInventory{slots});
         registry.add(id, world::Producer{recipe});
         registry.add(id, world::BuildingStatus{});
         return id;
@@ -75,7 +75,7 @@ struct Fixture {
     }
 
     int count(core::EntityId id, world::Item item) const {
-        return registry.get<world::Inventory>(id)->count(item);
+        return registry.get<world::SolidInventory>(id)->count(item);
     }
 };
 
@@ -195,11 +195,11 @@ TEST(ProductionSystem, AFullInventoryWaitsWithAtMostOneItemOfProgress) {
     // Given: one slot, already full of iron ore
     Fixture f;
     const core::EntityId id = f.producer({{}, world::items::IronOre, 1.0f}, 1);
-    f.registry.get<world::Inventory>(id)->add(world::items::IronOre, 100);
+    f.registry.get<world::SolidInventory>(id)->add(world::items::IronOre, 100);
 
     // When
     f.system.update(5.0f);
-    f.registry.get<world::Inventory>(id)->remove(world::items::IronOre, 10);
+    f.registry.get<world::SolidInventory>(id)->remove(world::items::IronOre, 10);
     f.system.update(0.0f);
 
     // Then: the waiting item comes out as soon as there is room, the rest was not banked
@@ -211,7 +211,7 @@ TEST(ProductionSystem, AnInputIsConsumedForEachOutputAndItsLackStopsProduction) 
     Fixture f;
     const core::EntityId id =
         f.producer({{world::ItemStack{world::items::IronOre, 2}}, world::items::Coal, 1.0f}, 4);
-    f.registry.get<world::Inventory>(id)->add(world::items::IronOre, 3);
+    f.registry.get<world::SolidInventory>(id)->add(world::items::IronOre, 3);
 
     // When
     f.system.update(3.0f);
@@ -270,7 +270,7 @@ TEST(ProductionSystem, ABuildingWhoseOutputDoesNotFitIsIdleForFullOutput) {
     // Given: one slot, already full of iron ore
     Fixture f;
     const core::EntityId id = f.producer({{}, world::items::IronOre, 1.0f}, 1);
-    f.registry.get<world::Inventory>(id)->add(world::items::IronOre, 100);
+    f.registry.get<world::SolidInventory>(id)->add(world::items::IronOre, 100);
 
     // When
     f.system.update(1.0f);
@@ -304,8 +304,8 @@ TEST(ProductionSystem, ARecipeWithSeveralInputsNeedsAllOfThemForEachOutput) {
          world::items::CopperOre,
          1.0f},
         4);
-    f.registry.get<world::Inventory>(id)->add(world::items::IronOre, 6);
-    f.registry.get<world::Inventory>(id)->add(world::items::Coal, 3);
+    f.registry.get<world::SolidInventory>(id)->add(world::items::IronOre, 6);
+    f.registry.get<world::SolidInventory>(id)->add(world::items::Coal, 3);
 
     // When
     f.system.update(3.0f);
@@ -327,8 +327,8 @@ TEST(ProductionSystem, AStaffedSteelworksTurnsTwoCoalAndTwoIronOreIntoSteelTwice
     world::make_building(f.registry, id, *steelworks, {1, 1});
     f.registry.remove<world::ConstructionSite>(id);
     f.staff(id, steelworks->blueprint.find<world::Staffing>()->needed);
-    f.registry.get<world::Inventory>(id)->add(world::items::IronOre, 10);
-    f.registry.get<world::Inventory>(id)->add(world::items::Coal, 10);
+    f.registry.get<world::SolidInventory>(id)->add(world::items::IronOre, 10);
+    f.registry.get<world::SolidInventory>(id)->add(world::items::Coal, 10);
 
     // When
     f.system.update(1.0f);
@@ -349,8 +349,8 @@ TEST(ProductionSystem, AStaffedElectronicFactoryTurnsCopperAndIronOreIntoElectro
     world::make_building(f.registry, id, *factory, {1, 1});
     f.registry.remove<world::ConstructionSite>(id);
     f.staff(id, factory->blueprint.find<world::Staffing>()->needed);
-    f.registry.get<world::Inventory>(id)->add(world::items::CopperOre, 10);
-    f.registry.get<world::Inventory>(id)->add(world::items::IronOre, 10);
+    f.registry.get<world::SolidInventory>(id)->add(world::items::CopperOre, 10);
+    f.registry.get<world::SolidInventory>(id)->add(world::items::IronOre, 10);
 
     // When
     f.system.update(1.0f);
@@ -370,9 +370,9 @@ TEST(ProductionSystem, AStaffedAmmoFactoryMakesFourAmmoPerSecondFromTwoOfEachInp
     world::make_building(f.registry, id, *factory, {1, 1});
     f.registry.remove<world::ConstructionSite>(id);
     f.staff(id, factory->blueprint.find<world::Staffing>()->needed);
-    f.registry.get<world::Inventory>(id)->add(world::items::Coal, 10);
-    f.registry.get<world::Inventory>(id)->add(world::items::IronOre, 10);
-    f.registry.get<world::Inventory>(id)->add(world::items::CopperOre, 10);
+    f.registry.get<world::SolidInventory>(id)->add(world::items::Coal, 10);
+    f.registry.get<world::SolidInventory>(id)->add(world::items::IronOre, 10);
+    f.registry.get<world::SolidInventory>(id)->add(world::items::CopperOre, 10);
 
     // When
     f.system.update(1.0f);
@@ -394,8 +394,8 @@ TEST(ProductionSystem, AStaffedWeaponFactoryTurnsSteelAndToolsIntoTwoWeaponsPerS
     world::make_building(f.registry, id, *factory, {1, 1});
     f.registry.remove<world::ConstructionSite>(id);
     f.staff(id, factory->blueprint.find<world::Staffing>()->needed);
-    f.registry.get<world::Inventory>(id)->add(world::items::Steel, 10);
-    f.registry.get<world::Inventory>(id)->add(world::items::Tool, 10);
+    f.registry.get<world::SolidInventory>(id)->add(world::items::Steel, 10);
+    f.registry.get<world::SolidInventory>(id)->add(world::items::Tool, 10);
 
     // When
     f.system.update(1.0f);
