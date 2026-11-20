@@ -20,6 +20,7 @@ ui::Color tile_color(::world::TileType type) {
     case ::world::TileType::IronOre: return IronOreColor;
     case ::world::TileType::CopperOre: return CopperOreColor;
     case ::world::TileType::Coal: return CoalColor;
+    case ::world::TileType::CrudeOil: return CrudeOilColor;
     case ::world::TileType::Grass: break;
     }
     return GrassColor;

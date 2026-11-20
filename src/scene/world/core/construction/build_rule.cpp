@@ -1,6 +1,7 @@
 #include "scene/world/core/construction/build_rule.hpp"
 
 #include "scene/world/core/components/building.hpp"
+#include "scene/world/core/systems/production_system.hpp"
 
 namespace world {
 
@@ -40,7 +41,8 @@ BuildResult NeedsHeadquartersRule::check_unlocked(const core::Registry& registry
 }
 
 BuildResult NeedsOreRule::check_site(const Terrain& terrain, TileCoord tile) const {
-    return is_ore(terrain.tile_at(tile)) ? BuildResult::Ok : BuildResult::NeedsOre;
+    const std::optional<Item> ore = item_from_tile(terrain.tile_at(tile));
+    return ore && ore->category == category_ ? BuildResult::Ok : BuildResult::NeedsOre;
 }
 
 } // namespace world

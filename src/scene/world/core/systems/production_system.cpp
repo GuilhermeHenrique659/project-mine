@@ -4,6 +4,7 @@
 #include <unordered_map>
 
 #include "scene/world/core/components/building.hpp"
+#include "scene/world/core/components/liquid_inventory.hpp"
 #include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/power.hpp"
 #include "scene/world/core/components/worker.hpp"
@@ -16,6 +17,7 @@ std::optional<Item> item_from_tile(TileType type) {
         case TileType::IronOre: return items::IronOre;
         case TileType::CopperOre: return items::CopperOre;
         case TileType::Coal: return items::Coal;
+        case TileType::CrudeOil: return items::Oil;
         case TileType::Grass:
         case TileType::Water: break;
     }
@@ -26,7 +28,7 @@ namespace {
 
 // Makes one craft (output_count outputs) when every input is there and all of it fits;
 // otherwise nothing changes and the reason is returned (None = made one).
-IdleReason produce_one(SolidInventory& inventory, const std::vector<ItemStack>& inputs, Item output,
+IdleReason produce_one(Inventory& inventory, const std::vector<ItemStack>& inputs, Item output,
                        int output_count) {
     for (const ItemStack& input : inputs) {
         if (inventory.count(input.item) < input.count) {
@@ -58,7 +60,7 @@ float crew_share(const Staffing* staffing, int present) {
 }
 
 // Advances one producer by dt; the reason it is idle, None while it works.
-IdleReason run(Producer& producer, SolidInventory& inventory, const std::optional<Item>& output,
+IdleReason run(Producer& producer, Inventory& inventory, const std::optional<Item>& output,
                const PowerConsumer* power, float crew, float delta_time) {
     if (power != nullptr && !power->powered) {
         return IdleReason::NoPower;
@@ -96,15 +98,22 @@ void ProductionSystem::update(float delta_time) {
             ++present[worker.workplace];
         }
     });
-    registry_.each<Building, Producer, SolidInventory>(
-        [&](core::EntityId id, Building& building, Producer& producer, SolidInventory& inventory) {
+    registry_.each<Building, Producer>(
+        [&](core::EntityId id, Building& building, Producer& producer) {
             if (registry_.has<ConstructionSite>(id)) {
+                return;
+            }
+            Inventory* inventory = registry_.get<SolidInventory>(id);
+            if (inventory == nullptr) {
+                inventory = registry_.get<LiquidInventory>(id);
+            }
+            if (inventory == nullptr) {
                 return;
             }
             const std::optional<Item> output =
                 producer.recipe.output ? producer.recipe.output
                                        : item_from_tile(terrain_.tile_at(building.tile));
-            const IdleReason reason = run(producer, inventory, output,
+            const IdleReason reason = run(producer, *inventory, output,
                                           registry_.get<PowerConsumer>(id),
                                           crew_share(registry_.get<Staffing>(id), present[id]),
                                           delta_time);

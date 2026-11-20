@@ -22,7 +22,7 @@ namespace world {
 //       .build();
 //
 // build() turns the facts into the Construction and its Blueprint: a SolidInventory (general
-// slots + one filtered section per input or fuel), a Producer + BuildingStatus when it
+// slots + one filtered section per input or fuel) or a LiquidInventory (tank()), a Producer + BuildingStatus when it
 // produces, Staffing, PowerConsumer, Generator, Housing, Recruiter, Supply and
 // Health + TrainingTarget when given.
 class ConstructionBuilder {
@@ -40,7 +40,8 @@ public:
     ConstructionBuilder& cost(Item item, int count);
     ConstructionBuilder& effort(float work);
     ConstructionBuilder& needs_headquarters();
-    ConstructionBuilder& needs_ore();
+    // Stands on an ore whose item is of `category` (see NeedsOreRule).
+    ConstructionBuilder& needs_ore(ItemCategory category = ItemCategory::Solid);
     ConstructionBuilder& unique();
 
     // What it consumes and makes. Each input gets its own filtered section of `slots`.
@@ -52,6 +53,8 @@ public:
 
     // What it runs on.
     ConstructionBuilder& storage(std::size_t general_slots);
+    // A LiquidInventory of `capacity` units instead of slots.
+    ConstructionBuilder& tank(int capacity);
     ConstructionBuilder& workers(int needed);
     ConstructionBuilder& power(float demand_kw);
     ConstructionBuilder& houses(int workers);
@@ -72,6 +75,7 @@ public:
 private:
     Construction construction_;
     std::optional<std::size_t> general_slots_;
+    std::optional<int> tank_capacity_;
     std::vector<std::pair<std::size_t, ItemType>> sections_;
     std::optional<Recipe> recipe_;
     std::optional<int> workers_;

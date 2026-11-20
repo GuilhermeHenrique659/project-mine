@@ -44,8 +44,8 @@ public:
 
 private:
     static constexpr std::size_t BuildingTypes =
-        static_cast<std::size_t>(::world::BuildingType::TrainingTarget) + 1;
-    static constexpr std::size_t TileTypes = static_cast<std::size_t>(::world::TileType::Coal) + 1;
+        static_cast<std::size_t>(::world::BuildingType::OilPump) + 1;
+    static constexpr std::size_t TileTypes = static_cast<std::size_t>(::world::TileType::CrudeOil) + 1;
     static constexpr std::size_t CharacterStates =
         static_cast<std::size_t>(::world::CharacterState::Running) + 1;
 

@@ -12,7 +12,8 @@ namespace world {
 // The item an ore tile yields (iron ore tile -> IronOre); empty for any other tile.
 std::optional<Item> item_from_tile(TileType type);
 
-// Runs the Producer of every finished building (Building + Producer + SolidInventory, no
+// Runs the Producer of every finished building (Building + Producer + a SolidInventory or
+// LiquidInventory, no
 // ConstructionSite): its progress grows by rate * dt and each whole unit consumes the
 // recipe's input from the building's inventory and adds one output to it. The output of a
 // recipe without one is the ore under the building. Production waits (keeping at most one

@@ -4,6 +4,7 @@
 
 #include "core/registry.hpp"
 #include "scene/world/core/components/building.hpp"
+#include "scene/world/core/components/liquid_inventory.hpp"
 #include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/power.hpp"
 #include "scene/world/core/components/position.hpp"
@@ -404,4 +405,50 @@ TEST(ProductionSystem, AStaffedWeaponFactoryTurnsSteelAndToolsIntoTwoWeaponsPerS
     EXPECT_EQ(f.count(id, world::items::Weapon), 2);
     EXPECT_EQ(f.count(id, world::items::Steel), 8);
     EXPECT_EQ(f.count(id, world::items::Tool), 8);
+}
+
+namespace {
+
+// A finished catalog oil pump on the first crude oil tile.
+core::EntityId oil_pump(Fixture& f) {
+    const auto tile = find_tile(f.terrain, world::TileType::CrudeOil);
+    EXPECT_TRUE(tile);
+    const core::EntityId id = f.registry.create("Oil Pump");
+    world::make_building(f.registry, id, *world::find_construction(world::BuildingType::OilPump),
+                         tile.value_or(world::TileCoord{}));
+    f.registry.remove<world::ConstructionSite>(id);
+    return id;
+}
+
+} // namespace
+
+TEST(ProductionSystem, AnOilPumpOnCrudeOilPumpsTenOilPerSecondIntoItsTankWithoutWorkers) {
+    // Given
+    Fixture f;
+    const core::EntityId pump = oil_pump(f);
+
+    // When
+    f.system.update(1.0f);
+
+    // Then
+    const world::LiquidInventory* tank = f.registry.get<world::LiquidInventory>(pump);
+    ASSERT_NE(tank, nullptr);
+    EXPECT_EQ(tank->count(world::items::Oil), 10);
+    EXPECT_EQ(f.status(pump).state, world::BuildingState::Working);
+}
+
+TEST(ProductionSystem, AnOilPumpWithAFullTankIsIdleForAFullOutput) {
+    // Given
+    Fixture f;
+    const core::EntityId pump = oil_pump(f);
+    world::LiquidInventory* tank = f.registry.get<world::LiquidInventory>(pump);
+    ASSERT_NE(tank, nullptr);
+    tank->add(world::items::Oil, tank->capacity());
+
+    // When
+    f.system.update(1.0f);
+
+    // Then
+    EXPECT_EQ(tank->count(world::items::Oil), tank->capacity());
+    EXPECT_EQ(f.status(pump).reason, world::IdleReason::OutputFull);
 }

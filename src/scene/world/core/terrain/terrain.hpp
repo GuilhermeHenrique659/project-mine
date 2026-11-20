@@ -7,10 +7,11 @@
 
 namespace world {
 
-enum class TileType { Grass, Water, IronOre, CopperOre, Coal };
+enum class TileType { Grass, Water, IronOre, CopperOre, Coal, CrudeOil };
 
 inline constexpr bool is_ore(TileType type) {
-    return type == TileType::IronOre || type == TileType::CopperOre || type == TileType::Coal;
+    return type == TileType::IronOre || type == TileType::CopperOre || type == TileType::Coal ||
+           type == TileType::CrudeOil;
 }
 
 // Radius (in tiles) around world (0, 0) that is always grass, so the player never spawns

@@ -66,7 +66,9 @@ constexpr std::uint64_t ShapeSalt = 0x51ED270B0F1A3C5Dull;
 constexpr std::uint64_t StartSalt = 0x2545F4914F6CDD1Dull;
 constexpr std::uint64_t NodeSalt = 0x7F4A7C15D1E3B9A7ull;
 
-constexpr std::array<TileType, 3> OreTypes{TileType::IronOre, TileType::CopperOre, TileType::Coal};
+// The first three also make the starting nodes; crude oil is only found further out.
+constexpr std::array<TileType, 4> OreTypes{TileType::IronOre, TileType::CopperOre, TileType::Coal,
+                                           TileType::CrudeOil};
 
 // Where a starting node may move to find dry land: anywhere around the spawn (its own angle
 // tried first, then further and further from it) and out to MaxStartNodeDistance (small

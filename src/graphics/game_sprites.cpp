@@ -46,6 +46,7 @@ std::string tile_sprite_name(::world::TileType type) {
     case ::world::TileType::IronOre: return "environment/iron_ore";
     case ::world::TileType::CopperOre: return "environment/copper_ore";
     case ::world::TileType::Coal: return "environment/coal";
+    case ::world::TileType::CrudeOil: return "environment/crude_oil";
     case ::world::TileType::Grass: break;
     }
     return "environment/grass";

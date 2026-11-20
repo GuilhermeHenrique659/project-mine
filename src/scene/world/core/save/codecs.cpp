@@ -11,6 +11,7 @@
 #include "scene/world/core/components/hauler.hpp"
 #include "scene/world/core/components/route_follower.hpp"
 #include "scene/world/core/components/worker.hpp"
+#include "scene/world/core/components/liquid_inventory.hpp"
 #include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/entities/building.hpp"
 #include "scene/world/core/components/player_controlled.hpp"
@@ -41,6 +42,8 @@ CharacterState parse_state(const std::string& text) {
 }
 
 constexpr std::string_view InventoryPrefix = "inventory.";
+// The content of a LiquidInventory: "<item key>:<amount>".
+constexpr std::string_view TankField = "tank";
 
 // Save-file names of the item types: stable keys, not the names shown to the player.
 constexpr std::array<std::pair<ItemType, std::string_view>, 10> ItemKeys{{
@@ -74,9 +77,8 @@ std::optional<ItemType> parse_item_key(std::string_view text) {
     return std::nullopt;
 }
 
-// "<ItemType>:<count>", empty when the type is unknown or the count is not a valid
-// stack of that item.
-std::optional<ItemStack> parse_stack(std::string_view text) {
+// "<ItemType>:<count>", empty when the type is unknown or the count is not positive.
+std::optional<ItemStack> parse_amount(std::string_view text) {
     const auto colon = text.find(':');
     if (colon == std::string_view::npos) {
         return std::nullopt;
@@ -86,11 +88,19 @@ std::optional<ItemStack> parse_stack(std::string_view text) {
     if (!type || !count) {
         return std::nullopt;
     }
-    const Item item = item_of(*type);
-    if (*count <= 0 || *count > item.max_stack) {
+    if (*count <= 0) {
         return std::nullopt;
     }
-    return ItemStack{item, *count};
+    return ItemStack{item_of(*type), *count};
+}
+
+// Like parse_amount(), also empty when the count does not fit one stack of the item.
+std::optional<ItemStack> parse_stack(std::string_view text) {
+    const auto stack = parse_amount(text);
+    if (!stack || stack->count > stack->item.max_stack) {
+        return std::nullopt;
+    }
+    return stack;
 }
 
 // "<prefix>.x" / "<prefix>.y" of a building's tile; nothing when `building` is not one.
@@ -260,6 +270,11 @@ void PlayerControlledCodec::read(core::Registry& registry, core::EntityId id,
 
 void InventoryCodec::write(const core::Registry& registry, core::EntityId id,
                            Fields& fields) const {
+    if (const LiquidInventory* tank = registry.get<LiquidInventory>(id); tank && tank->liquid()) {
+        const Item liquid = item_of(*tank->liquid());
+        fields[std::string(TankField)] =
+            std::string(item_key(liquid.type)) + ":" + text::format(tank->count(liquid));
+    }
     const SolidInventory* inventory = registry.get<SolidInventory>(id);
     if (inventory == nullptr) {
         return;
@@ -276,6 +291,13 @@ void InventoryCodec::write(const core::Registry& registry, core::EntityId id,
 
 void InventoryCodec::read(core::Registry& registry, core::EntityId id,
                           const Fields& fields) const {
+    if (LiquidInventory* tank = registry.get<LiquidInventory>(id)) {
+        const auto field = fields.find(std::string(TankField));
+        const auto stack = field == fields.end() ? std::nullopt : parse_amount(field->second);
+        if (stack) {
+            tank->add(stack->item, stack->count);
+        }
+    }
     SolidInventory* inventory = registry.get<SolidInventory>(id);
     if (inventory == nullptr) {
         return;

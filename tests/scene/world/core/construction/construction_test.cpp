@@ -1,8 +1,10 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <set>
 
 #include "scene/world/core/components/combat.hpp"
+#include "scene/world/core/components/liquid_inventory.hpp"
 #include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/military.hpp"
 #include "scene/world/core/components/building.hpp"
@@ -527,4 +529,42 @@ TEST(BuildingType, TrainingTargetRoundTripsThroughItsSaveKey) {
     // Then
     EXPECT_EQ(key, "TrainingTarget");
     EXPECT_EQ(parsed, world::BuildingType::TrainingTarget);
+}
+
+TEST(ConstructionCatalog, OilPumpIsAMineCosting100SteelAnd100IronOreOn100KwWithALiquidTank) {
+    // Given
+    const auto& mines = world::construction_catalog()[1];
+
+    // When
+    const world::Construction* pump = world::find_construction(world::BuildingType::OilPump);
+
+    // Then
+    ASSERT_NE(pump, nullptr);
+    EXPECT_EQ(mines.category, world::ConstructionCategory::Mine);
+    EXPECT_TRUE(std::any_of(mines.constructions.begin(), mines.constructions.end(),
+                            [](const auto& c) { return c.type == world::BuildingType::OilPump; }));
+    ASSERT_EQ(pump->cost.size(), 2u);
+    EXPECT_EQ(pump->cost[0].item, world::items::Steel);
+    EXPECT_EQ(pump->cost[0].count, 100);
+    EXPECT_EQ(pump->cost[1].item, world::items::IronOre);
+    EXPECT_EQ(pump->cost[1].count, 100);
+    ASSERT_NE(pump->blueprint.find<world::PowerConsumer>(), nullptr);
+    EXPECT_FLOAT_EQ(pump->blueprint.find<world::PowerConsumer>()->demand_kw, 100.0f);
+    ASSERT_NE(pump->blueprint.find<world::Producer>(), nullptr);
+    EXPECT_FLOAT_EQ(pump->blueprint.find<world::Producer>()->recipe.rate, 10.0f);
+    ASSERT_NE(pump->blueprint.find<world::LiquidInventory>(), nullptr);
+    EXPECT_EQ(pump->blueprint.find<world::LiquidInventory>()->capacity(), 1000);
+    EXPECT_EQ(pump->blueprint.find<world::SolidInventory>(), nullptr);
+}
+
+TEST(BuildingType, OilPumpRoundTripsThroughItsSaveKey) {
+    // Given
+    const auto key = world::building_type_key(world::BuildingType::OilPump);
+
+    // When
+    const auto parsed = world::parse_building_type(key);
+
+    // Then
+    EXPECT_EQ(key, "OilPump");
+    EXPECT_EQ(parsed, world::BuildingType::OilPump);
 }

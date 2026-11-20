@@ -7,6 +7,7 @@
 #include "scene/world/core/construction/build_rules.hpp"
 #include "scene/world/core/entities/building.hpp"
 #include "scene/world/core/save/codecs.hpp"
+#include "scene/world/core/components/liquid_inventory.hpp"
 #include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/persistent.hpp"
 #include "scene/world/core/components/player_controlled.hpp"
@@ -423,4 +424,25 @@ TEST(WorldSerializer, ToolsAmmoAndWeaponsInAnInventorySurviveASaveAndLoad) {
     EXPECT_EQ(slots[1]->item, world::items::Ammo);
     EXPECT_EQ(slots[2]->item, world::items::Weapon);
     EXPECT_EQ(slots[2]->count, 1);
+}
+
+TEST(WorldSerializer, AnOilPumpKeepsTheOilInItsTankThroughASave) {
+    // Given
+    Fixture saved;
+    const core::EntityId id =
+        *saved.factory.spawn(saved.registry, world::BuildingArchetype, "Oil Pump");
+    world::make_building(saved.registry, id,
+                         *world::find_construction(world::BuildingType::OilPump), {30, 2});
+    saved.registry.get<world::LiquidInventory>(id)->add(world::items::Oil, 340);
+    const auto records = saved.serializer.snapshot(saved.registry);
+
+    // When
+    Fixture loaded;
+    loaded.serializer.restore(loaded.registry, records);
+
+    // Then
+    const core::EntityId pump = loaded.registry.entities().front().id;
+    const world::LiquidInventory* tank = loaded.registry.get<world::LiquidInventory>(pump);
+    ASSERT_NE(tank, nullptr);
+    EXPECT_EQ(tank->count(world::items::Oil), 340);
 }

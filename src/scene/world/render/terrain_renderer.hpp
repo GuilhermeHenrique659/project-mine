@@ -16,6 +16,7 @@ inline constexpr ui::Color WaterColor{52, 120, 205, 255};
 inline constexpr ui::Color IronOreColor{120, 140, 165, 255};
 inline constexpr ui::Color CopperOreColor{224, 125, 45, 255};
 inline constexpr ui::Color CoalColor{30, 30, 34, 255};
+inline constexpr ui::Color CrudeOilColor{45, 30, 55, 255};
 
 // The colour a tile of this type is drawn with when it has no sprite.
 ui::Color tile_color(::world::TileType type);

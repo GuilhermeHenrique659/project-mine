@@ -22,6 +22,7 @@ std::string_view building_type_key(BuildingType type) {
         case BuildingType::WeaponFactory: return "WeaponFactory";
         case BuildingType::Barracks: return "Barracks";
         case BuildingType::TrainingTarget: return "TrainingTarget";
+        case BuildingType::OilPump: return "OilPump";
         case BuildingType::Headquarters: break;
     }
     return "Headquarters";
@@ -64,6 +65,9 @@ std::optional<BuildingType> parse_building_type(std::string_view key) {
     if (key == building_type_key(BuildingType::TrainingTarget)) {
         return BuildingType::TrainingTarget;
     }
+    if (key == building_type_key(BuildingType::OilPump)) {
+        return BuildingType::OilPump;
+    }
     return std::nullopt;
 }
 
@@ -102,6 +106,13 @@ const std::vector<ConstructionGroup>& construction_catalog() {
                  .cost(items::IronOre, 100).effort(300.0f).needs_headquarters().needs_ore()
                  .mines_ore().crafts_per_second(4.0f)
                  .storage(10).workers(10).power(100.0f)
+                 .build(),
+             ConstructionBuilder{"Oil Pump", "icon_oil_pump"}
+                 .type(BuildingType::OilPump).size(2, 2)
+                 .cost(items::Steel, 100).cost(items::IronOre, 100).effort(300.0f)
+                 .needs_headquarters().needs_ore(ItemCategory::Liquid)
+                 .mines_ore().crafts_per_second(10.0f)
+                 .tank(1000).power(100.0f)
                  .build(),
          }},
         {ConstructionCategory::Factory, "Factories", "icon_tab_factories",

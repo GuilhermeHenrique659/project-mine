@@ -3,6 +3,7 @@
 #include "scene/world/core/components/combat.hpp"
 #include "scene/world/core/components/military.hpp"
 
+#include "scene/world/core/components/liquid_inventory.hpp"
 #include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/power.hpp"
 #include "scene/world/core/components/worker.hpp"
@@ -39,8 +40,8 @@ ConstructionBuilder& ConstructionBuilder::needs_headquarters() {
     return *this;
 }
 
-ConstructionBuilder& ConstructionBuilder::needs_ore() {
-    construction_.rules.push_back(std::make_shared<NeedsOreRule>());
+ConstructionBuilder& ConstructionBuilder::needs_ore(ItemCategory category) {
+    construction_.rules.push_back(std::make_shared<NeedsOreRule>(category));
     return *this;
 }
 
@@ -73,6 +74,11 @@ ConstructionBuilder& ConstructionBuilder::crafts_per_second(float rate) {
 
 ConstructionBuilder& ConstructionBuilder::storage(std::size_t general_slots) {
     general_slots_ = general_slots;
+    return *this;
+}
+
+ConstructionBuilder& ConstructionBuilder::tank(int capacity) {
+    tank_capacity_ = capacity;
     return *this;
 }
 
@@ -136,6 +142,9 @@ Construction ConstructionBuilder::build() const {
             inventory.append(slots, item);
         }
         blueprint.with(inventory);
+    }
+    if (tank_capacity_) {
+        blueprint.with(LiquidInventory{*tank_capacity_});
     }
     if (recipe_) {
         blueprint.with(Producer{*recipe_});

@@ -33,7 +33,7 @@ bool same_area(const world::Terrain& a, const world::Terrain& b) {
     return true;
 }
 
-// 0, 1, 2 for iron, copper, coal.
+// 0, 1, 2, 3 for iron, copper, coal, crude oil.
 std::size_t ore_index(world::TileType type) {
     return static_cast<std::size_t>(type) - static_cast<std::size_t>(world::TileType::IronOre);
 }
@@ -249,7 +249,7 @@ TEST(Terrain, FarAwayWorldHasEveryOreType) {
         const world::Terrain terrain(seed);
 
         // When: looking outside the starting area
-        std::array<bool, 3> found{};
+        std::array<bool, 4> found{};
         for (int y = 70; y < 500; ++y) {
             for (int x = 70; x < 500; ++x) {
                 const world::TileType type = terrain.tile_at({x, y});
@@ -260,7 +260,7 @@ TEST(Terrain, FarAwayWorldHasEveryOreType) {
         }
 
         // Then
-        EXPECT_TRUE(found[0] && found[1] && found[2]) << "seed " << seed;
+        EXPECT_TRUE(found[0] && found[1] && found[2] && found[3]) << "seed " << seed;
     }
 }
 

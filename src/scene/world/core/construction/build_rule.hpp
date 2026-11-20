@@ -3,6 +3,7 @@
 #include "core/registry.hpp"
 #include "scene/world/core/construction/building_type.hpp"
 #include "scene/world/core/isometric.hpp"
+#include "scene/world/core/items/item.hpp"
 #include "scene/world/core/terrain/terrain.hpp"
 
 namespace world {
@@ -44,10 +45,16 @@ public:
     BuildResult check_unlocked(const core::Registry& registry, BuildingType type) const override;
 };
 
-// Stands only on an ore tile: iron, copper or coal (NeedsOre).
+// Stands only on an ore tile whose item is of `category` (NeedsOre): Solid = iron, copper
+// or coal (a mine), Liquid = crude oil (an oil pump).
 class NeedsOreRule : public BuildRule {
 public:
+    explicit NeedsOreRule(ItemCategory category = ItemCategory::Solid) : category_(category) {}
+
     BuildResult check_site(const Terrain& terrain, TileCoord tile) const override;
+
+private:
+    ItemCategory category_;
 };
 
 } // namespace world

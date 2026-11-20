@@ -229,3 +229,64 @@ TEST(BuildRules, AMultiTileBuildingIsBlockedByWaterUnderAnyOfItsTiles) {
     // Then
     EXPECT_EQ(result, world::BuildResult::TileBlocked);
 }
+
+namespace {
+
+std::optional<world::TileCoord> find_tile(const world::Terrain& terrain, world::TileType type) {
+    for (int x = -300; x < 300; ++x) {
+        for (int y = -300; y < 300; ++y) {
+            if (terrain.tile_at({x, y}) == type) {
+                return world::TileCoord{x, y};
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+world::SolidInventory rich_payer() {
+    world::SolidInventory inventory(10);
+    inventory.add(world::items::IronOre, 500);
+    inventory.add(world::items::Steel, 500);
+    return inventory;
+}
+
+} // namespace
+
+TEST(BuildRules, AnOilPumpMustStandOnCrudeOilNotOnSolidOre) {
+    // Given
+    core::Registry registry;
+    const world::Terrain terrain(7);
+    place(registry, world::BuildingType::Headquarters, {5, 5});
+    world::SolidInventory payer = rich_payer();
+    const auto oil = find_tile(terrain, world::TileType::CrudeOil);
+    const auto iron = find_tile(terrain, world::TileType::IronOre);
+    ASSERT_TRUE(oil && iron);
+    const auto& pump = *world::find_construction(world::BuildingType::OilPump);
+
+    // When
+    const auto on_oil = world::can_build(registry, pump, *oil, terrain, &payer);
+    const auto on_iron = world::can_build(registry, pump, *iron, terrain, &payer);
+    const auto on_grass = world::can_build(registry, pump, Grass, terrain, &payer);
+
+    // Then
+    EXPECT_EQ(on_oil, world::BuildResult::Ok);
+    EXPECT_EQ(on_iron, world::BuildResult::NeedsOre);
+    EXPECT_EQ(on_grass, world::BuildResult::NeedsOre);
+}
+
+TEST(BuildRules, AMineCannotStandOnCrudeOil) {
+    // Given
+    core::Registry registry;
+    const world::Terrain terrain(7);
+    place(registry, world::BuildingType::Headquarters, {5, 5});
+    world::SolidInventory payer = rich_payer();
+    const auto oil = find_tile(terrain, world::TileType::CrudeOil);
+    ASSERT_TRUE(oil);
+
+    // When
+    const auto result = world::can_build(
+        registry, *world::find_construction(world::BuildingType::Mine), *oil, terrain, &payer);
+
+    // Then
+    EXPECT_EQ(result, world::BuildResult::NeedsOre);
+}
