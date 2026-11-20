@@ -66,7 +66,7 @@ constexpr std::uint64_t ShapeSalt = 0x51ED270B0F1A3C5Dull;
 constexpr std::uint64_t StartSalt = 0x2545F4914F6CDD1Dull;
 constexpr std::uint64_t NodeSalt = 0x7F4A7C15D1E3B9A7ull;
 
-// The first three also make the starting nodes; crude oil is only found further out.
+// Each type also has one starting node near the spawn.
 constexpr std::array<TileType, 4> OreTypes{TileType::IronOre, TileType::CopperOre, TileType::Coal,
                                            TileType::CrudeOil};
 
@@ -194,7 +194,10 @@ Terrain::Terrain(std::uint64_t seed) : seed_(seed) {
     for (std::size_t i = 0; i < starting_nodes_.size(); ++i) {
         const std::uint64_t jitter_bits = hash(seed ^ StartSalt, static_cast<int>(i) + 1, 0);
         const float jitter = (static_cast<float>(jitter_bits & 0xFFFFu) / 65536.0f - 0.5f) * 0.3f;
-        const float angle = rotation + static_cast<float>(i) * 2.0f * Pi / 3.0f + jitter;
+        // Iron, copper and coal sit a third of a turn apart; crude oil, added later, goes
+        // between the first two, so older saves keep their other starting nodes in place.
+        const float slot = i < 3 ? static_cast<float>(i) * 2.0f * Pi / 3.0f : Pi / 3.0f;
+        const float angle = rotation + slot + jitter;
         starting_nodes_[i] = place_starting_node(seed, angle, OreTypes[i], starting_nodes_.data(), i);
     }
 }

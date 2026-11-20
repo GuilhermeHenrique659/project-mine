@@ -30,8 +30,8 @@ struct OreNode {
     TileType type = TileType::IronOre;
 };
 
-// A flat world of grass, water and ore nodes (iron, copper, coal), generated from a seed.
-// Three medium starting nodes (one per type) lie on dry land just outside the spawn
+// A flat world of grass, water and ore nodes (iron, copper, coal, crude oil), generated from a
+// seed. Four medium starting nodes (one per type) lie on dry land just outside the spawn
 // clearing; further away scattered nodes get bigger with the distance from the spawn. Ore is
 // never placed on water. Every tile is a pure function of the seed, so the same seed recreates the same
 // world (a loaded save) and the world has no limits. Raylib-free.
@@ -44,7 +44,7 @@ public:
 
 private:
     std::uint64_t seed_;
-    std::array<OreNode, 3> starting_nodes_;
+    std::array<OreNode, 4> starting_nodes_;
 };
 
 } // namespace world

@@ -177,7 +177,7 @@ TEST(Terrain, LandAndWaterAreasAreNeitherTinyNorHugeComparedToThePlayer) {
     EXPECT_LE(average_run, MaxAverageRun);
 }
 
-TEST(Terrain, EachOreHasAMediumNodeCloseToTheSpawn) {
+TEST(Terrain, EachOreIncludingCrudeOilHasAMediumNodeCloseToTheSpawn) {
     // Given
     for (std::uint64_t seed = 0; seed < 40; ++seed) {
         const world::Terrain terrain(seed);
@@ -186,7 +186,7 @@ TEST(Terrain, EachOreHasAMediumNodeCloseToTheSpawn) {
         const std::vector<Node> nodes = find_nodes(terrain, -45, -45, 91, 91);
 
         // Then: exactly one node of each type, of medium size
-        std::array<int, 3> per_type{};
+        std::array<int, 4> per_type{};
         for (const Node& node : nodes) {
             ++per_type[ore_index(node.type)];
             EXPECT_GE(node.size, 40) << "seed " << seed;
@@ -195,6 +195,7 @@ TEST(Terrain, EachOreHasAMediumNodeCloseToTheSpawn) {
         EXPECT_EQ(per_type[0], 1) << "seed " << seed;
         EXPECT_EQ(per_type[1], 1) << "seed " << seed;
         EXPECT_EQ(per_type[2], 1) << "seed " << seed;
+        EXPECT_EQ(per_type[3], 1) << "seed " << seed;
     }
 }
 
@@ -269,7 +270,7 @@ TEST(Terrain, NoScatteredNodesInsideTheStartingArea) {
     for (std::uint64_t seed = 0; seed < 40; ++seed) {
         const world::Terrain terrain(seed);
 
-        // When / Then: ore inside the starting area is only the three starting nodes, which
+        // When / Then: ore inside the starting area is only the four starting nodes, which
         // stay close to the spawn
         for (int y = -world::StartingAreaRadius; y <= world::StartingAreaRadius; ++y) {
             for (int x = -world::StartingAreaRadius; x <= world::StartingAreaRadius; ++x) {

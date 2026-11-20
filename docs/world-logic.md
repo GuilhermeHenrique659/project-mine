@@ -91,10 +91,10 @@ The ECS content of the world, built on the generic `core/` ECS. It lives under `
 
 ## Terrain
 
-`terrain/terrain.hpp`: `Terrain(seed)`, a flat unbounded world of `TileType::Grass` / `Water` / `IronOre` / `CopperOre` / `Coal` / `CrudeOil` (`is_ore()`; scattered nodes pick any of the four, starting nodes only the first three). `tile_at(tile)` is a pure function of the seed (value noise), so a loaded save recreates the same world:
+`terrain/terrain.hpp`: `Terrain(seed)`, a flat unbounded world of `TileType::Grass` / `Water` / `IronOre` / `CopperOre` / `Coal` / `CrudeOil` (`is_ore()`; scattered nodes pick any of the four, and each has one starting node). `tile_at(tile)` is a pure function of the seed (value noise), so a loaded save recreates the same world:
 
 - the `SpawnClearRadius` around (0,0) is always grass;
-- three medium starting ore nodes, one per type, 24–36 tiles out, each on the first dry spot around its seed-random angle (when none is fully dry, the driest one is used and its footprint turned into land), so ore never touches water;
+- four medium starting ore nodes, one per type, 24–36 tiles out (iron, copper and coal a third of a turn apart, crude oil between iron and copper so older saves keep the other three in place), each on the first dry spot around its seed-random angle (when none is fully dry, the driest one is used and its footprint turned into land), so ore never touches water;
 - scattered nodes, one per 64-tile cell, only on land, none inside `StartingAreaRadius` (64), radius growing with the distance from (0,0) up to a cap; irregular edges via the noise.
 
 ## Saving entities

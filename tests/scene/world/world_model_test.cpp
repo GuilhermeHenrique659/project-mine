@@ -394,10 +394,12 @@ TEST(WorldModel, ARequestedHeadquartersIsBuiltAndSurvivesASave) {
 
 namespace {
 
+// The first tile a Mine can be built on (solid ore, not crude oil).
 std::optional<::world::TileCoord> find_ore(const ::world::Terrain& terrain) {
     for (int x = -60; x < 60; ++x) {
         for (int y = -60; y < 60; ++y) {
-            if (::world::is_ore(terrain.tile_at({x, y}))) {
+            const ::world::TileType type = terrain.tile_at({x, y});
+            if (::world::is_ore(type) && type != ::world::TileType::CrudeOil) {
                 return ::world::TileCoord{x, y};
             }
         }
