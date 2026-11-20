@@ -84,6 +84,7 @@ def main():
     write_sprite(out, "iron_ore", [ore(11, (120, 104, 96), (190, 120, 90))], 1)
     write_sprite(out, "copper_ore", [ore(12, (150, 96, 60), (230, 150, 80))], 1)
     write_sprite(out, "coal", [ore(13, (46, 44, 48), (90, 90, 100))], 1)
+    write_sprite(out, "crude_oil", [ore(14, (24, 20, 28), (70, 50, 90))], 1)
     write_sprite(out, "water", [water(f) for f in range(WATER_FRAMES)], WATER_FRAMES,
                  clips={"idle": (0, WATER_FRAMES, WATER_FPS, True)})
     print(f"wrote environment sprites to {out}")
