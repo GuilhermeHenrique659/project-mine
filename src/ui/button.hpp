@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 
@@ -28,8 +29,14 @@ public:
     const std::string& text() const { return text_; }
     void set_text(std::string text) { text_ = std::move(text); }
 
+    // Draws a picture in a square on the left of the box (the text stays centred). ui/ knows
+    // no textures: the caller paints it, e.g. with graphics::draw_loaded_sprite().
+    using IconPainter = std::function<void(Canvas&, Rect)>;
+    void set_icon(IconPainter painter) { icon_ = std::move(painter); }
+
 private:
     std::string text_;
+    IconPainter icon_;
     bool enabled_;
     bool focused_ = false;
 };

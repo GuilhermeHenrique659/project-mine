@@ -1,6 +1,7 @@
 #include "scene/menu/menu_view.hpp"
 
 #include "game/game_events.hpp"
+#include "graphics/sprite.hpp"
 #include "ui/theme.hpp"
 
 namespace scene::menu {
@@ -29,6 +30,17 @@ MenuView::MenuView(event::EventBus& bus) {
     auto quit_button =
         button_factory.create("Quit", [&bus] { bus.publish(game::QuitRequested{}); },
                               ui::theme::quit_button_style());
+
+    // Icons are optional: without the texture the button stays text only.
+    const auto set_icon = [](ui::Button& button, std::string texture) {
+        button.set_icon([texture = std::move(texture)](ui::Canvas& canvas, ui::Rect rect) {
+            graphics::draw_loaded_sprite(canvas, {texture, std::nullopt}, rect);
+        });
+    };
+    set_icon(*start_new_game_button, "menu_new_game");
+    set_icon(*load_game_button, "menu_load_game");
+    set_icon(*settings_button, "menu_settings");
+    set_icon(*quit_button, "menu_quit");
 
     buttons_ = {start_new_game_button.get(), load_game_button.get(), settings_button.get(),
                 quit_button.get()};

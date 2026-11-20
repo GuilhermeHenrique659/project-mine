@@ -4,6 +4,7 @@
 
 #include "game/fixed_step.hpp"
 #include "game/game_events.hpp"
+#include "graphics/icons.hpp"
 #include "graphics/raylib_texture_loader.hpp"
 #include "graphics/sprite_library.hpp"
 #include "graphics/texture_manager.hpp"
@@ -25,6 +26,7 @@ constexpr const char* WindowTitle = "Project Mine";
 graphics::GameSprites load_sprites(const std::filesystem::path& data_dir) {
     auto& textures = graphics::TextureManager::instance();
     textures.set_loader(std::make_unique<graphics::RaylibTextureLoader>());
+    graphics::register_icons(textures, data_dir / "icon");
     return graphics::GameSprites(graphics::load_sprite_library(textures, data_dir / "sprite"));
 }
 } // namespace
@@ -71,6 +73,13 @@ void Game::start_up() {
     InitWindow(display_settings_.resolution.width, display_settings_.resolution.height,
                WindowTitle);
     apply_display_settings();
+    // Placeholder icon made by tools/sprites/icon.py; a missing file just keeps the default.
+    const auto icon_path = (data_dir_ / "icon.png").string();
+    if (FileExists(icon_path.c_str())) {
+        Image icon = LoadImage(icon_path.c_str());
+        SetWindowIcon(icon);
+        UnloadImage(icon);
+    }
     // Raylib closes the window on Esc by default; Esc is the Pause/Cancel action here.
     SetExitKey(KEY_NULL);
     SetTargetFPS(TargetFps);

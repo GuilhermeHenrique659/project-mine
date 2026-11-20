@@ -4,6 +4,8 @@
 #include <cmath>
 #include <string>
 
+#include "graphics/icons.hpp"
+#include "graphics/sprite.hpp"
 #include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/render/terrain_renderer.hpp"
 #include "ui/grid.hpp"
@@ -68,13 +70,24 @@ void InventorySlot::draw(ui::Canvas& canvas) const {
     if (!stack) {
         // An empty filtered slot shows its item faintly.
         if (const auto filter = inventory->filter(index_)) {
+            ui::TextureDraw faint;
+            faint.tint.a = FilterHintAlpha;
+            if (graphics::draw_loaded_sprite(
+                    canvas, {graphics::item_icon_name(*filter), std::nullopt}, item, faint)) {
+                return;
+            }
             ui::Color hint = item_color(*filter);
             hint.a = FilterHintAlpha;
             canvas.fill_rect(item, hint);
         }
         return;
     }
-    canvas.fill_rect(item, item_color(stack->item.type));
+    // The item's icon, or its colour while there is none.
+    if (!graphics::draw_loaded_sprite(canvas, {graphics::item_icon_name(stack->item.type),
+                                               std::nullopt},
+                                      item)) {
+        canvas.fill_rect(item, item_color(stack->item.type));
+    }
     const std::string count = std::to_string(stack->count);
     const ui::Size text = canvas.measure_text(count, CountFontSize);
     canvas.draw_text(count,
