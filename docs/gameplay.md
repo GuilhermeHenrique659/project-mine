@@ -14,6 +14,7 @@
 - **Build bar (B)**: icon tabs Special / Mines / Factories / Military, each with a drop-up list. Only these can be picked:
   - Headquarters: 5x5 tiles, free, built at once, only one.
   - Mine: 2x2 tiles, 100 iron ore, effort 300, its origin tile on iron, copper or coal (not crude oil), only once a Headquarters exists.
+  - Liquid Storage (Special tab): like the Storage (2x2, 200 iron ore, effort 600, 20 kW) but a single 12000-unit tank that takes only liquids, one liquid at a time; saved, not shown in the building panel and not served by haulers yet.
   - Oil Pump (Mines tab): 2x2 tiles, 100 steel + 100 iron ore, effort 300, its origin tile on crude oil, only once a Headquarters exists; pumps 10 oil/s into its 1000-unit tank, consumes 100 kW, needs no workers. The tank is saved; it is not shown in the building panel and haulers do not move liquids yet.
   - Storage: 2x2 tiles, 200 iron ore, effort 600, only once a Headquarters exists; 120-slot inventory, consumes 20 kW. Each storage gets a logistic route to every production building.
   - House (Special tab): 2x2 tiles, 100 steel, effort 300, only once a Headquarters exists; when its construction finishes it brings 50 new idle workers, standing on it; consumes 20 kW.

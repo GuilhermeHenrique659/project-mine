@@ -23,6 +23,7 @@ std::string_view building_type_key(BuildingType type) {
         case BuildingType::Barracks: return "Barracks";
         case BuildingType::TrainingTarget: return "TrainingTarget";
         case BuildingType::OilPump: return "OilPump";
+        case BuildingType::LiquidStorage: return "LiquidStorage";
         case BuildingType::Headquarters: break;
     }
     return "Headquarters";
@@ -68,6 +69,9 @@ std::optional<BuildingType> parse_building_type(std::string_view key) {
     if (key == building_type_key(BuildingType::OilPump)) {
         return BuildingType::OilPump;
     }
+    if (key == building_type_key(BuildingType::LiquidStorage)) {
+        return BuildingType::LiquidStorage;
+    }
     return std::nullopt;
 }
 
@@ -84,6 +88,12 @@ const std::vector<ConstructionGroup>& construction_catalog() {
                  .type(BuildingType::Storage).size(2, 2)
                  .cost(items::IronOre, 200).effort(600.0f).needs_headquarters()
                  .storage(120)
+                 .power(20.0f)
+                 .build(),
+             ConstructionBuilder{"Liquid Storage", "icon_liquid_storage"}
+                 .type(BuildingType::LiquidStorage).size(2, 2)
+                 .cost(items::IronOre, 200).effort(600.0f).needs_headquarters()
+                 .tank(12000)
                  .power(20.0f)
                  .build(),
              ConstructionBuilder{"House", "icon_house"}

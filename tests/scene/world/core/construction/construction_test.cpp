@@ -568,3 +568,54 @@ TEST(BuildingType, OilPumpRoundTripsThroughItsSaveKey) {
     EXPECT_EQ(key, "OilPump");
     EXPECT_EQ(parsed, world::BuildingType::OilPump);
 }
+
+TEST(ConstructionCatalog, LiquidStorageCostsLikeStorageAndHoldsA12000UnitTankOn20Kw) {
+    // Given
+    const auto& special = world::construction_catalog()[0];
+
+    // When
+    const world::Construction* storage =
+        world::find_construction(world::BuildingType::LiquidStorage);
+
+    // Then
+    ASSERT_NE(storage, nullptr);
+    EXPECT_TRUE(std::any_of(special.constructions.begin(), special.constructions.end(),
+                            [](const auto& c) { return c.type == world::BuildingType::LiquidStorage; }));
+    EXPECT_EQ(storage->size, (world::TileSize{2, 2}));
+    ASSERT_EQ(storage->cost.size(), 1u);
+    EXPECT_EQ(storage->cost[0].item, world::items::IronOre);
+    EXPECT_EQ(storage->cost[0].count, 200);
+    EXPECT_FLOAT_EQ(storage->effort, 600.0f);
+    ASSERT_NE(storage->blueprint.find<world::PowerConsumer>(), nullptr);
+    EXPECT_FLOAT_EQ(storage->blueprint.find<world::PowerConsumer>()->demand_kw, 20.0f);
+    ASSERT_NE(storage->blueprint.find<world::LiquidInventory>(), nullptr);
+    EXPECT_EQ(storage->blueprint.find<world::LiquidInventory>()->capacity(), 12000);
+    EXPECT_EQ(storage->blueprint.find<world::SolidInventory>(), nullptr);
+}
+
+TEST(ConstructionCatalog, LiquidStorageTakesLiquidsAndRefusesSolids) {
+    // Given
+    world::LiquidInventory tank = *world::find_construction(world::BuildingType::LiquidStorage)
+                                       ->blueprint.find<world::LiquidInventory>();
+
+    // When
+    const int solid_left = tank.add(world::items::IronOre, 50);
+    const int oil_left = tank.add(world::items::Oil, 500);
+
+    // Then
+    EXPECT_EQ(solid_left, 50);
+    EXPECT_EQ(oil_left, 0);
+    EXPECT_EQ(tank.count(world::items::Oil), 500);
+}
+
+TEST(BuildingType, LiquidStorageRoundTripsThroughItsSaveKey) {
+    // Given
+    const auto key = world::building_type_key(world::BuildingType::LiquidStorage);
+
+    // When
+    const auto parsed = world::parse_building_type(key);
+
+    // Then
+    EXPECT_EQ(key, "LiquidStorage");
+    EXPECT_EQ(parsed, world::BuildingType::LiquidStorage);
+}
