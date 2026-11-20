@@ -9,7 +9,8 @@
 namespace world {
 
 // Keeps the RouteNetwork up to date: rebuilds it on the first update (the buildings of a
-// loaded save) and on the update after any BuildingPlaced, once however many were placed.
+// loaded save) and on the update after any BuildingPlaced or BuildingCompleted, once
+// however many there were.
 // It never recomputes otherwise. Everything passed must outlive it.
 class RouteSystem : public System {
 public:
@@ -24,6 +25,7 @@ private:
     RouteNetwork& network_;
     bool dirty_ = true;
     event::ScopedSubscription subscription_;
+    event::ScopedSubscription completed_;
 };
 
 } // namespace world

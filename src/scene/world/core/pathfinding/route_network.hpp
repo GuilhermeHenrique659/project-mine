@@ -52,7 +52,7 @@ public:
 };
 
 // One Worker route from the headquarters to every other building (none without a
-// headquarters).
+// headquarters), except finished pipes nobody is walking to or from.
 class HeadquartersRoutePlanner : public RoutePlanner {
 public:
     std::vector<RouteRequest> plan(const core::Registry& registry) const override;

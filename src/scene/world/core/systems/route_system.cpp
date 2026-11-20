@@ -10,7 +10,9 @@ RouteSystem::RouteSystem(const core::Registry& registry, event::EventBus& bus,
       terrain_(terrain),
       network_(network),
       subscription_(event::subscribe_scoped<BuildingPlaced>(
-          bus, [this](const BuildingPlaced&) { dirty_ = true; })) {}
+          bus, [this](const BuildingPlaced&) { dirty_ = true; })),
+      completed_(event::subscribe_scoped<BuildingCompleted>(
+          bus, [this](const BuildingCompleted&) { dirty_ = true; })) {}
 
 void RouteSystem::update(float) {
     if (!dirty_) {

@@ -4,6 +4,7 @@
 
 #include "core/registry.hpp"
 #include "scene/world/core/components/building.hpp"
+#include "scene/world/core/components/route_follower.hpp"
 #include "scene/world/core/pathfinding/route_network.hpp"
 #include "scene/world/core/terrain/terrain.hpp"
 
@@ -155,4 +156,24 @@ TEST(RouteNetwork, ARouteLeavesAMultiTileBuildingFromAnyOfItsSides) {
     const world::Route* route = f.network.find({hq, target});
     ASSERT_NE(route, nullptr);
     EXPECT_TRUE(route->reachable());
+}
+
+TEST(RouteNetwork, AFinishedPipeKeepsNoWorkerRouteOnceNobodyWalksIt) {
+    // Given
+    Fixture f;
+    const auto hq = f.add(world::BuildingType::Headquarters, {0, 0});
+    const auto site = f.add(world::BuildingType::Pipe, {8, 0});
+    f.registry.add(site, world::ConstructionSite{});
+    const auto finished = f.add(world::BuildingType::Pipe, {8, 3});
+    const auto walked = f.add(world::BuildingType::Pipe, {8, 6});
+    const auto worker = f.registry.create("worker");
+    f.registry.add(worker, world::RouteFollower{world::RouteKey{hq, walked}});
+
+    // When
+    f.network.rebuild(f.registry, f.terrain);
+
+    // Then
+    EXPECT_NE(f.network.find({hq, site}), nullptr);
+    EXPECT_EQ(f.network.find({hq, finished}), nullptr);
+    EXPECT_NE(f.network.find({hq, walked}), nullptr);
 }

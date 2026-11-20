@@ -26,7 +26,8 @@ WorkerType type_at(BuildingType building) {
         case BuildingType::Barracks:
         case BuildingType::TrainingTarget:
         case BuildingType::OilPump:
-        case BuildingType::LiquidStorage: break;
+        case BuildingType::LiquidStorage:
+        case BuildingType::Pipe: break;
     }
     return WorkerType::None;
 }

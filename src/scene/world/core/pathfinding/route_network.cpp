@@ -1,5 +1,7 @@
 #include "scene/world/core/pathfinding/route_network.hpp"
 
+#include "scene/world/core/components/route_follower.hpp"
+
 #include <algorithm>
 #include <utility>
 
@@ -10,6 +12,28 @@
 #include "text/parse.hpp"
 
 namespace world {
+
+namespace {
+
+// Pipes are many and nobody works at a finished one: it only needs a route while built.
+bool is_finished_pipe(const core::Registry& registry, core::EntityId id) {
+    const Building* building = registry.get<Building>(id);
+    return building != nullptr && building->type == BuildingType::Pipe &&
+           !registry.has<ConstructionSite>(id);
+}
+
+// True while some follower is on the route (e.g. its builders walking home).
+bool is_walked(const core::Registry& registry, RouteKey key) {
+    for (const core::Entity& entity : registry.entities()) {
+        const RouteFollower* follower = registry.get<RouteFollower>(entity.id);
+        if (follower != nullptr && follower->route == key) {
+            return true;
+        }
+    }
+    return false;
+}
+
+} // namespace
 
 std::vector<RouteRequest> HeadquartersRoutePlanner::plan(const core::Registry& registry) const {
     const auto& entities = registry.entities();
@@ -22,9 +46,14 @@ std::vector<RouteRequest> HeadquartersRoutePlanner::plan(const core::Registry& r
     }
     std::vector<RouteRequest> keys;
     for (const core::Entity& entity : entities) {
-        if (entity.id != hq->id && registry.has<Building>(entity.id)) {
-            keys.push_back({{hq->id, entity.id}, RouteKind::Worker});
+        if (entity.id == hq->id || !registry.has<Building>(entity.id)) {
+            continue;
         }
+        const RouteKey key{hq->id, entity.id};
+        if (is_finished_pipe(registry, entity.id) && !is_walked(registry, key)) {
+            continue;
+        }
+        keys.push_back({key, RouteKind::Worker});
     }
     return keys;
 }

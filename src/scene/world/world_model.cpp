@@ -18,6 +18,7 @@
 #include "scene/world/core/systems/build_system.hpp"
 #include "scene/world/core/systems/inventory_transfer_system.hpp"
 #include "scene/world/core/systems/power_system.hpp"
+#include "scene/world/core/systems/pipe_flow_system.hpp"
 #include "scene/world/core/systems/production_system.hpp"
 #include "scene/world/core/systems/recruit_system.hpp"
 #include "scene/world/core/systems/shoot_system.hpp"
@@ -99,6 +100,7 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
     systems_.push_back(std::make_unique<::world::InventoryTransferSystem>(registry_, bus_));
     systems_.push_back(std::make_unique<::world::PowerSystem>(registry_));
     systems_.push_back(std::make_unique<::world::ProductionSystem>(registry_, terrain_));
+    systems_.push_back(std::make_unique<::world::PipeFlowSystem>(registry_, bus_));
     // The first frame is already centred on the player.
     if (const auto* position = registry_.get<::world::Position>(player_)) {
         camera_.center = position->point;
