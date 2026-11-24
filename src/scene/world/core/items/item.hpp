@@ -5,7 +5,7 @@
 namespace world {
 
 // Kinds of item that can be stored in an inventory.
-enum class ItemType { IronOre, CopperOre, Coal, Steel, Electronics, Tool, Ammo, Weapon, Oil, Diesel };
+enum class ItemType { IronOre, CopperOre, Coal, Steel, Electronics, Tool, Ammo, Weapon, Oil, Diesel, Engine };
 
 // Physical state of an item: decides which inventories can store it (see InventoryType).
 enum class ItemCategory { Solid, Liquid };
@@ -29,6 +29,7 @@ inline constexpr Item Electronics{ItemType::Electronics, 100};
 inline constexpr Item Tool{ItemType::Tool, 100};
 inline constexpr Item Ammo{ItemType::Ammo, 100};
 inline constexpr Item Weapon{ItemType::Weapon, 1};
+inline constexpr Item Engine{ItemType::Engine, 100};
 inline constexpr Item Oil{ItemType::Oil, 100, ItemCategory::Liquid};
 inline constexpr Item Diesel{ItemType::Diesel, 100, ItemCategory::Liquid};
 } // namespace items
@@ -45,6 +46,7 @@ constexpr Item item_of(ItemType type) {
         case ItemType::Weapon: return items::Weapon;
         case ItemType::Oil: return items::Oil;
         case ItemType::Diesel: return items::Diesel;
+        case ItemType::Engine: return items::Engine;
         case ItemType::IronOre: break;
     }
     return items::IronOre;
@@ -91,6 +93,7 @@ constexpr const char* to_string(ItemType type) {
         case ItemType::Weapon: return "Weapon";
         case ItemType::Oil: return "Oil";
         case ItemType::Diesel: return "Diesel";
+        case ItemType::Engine: return "Engine";
         case ItemType::IronOre: break;
     }
     return "Iron Ore";

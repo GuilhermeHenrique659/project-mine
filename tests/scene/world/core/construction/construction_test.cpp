@@ -619,3 +619,57 @@ TEST(BuildingType, LiquidStorageRoundTripsThroughItsSaveKey) {
     EXPECT_EQ(key, "LiquidStorage");
     EXPECT_EQ(parsed, world::BuildingType::LiquidStorage);
 }
+
+TEST(ConstructionCatalog, EngineFactoryCosts200Steel100ToolsAnd50ElectronicsTakes1200WorkNeeds50WorkersOn300Kw) {
+    // Given / When / Then
+    expect_factory_entry(world::BuildingType::EngineFactory, "Engine Factory",
+                         {{world::items::Steel, 200},
+                          {world::items::Tool, 100},
+                          {world::items::Electronics, 50}});
+}
+
+TEST(ConstructionCatalog, EngineFactoryMakesOneEngineFromOneSteelAndOneToolEveryMinute) {
+    // Given / When
+    const world::Recipe* recipe = recipe_of(world::BuildingType::EngineFactory);
+
+    // Then
+    ASSERT_NE(recipe, nullptr);
+    EXPECT_EQ(recipe->output, world::items::Engine);
+    EXPECT_EQ(recipe->output_count, 1);
+    EXPECT_FLOAT_EQ(recipe->rate, 1.0f / 60.0f);
+    ASSERT_EQ(recipe->inputs.size(), 2u);
+    EXPECT_EQ(recipe->inputs[0].item, world::items::Steel);
+    EXPECT_EQ(recipe->inputs[0].count, 1);
+    EXPECT_EQ(recipe->inputs[1].item, world::items::Tool);
+    EXPECT_EQ(recipe->inputs[1].count, 1);
+}
+
+TEST(ConstructionCatalog, EngineFactoryKeepsItsInputsOutOfTheGeneralSlots) {
+    // Given
+    const world::Construction* factory =
+        world::find_construction(world::BuildingType::EngineFactory);
+    ASSERT_NE(factory, nullptr);
+    world::SolidInventory inventory = *factory->blueprint.find<world::SolidInventory>();
+
+    // When
+    const int steel_left = inventory.add(world::items::Steel, 1000);
+    const int tool_left = inventory.add(world::items::Tool, 1000);
+    const int engine_left = inventory.add(world::items::Engine, 2000);
+
+    // Then: 5 slots per input, 10 general slots for the engines
+    EXPECT_EQ(steel_left, 500);
+    EXPECT_EQ(tool_left, 500);
+    EXPECT_EQ(engine_left, 1000);
+}
+
+TEST(BuildingType, EngineFactoryRoundTripsThroughItsSaveKey) {
+    // Given
+    const std::string_view key = world::building_type_key(world::BuildingType::EngineFactory);
+
+    // When
+    const auto parsed = world::parse_building_type(key);
+
+    // Then
+    EXPECT_EQ(key, "EngineFactory");
+    EXPECT_EQ(parsed, world::BuildingType::EngineFactory);
+}

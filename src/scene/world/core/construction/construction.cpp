@@ -25,6 +25,7 @@ std::string_view building_type_key(BuildingType type) {
         case BuildingType::OilPump: return "OilPump";
         case BuildingType::LiquidStorage: return "LiquidStorage";
         case BuildingType::Pipe: return "Pipe";
+        case BuildingType::EngineFactory: return "EngineFactory";
         case BuildingType::Headquarters: break;
     }
     return "Headquarters";
@@ -75,6 +76,9 @@ std::optional<BuildingType> parse_building_type(std::string_view key) {
     }
     if (key == building_type_key(BuildingType::Pipe)) {
         return BuildingType::Pipe;
+    }
+    if (key == building_type_key(BuildingType::EngineFactory)) {
+        return BuildingType::EngineFactory;
     }
     return std::nullopt;
 }
@@ -172,6 +176,14 @@ const std::vector<ConstructionGroup>& construction_catalog() {
                  .needs_headquarters()
                  .consumes(items::Steel, 1).consumes(items::Tool, 1)
                  .produces(items::Weapon).crafts_per_second(2.0f)
+                 .storage(10).workers(50).power(300.0f)
+                 .build(),
+             ConstructionBuilder{"Engine Factory", "icon_engine_factory"}
+                 .type(BuildingType::EngineFactory).size(3, 3)
+                 .cost(items::Steel, 200).cost(items::Tool, 100).cost(items::Electronics, 50)
+                 .effort(1200.0f).needs_headquarters()
+                 .consumes(items::Steel, 1).consumes(items::Tool, 1)
+                 .produces(items::Engine).crafts_per_second(1.0f / 60.0f)
                  .storage(10).workers(50).power(300.0f)
                  .build(),
              ConstructionBuilder{"Smelter", "icon_smelter"}.build(),

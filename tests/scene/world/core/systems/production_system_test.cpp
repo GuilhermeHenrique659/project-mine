@@ -407,6 +407,35 @@ TEST(ProductionSystem, AStaffedWeaponFactoryTurnsSteelAndToolsIntoTwoWeaponsPerS
     EXPECT_EQ(f.count(id, world::items::Tool), 8);
 }
 
+TEST(ProductionSystem, AStaffedEngineFactoryMakesOneEngineFromSteelAndToolsPerMinute) {
+    // Given
+    Fixture f;
+    const world::Construction* factory =
+        world::find_construction(world::BuildingType::EngineFactory);
+    ASSERT_NE(factory, nullptr);
+    const core::EntityId id = f.registry.create("Engine Factory");
+    world::make_building(f.registry, id, *factory, {1, 1});
+    f.registry.remove<world::ConstructionSite>(id);
+    f.staff(id, factory->blueprint.find<world::Staffing>()->needed);
+    f.registry.get<world::SolidInventory>(id)->add(world::items::Steel, 10);
+    f.registry.get<world::SolidInventory>(id)->add(world::items::Tool, 10);
+
+    // When: 30 s is half an engine, 60 s a whole one
+    for (int second = 0; second < 30; ++second) {
+        f.system.update(1.0f);
+    }
+    const int after_half_minute = f.count(id, world::items::Engine);
+    for (int second = 0; second < 30; ++second) {
+        f.system.update(1.0f);
+    }
+
+    // Then
+    EXPECT_EQ(after_half_minute, 0);
+    EXPECT_EQ(f.count(id, world::items::Engine), 1);
+    EXPECT_EQ(f.count(id, world::items::Steel), 9);
+    EXPECT_EQ(f.count(id, world::items::Tool), 9);
+}
+
 namespace {
 
 // A finished catalog oil pump on the first crude oil tile.

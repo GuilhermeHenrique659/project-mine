@@ -27,6 +27,7 @@ constexpr ui::Color AmmoColor{200, 175, 70, 255};
 constexpr ui::Color WeaponColor{95, 100, 115, 255};
 constexpr ui::Color OilColor{30, 25, 35, 255};
 constexpr ui::Color DieselColor{220, 190, 60, 255};
+constexpr ui::Color EngineColor{140, 70, 60, 255};
 // Opacity of the item hint in an empty filtered slot.
 constexpr unsigned char FilterHintAlpha = 60;
 } // namespace
@@ -42,6 +43,7 @@ ui::Color item_color(::world::ItemType type) {
     case ::world::ItemType::Weapon: return WeaponColor;
     case ::world::ItemType::Oil: return OilColor;
     case ::world::ItemType::Diesel: return DieselColor;
+    case ::world::ItemType::Engine: return EngineColor;
     case ::world::ItemType::IronOre: break;
     }
     return IronOreColor;

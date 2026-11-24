@@ -12,6 +12,12 @@
 
 namespace world {
 
+namespace {
+// Slack on "one output is done": slow rates (1/60 per second) add up to just under 1 in
+// float, which would delay the output by a whole tick.
+constexpr float ProgressEpsilon = 1e-4f;
+} // namespace
+
 std::optional<Item> item_from_tile(TileType type) {
     switch (type) {
         case TileType::IronOre: return items::IronOre;
@@ -72,7 +78,7 @@ IdleReason run(Producer& producer, Inventory& inventory, const std::optional<Ite
         return IdleReason::NoWorkers;
     }
     producer.progress += producer.recipe.rate * crew * delta_time;
-    while (producer.progress >= 1.0f) {
+    while (producer.progress >= 1.0f - ProgressEpsilon) {
         const IdleReason reason =
             produce_one(inventory, producer.recipe.inputs, *output, producer.recipe.output_count);
         if (reason != IdleReason::None) {
@@ -80,7 +86,7 @@ IdleReason run(Producer& producer, Inventory& inventory, const std::optional<Ite
             producer.progress = 1.0f;
             return reason;
         }
-        producer.progress -= 1.0f;
+        producer.progress = std::max(0.0f, producer.progress - 1.0f);
     }
     return IdleReason::None;
 }

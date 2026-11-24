@@ -399,7 +399,7 @@ TEST(WorldSerializer, ABuildingIsPlacedOnItsFootprintWhateverPositionWasSaved) {
     EXPECT_FLOAT_EQ(f.registry.get<world::Position>(id)->point.y, 2.5f);
 }
 
-TEST(WorldSerializer, ToolsAmmoAndWeaponsInAnInventorySurviveASaveAndLoad) {
+TEST(WorldSerializer, ToolsAmmoWeaponsAndEnginesInAnInventorySurviveASaveAndLoad) {
     // Given
     Fixture saved;
     const core::EntityId id = saved.spawn_player({0.0f, 0.0f});
@@ -407,6 +407,7 @@ TEST(WorldSerializer, ToolsAmmoAndWeaponsInAnInventorySurviveASaveAndLoad) {
     inventory->set_slot(0, world::ItemStack{world::items::Tool, 3});
     inventory->set_slot(1, world::ItemStack{world::items::Ammo, 4});
     inventory->set_slot(2, world::ItemStack{world::items::Weapon, 1});
+    inventory->set_slot(3, world::ItemStack{world::items::Engine, 2});
     const auto records = saved.serializer.snapshot(saved.registry);
     Fixture loaded;
 
@@ -424,6 +425,10 @@ TEST(WorldSerializer, ToolsAmmoAndWeaponsInAnInventorySurviveASaveAndLoad) {
     EXPECT_EQ(slots[1]->item, world::items::Ammo);
     EXPECT_EQ(slots[2]->item, world::items::Weapon);
     EXPECT_EQ(slots[2]->count, 1);
+    EXPECT_EQ(records[0].fields.at("inventory.3"), "Engine:2");
+    ASSERT_TRUE(slots[3].has_value());
+    EXPECT_EQ(slots[3]->item, world::items::Engine);
+    EXPECT_EQ(slots[3]->count, 2);
 }
 
 TEST(WorldSerializer, AnOilPumpKeepsTheOilInItsTankThroughASave) {

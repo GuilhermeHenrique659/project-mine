@@ -133,7 +133,8 @@ TEST(WorkerType, WorkersOfTheToolAmmoAndWeaponFactoriesAreToolmakersMunitionersA
     const std::vector<std::pair<world::BuildingType, const char*>> expected{
         {world::BuildingType::ToolFactory, "Toolmaker"},
         {world::BuildingType::AmmoFactory, "Munitioner"},
-        {world::BuildingType::WeaponFactory, "Gunsmith"}};
+        {world::BuildingType::WeaponFactory, "Gunsmith"},
+        {world::BuildingType::EngineFactory, "Mechanic"}};
     for (const auto& [building, label] : expected) {
         // Given
         Fixture f;

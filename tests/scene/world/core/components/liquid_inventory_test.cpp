@@ -14,7 +14,7 @@ TEST(ItemCategory, OilAndDieselAreLiquidsAndTheOtherItemsAreSolid) {
     // Given
     const ItemType solids[] = {ItemType::IronOre, ItemType::CopperOre, ItemType::Coal,
                                ItemType::Steel,   ItemType::Electronics, ItemType::Tool,
-                               ItemType::Ammo,    ItemType::Weapon};
+                               ItemType::Ammo,    ItemType::Weapon, ItemType::Engine};
 
     // When / Then
     for (ItemType type : solids) {

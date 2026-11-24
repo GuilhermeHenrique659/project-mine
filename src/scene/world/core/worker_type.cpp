@@ -19,6 +19,7 @@ WorkerType type_at(BuildingType building) {
         case BuildingType::ToolFactory: return WorkerType::Toolmaker;
         case BuildingType::AmmoFactory: return WorkerType::Munitioner;
         case BuildingType::WeaponFactory: return WorkerType::Gunsmith;
+        case BuildingType::EngineFactory: return WorkerType::Mechanic;
         case BuildingType::Headquarters:
         case BuildingType::Storage:
         case BuildingType::House:

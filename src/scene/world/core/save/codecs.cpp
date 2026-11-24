@@ -46,7 +46,7 @@ constexpr std::string_view InventoryPrefix = "inventory.";
 constexpr std::string_view TankField = "tank";
 
 // Save-file names of the item types: stable keys, not the names shown to the player.
-constexpr std::array<std::pair<ItemType, std::string_view>, 10> ItemKeys{{
+constexpr std::array<std::pair<ItemType, std::string_view>, 11> ItemKeys{{
     {ItemType::IronOre, "IronOre"},
     {ItemType::CopperOre, "CopperOre"},
     {ItemType::Coal, "Coal"},
@@ -57,6 +57,7 @@ constexpr std::array<std::pair<ItemType, std::string_view>, 10> ItemKeys{{
     {ItemType::Weapon, "Weapon"},
     {ItemType::Oil, "Oil"},
     {ItemType::Diesel, "Diesel"},
+    {ItemType::Engine, "Engine"},
 }};
 
 std::string_view item_key(ItemType type) {
