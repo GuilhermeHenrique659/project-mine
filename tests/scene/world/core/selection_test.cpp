@@ -6,6 +6,8 @@
 #include "scene/world/core/entities/soldier.hpp"
 #include "scene/world/core/entities/worker.hpp"
 #include "scene/world/core/selection.hpp"
+#include "scene/world/core/entities/battle_tank.hpp"
+#include "scene/world/core/entities/vehicle.hpp"
 
 namespace {
 
@@ -101,4 +103,19 @@ TEST(Selection, AFormationWithNoFreeTileNearbyIsEmpty) {
 
     // Then
     EXPECT_TRUE(tiles.empty());
+}
+
+TEST(Selection, ABoxSelectsTanksButNotTheSoldiersInsideThem) {
+    // Given
+    core::Registry registry;
+    const core::EntityId tank = world::spawn_battle_tank(registry, "Tank", {2.0f, 2.0f});
+    world::board(registry, tank, world::spawn_soldier(registry, "Crew", {2.0f, 2.0f}));
+    const world::ScreenPoint at = on_screen({2.0f, 2.0f});
+
+    // When
+    const auto selected =
+        world::soldiers_in(registry, Projection, {at.x - 10, at.y - 10}, {at.x + 10, at.y + 10});
+
+    // Then
+    EXPECT_EQ(selected, std::vector<core::EntityId>{tank});
 }

@@ -7,6 +7,7 @@
 #include "scene/world/core/components/mover.hpp"
 #include "scene/world/core/components/player_controlled.hpp"
 #include "scene/world/core/systems/player_input_system.hpp"
+#include "scene/world/core/components/vehicle.hpp"
 
 namespace {
 
@@ -143,4 +144,27 @@ TEST(PlayerInputSystem, EntityThatIsNotPlayerControlledIgnoresTheInput) {
     // Then
     EXPECT_FLOAT_EQ(direction_of(registry, id).x, 0.0f);
     EXPECT_FLOAT_EQ(direction_of(registry, id).y, 0.0f);
+}
+
+TEST(PlayerInputSystem, ThePlayerInsideAVehicleDrivesItInsteadOfWalking) {
+    // Given
+    core::Registry registry;
+    FakeKeyboard keyboard;
+    input::InputHandler input(keyboard, input::InputMap::world_defaults());
+    world::PlayerInputSystem system(registry, input);
+    const core::EntityId player = spawn_player(registry);
+    const core::EntityId tank = registry.create("tank");
+    registry.add(tank, world::Mover{2.0f, {0.0f, 0.0f}});
+    registry.add(tank, world::Vehicle{6, {player}});
+    registry.add(player, world::Passenger{tank});
+    keyboard.down = {input::Key::W};
+
+    // When
+    system.update(0.016f);
+
+    // Then
+    EXPECT_FLOAT_EQ(direction_of(registry, tank).x, -1.0f);
+    EXPECT_FLOAT_EQ(direction_of(registry, tank).y, -1.0f);
+    EXPECT_FLOAT_EQ(direction_of(registry, player).x, 0.0f);
+    EXPECT_FLOAT_EQ(direction_of(registry, player).y, 0.0f);
 }

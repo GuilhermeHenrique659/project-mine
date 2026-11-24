@@ -28,6 +28,9 @@ namespace scene::world {
 // Length of one simulation tick: the systems always advance by exactly this much.
 inline constexpr float SimulationTick = 1.0f / 60.0f;
 
+// Where a new game parks its Battle Tank: beside the player, within ::world::BoardReach.
+inline constexpr ::world::WorldPoint StartingTankPosition{1.5f, 0.5f};
+
 // State of the game being played: the save it came from and the simulation (an ECS
 // registry with the player character). The simulation lives in core:: and ::world::
 // and knows nothing about rendering; this model only drives it. Input reaches it through
@@ -126,6 +129,17 @@ public:
     // (the barracks) they go take a weapon and an ammo stack (::world::UnitsResupplyRequested);
     // otherwise they walk there (order_move()).
     void order_units(::world::TileCoord tile);
+    // F: gets the player out of the vehicle it sits in (::world::VehicleExitRequested), or
+    // into the nearest vehicle within ::world::BoardReach (::world::VehicleBoardRequested);
+    // both next tick. Nothing when neither applies. Inside, the player drives the vehicle
+    // and shoot_at() fires its weapon.
+    void toggle_vehicle();
+    // The vehicles the Unload button acts on: the selected ones and the one the player sits
+    // in, when they carry at least one passenger other than the player; in entity order.
+    std::vector<core::EntityId> unloadable_vehicles() const;
+    // Asks every unit inside those vehicles to get out (::world::VehicleUnloadRequested per
+    // vehicle, next tick); the player stays in.
+    void unload_vehicles();
     // The player shoots at what is on `tile` (::world::shootable_at, ::world::ShotRequested,
     // next tick). Nothing when the tile holds no target; the ShootSystem then fires only
     // when the player has a weapon and ammo and the target is within range.
@@ -173,6 +187,8 @@ public:
 private:
     // The first PlayerControlled entity, or 0 when there is none (ids start at 1).
     core::EntityId find_player() const;
+    // What the player shoots with: the vehicle it sits in, else the player itself.
+    core::EntityId player_shooter() const;
 
     // Queues a player request; it is published on the bus at the start of the next tick, so
     // the simulation only changes inside a tick, in system order.

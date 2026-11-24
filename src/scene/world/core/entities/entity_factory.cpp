@@ -1,6 +1,7 @@
 #include "scene/world/core/entities/entity_factory.hpp"
 
 #include "scene/world/core/components/persistent.hpp"
+#include "scene/world/core/entities/battle_tank.hpp"
 #include "scene/world/core/entities/building.hpp"
 #include "scene/world/core/entities/character.hpp"
 #include "scene/world/core/entities/soldier.hpp"
@@ -37,6 +38,9 @@ EntityFactory make_entity_factory() {
     });
     factory.register_archetype(SoldierArchetype, [](core::Registry& registry, const std::string& label) {
         return spawn_soldier(registry, label, WorldPoint{0.0f, 0.0f});
+    });
+    factory.register_archetype(BattleTankArchetype, [](core::Registry& registry, const std::string& label) {
+        return spawn_battle_tank(registry, label, WorldPoint{0.0f, 0.0f});
     });
     return factory;
 }

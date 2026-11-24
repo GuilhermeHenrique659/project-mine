@@ -5,8 +5,17 @@
 
 #include "scene/world/core/components/military.hpp"
 #include "scene/world/core/components/position.hpp"
+#include "scene/world/core/components/vehicle.hpp"
+#include "scene/world/core/entities/vehicle.hpp"
 
 namespace world {
+
+bool takes_orders(const core::Registry& registry, core::EntityId id) {
+    if (registry.has<Vehicle>(id)) {
+        return is_crewed(registry, id) && !carries_player(registry, id);
+    }
+    return registry.has<Soldier>(id) && !registry.has<Passenger>(id);
+}
 
 std::vector<core::EntityId> soldiers_in(const core::Registry& registry,
                                         const IsoProjection& projection, ScreenPoint a,
@@ -18,7 +27,10 @@ std::vector<core::EntityId> soldiers_in(const core::Registry& registry,
     std::vector<core::EntityId> selected;
     for (const core::Entity& entity : registry.entities()) {
         const Position* position = registry.get<Position>(entity.id);
-        if (position == nullptr || !registry.has<Soldier>(entity.id)) {
+        // Empty vehicles too: they are selected to be boarded or driven later.
+        const bool vehicle = registry.has<Vehicle>(entity.id);
+        if (position == nullptr || (!vehicle && !registry.has<Soldier>(entity.id)) ||
+            registry.has<Passenger>(entity.id)) {
             continue;
         }
         const ScreenPoint at = projection.world_to_screen(position->point);

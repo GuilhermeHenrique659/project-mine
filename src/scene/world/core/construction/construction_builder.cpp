@@ -67,6 +67,11 @@ ConstructionBuilder& ConstructionBuilder::mines_ore() {
     return *this;
 }
 
+ConstructionBuilder& ConstructionBuilder::spawns(std::string archetype, std::string label) {
+    recipe().spawns = UnitOutput{std::move(archetype), std::move(label)};
+    return *this;
+}
+
 ConstructionBuilder& ConstructionBuilder::crafts_per_second(float rate) {
     recipe().rate = rate;
     return *this;

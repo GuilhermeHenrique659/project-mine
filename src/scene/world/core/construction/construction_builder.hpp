@@ -47,6 +47,8 @@ public:
     // What it consumes and makes. Each input gets its own filtered section of `slots`.
     ConstructionBuilder& consumes(Item item, int count, std::size_t slots = InputSlots);
     ConstructionBuilder& produces(Item item, int count = 1);
+    // Makes an entity of `archetype` (labelled `label`) per craft instead of an item.
+    ConstructionBuilder& spawns(std::string archetype, std::string label);
     // Produces the ore under the building (a mine).
     ConstructionBuilder& mines_ore();
     ConstructionBuilder& crafts_per_second(float rate);

@@ -136,9 +136,10 @@ TEST(WorldView, PauseMenuIsDrawnOnlyWhilePaused) {
     screen.model.toggle_pause();
     screen.view->draw(paused, Screen);
 
-    // Then: while playing only the player's label is drawn
-    ASSERT_EQ(playing.texts.size(), 1u);
-    EXPECT_EQ(playing.texts.front().text, "Player (Idle)");
+    // Then: while playing only the labels of the player and the starting tank are drawn
+    ASSERT_EQ(playing.texts.size(), 2u);
+    EXPECT_EQ(playing.texts[0].text, "Player (Idle)");
+    EXPECT_EQ(playing.texts[1].text, "Battle Tank (0/6)");
     EXPECT_GT(paused.texts.size(), 1u);
 }
 

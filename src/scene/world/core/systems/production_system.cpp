@@ -3,10 +3,9 @@
 #include <algorithm>
 #include <unordered_map>
 
-#include "scene/world/core/components/building.hpp"
 #include "scene/world/core/components/liquid_inventory.hpp"
-#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/power.hpp"
+#include "scene/world/core/components/solid_inventory.hpp"
 #include "scene/world/core/components/worker.hpp"
 #include "scene/world/core/worker_report.hpp"
 
@@ -16,6 +15,15 @@ namespace {
 // Slack on "one output is done": slow rates (1/60 per second) add up to just under 1 in
 // float, which would delay the output by a whole tick.
 constexpr float ProgressEpsilon = 1e-4f;
+
+// Share of the full rate the workers at a building give: present / needed, at most 1; 1
+// for a building without Staffing.
+float crew_share(const Staffing* staffing, int present) {
+    if (staffing == nullptr || staffing->needed <= 0) {
+        return 1.0f;
+    }
+    return std::min(1.0f, static_cast<float>(present) / static_cast<float>(staffing->needed));
+}
 } // namespace
 
 std::optional<Item> item_from_tile(TileType type) {
@@ -30,71 +38,11 @@ std::optional<Item> item_from_tile(TileType type) {
     return std::nullopt;
 }
 
-namespace {
-
-// Makes one craft (output_count outputs) when every input is there and all of it fits;
-// otherwise nothing changes and the reason is returned (None = made one).
-IdleReason produce_one(Inventory& inventory, const std::vector<ItemStack>& inputs, Item output,
-                       int output_count) {
-    for (const ItemStack& input : inputs) {
-        if (inventory.count(input.item) < input.count) {
-            return IdleReason::MissingInput;
-        }
-    }
-    for (const ItemStack& input : inputs) {
-        inventory.remove(input.item, input.count);
-    }
-    const int left = inventory.add(output, output_count);
-    if (left == 0) {
-        return IdleReason::None;
-    }
-    // No room: undo the outputs that fit and the inputs.
-    inventory.remove(output, output_count - left);
-    for (const ItemStack& input : inputs) {
-        inventory.add(input.item, input.count);
-    }
-    return IdleReason::OutputFull;
+bool ProductionSystem::has_inputs(const Inventory& inventory, const Recipe& recipe) {
+    return std::all_of(recipe.inputs.begin(), recipe.inputs.end(), [&](const ItemStack& input) {
+        return inventory.count(input.item) >= input.count;
+    });
 }
-
-// Share of the full rate the workers at a building give: present / needed, at most 1; 1
-// for a building without Staffing.
-float crew_share(const Staffing* staffing, int present) {
-    if (staffing == nullptr || staffing->needed <= 0) {
-        return 1.0f;
-    }
-    return std::min(1.0f, static_cast<float>(present) / static_cast<float>(staffing->needed));
-}
-
-// Advances one producer by dt; the reason it is idle, None while it works.
-IdleReason run(Producer& producer, Inventory& inventory, const std::optional<Item>& output,
-               const PowerConsumer* power, float crew, float delta_time) {
-    if (power != nullptr && !power->powered) {
-        return IdleReason::NoPower;
-    }
-    if (!output) {
-        return IdleReason::NoResource;
-    }
-    if (crew <= 0.0f) {
-        return IdleReason::NoWorkers;
-    }
-    producer.progress += producer.recipe.rate * crew * delta_time;
-    while (producer.progress >= 1.0f - ProgressEpsilon) {
-        const IdleReason reason =
-            produce_one(inventory, producer.recipe.inputs, *output, producer.recipe.output_count);
-        if (reason != IdleReason::None) {
-            // Waiting: keep one output ready, do not bank more.
-            producer.progress = 1.0f;
-            return reason;
-        }
-        producer.progress = std::max(0.0f, producer.progress - 1.0f);
-    }
-    return IdleReason::None;
-}
-
-} // namespace
-
-ProductionSystem::ProductionSystem(core::Registry& registry, const Terrain& terrain)
-    : registry_(registry), terrain_(terrain) {}
 
 void ProductionSystem::update(float delta_time) {
     // Workers standing at their workplace (within BuildReach), per building.
@@ -106,7 +54,7 @@ void ProductionSystem::update(float delta_time) {
     });
     registry_.each<Building, Producer>(
         [&](core::EntityId id, Building& building, Producer& producer) {
-            if (registry_.has<ConstructionSite>(id)) {
+            if (registry_.has<ConstructionSite>(id) || !handles(producer.recipe)) {
                 return;
             }
             Inventory* inventory = registry_.get<SolidInventory>(id);
@@ -116,19 +64,40 @@ void ProductionSystem::update(float delta_time) {
             if (inventory == nullptr) {
                 return;
             }
-            const std::optional<Item> output =
-                producer.recipe.output ? producer.recipe.output
-                                       : item_from_tile(terrain_.tile_at(building.tile));
-            const IdleReason reason = run(producer, *inventory, output,
-                                          registry_.get<PowerConsumer>(id),
-                                          crew_share(registry_.get<Staffing>(id), present[id]),
-                                          delta_time);
+            const IdleReason reason =
+                run(id, building, producer, *inventory, present[id], delta_time);
             if (BuildingStatus* status = registry_.get<BuildingStatus>(id)) {
                 status->state =
                     reason == IdleReason::None ? BuildingState::Working : BuildingState::Idle;
                 status->reason = reason;
             }
         });
+}
+
+IdleReason ProductionSystem::run(core::EntityId id, const Building& building, Producer& producer,
+                                 Inventory& inventory, int present, float delta_time) {
+    const PowerConsumer* power = registry_.get<PowerConsumer>(id);
+    if (power != nullptr && !power->powered) {
+        return IdleReason::NoPower;
+    }
+    if (!has_output(building, producer.recipe)) {
+        return IdleReason::NoResource;
+    }
+    const float crew = crew_share(registry_.get<Staffing>(id), present);
+    if (crew <= 0.0f) {
+        return IdleReason::NoWorkers;
+    }
+    producer.progress += producer.recipe.rate * crew * delta_time;
+    while (producer.progress >= 1.0f - ProgressEpsilon) {
+        const IdleReason reason = craft(building, inventory, producer.recipe);
+        if (reason != IdleReason::None) {
+            // Waiting: keep one output ready, do not bank more.
+            producer.progress = 1.0f;
+            return reason;
+        }
+        producer.progress = std::max(0.0f, producer.progress - 1.0f);
+    }
+    return IdleReason::None;
 }
 
 } // namespace world

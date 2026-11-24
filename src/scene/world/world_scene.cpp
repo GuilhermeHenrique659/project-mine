@@ -13,6 +13,7 @@
 #include "input/raylib_pointer.hpp"
 #include "scene/world/render/entity_renderer.hpp"
 #include "scene/world/render/player_hud.hpp"
+#include "scene/world/render/vehicle_hud.hpp"
 #include "scene/world/render/player_menu.hpp"
 #include "scene/world/render/shot_renderer.hpp"
 #include "scene/world/render/site_work.hpp"
@@ -60,6 +61,7 @@ public:
         input_->handler.on(input::Action::ToggleInventory,
                            [&model] { model.toggle_player_menu(); });
         input_->handler.on(input::Action::ToggleBuildMenu, [&model] { model.toggle_build_bar(); });
+        input_->handler.on(input::Action::ToggleVehicle, [&model] { model.toggle_vehicle(); });
     }
 
     // The mouse is not handled here: the menu renderer reads it itself.
@@ -102,6 +104,7 @@ std::unique_ptr<scene::Scene> make_world_scene(game::Game& game, game::SaveGame 
     renderers.push_back(std::make_unique<SiteWork>(*model, pointer));
     renderers.push_back(std::make_unique<UnitCommand>(*model, pointer));
     renderers.push_back(std::make_unique<PlayerHud>(*model, pointer));
+    renderers.push_back(std::make_unique<VehicleHud>(*model, pointer));
     renderers.push_back(std::make_unique<BuildingPanel>(*model, pointer));
     renderers.push_back(std::make_unique<PlayerMenu>(*model, pointer));
     renderers.push_back(std::move(menu));

@@ -6,6 +6,7 @@
 #include "scene/world/core/components/military.hpp"
 #include "scene/world/core/components/path_follower.hpp"
 #include "scene/world/core/components/position.hpp"
+#include "scene/world/core/entities/vehicle.hpp"
 #include "scene/world/core/occupancy.hpp"
 #include "scene/world/core/pathfinding/pathfinder.hpp"
 #include "scene/world/core/selection.hpp"
@@ -26,7 +27,7 @@ MoveOrderSystem::MoveOrderSystem(core::Registry& registry, event::EventBus& bus,
 void MoveOrderSystem::order(const std::vector<core::EntityId>& units, TileCoord goal) {
     std::vector<core::EntityId> soldiers;
     for (const core::EntityId id : units) {
-        if (registry_.has<Soldier>(id) && registry_.has<Position>(id)) {
+        if (takes_orders(registry_, id) && registry_.has<Position>(id)) {
             soldiers.push_back(id);
         }
     }

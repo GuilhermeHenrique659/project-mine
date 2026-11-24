@@ -1,6 +1,7 @@
 #include "scene/world/world_model.hpp"
 
 #include <algorithm>
+#include <cmath>
 
 #include "scene/world/core/components/builder.hpp"
 #include "scene/world/core/components/building.hpp"
@@ -19,7 +20,8 @@
 #include "scene/world/core/systems/inventory_transfer_system.hpp"
 #include "scene/world/core/systems/power_system.hpp"
 #include "scene/world/core/systems/pipe_flow_system.hpp"
-#include "scene/world/core/systems/production_system.hpp"
+#include "scene/world/core/systems/item_production_system.hpp"
+#include "scene/world/core/systems/unit_production_system.hpp"
 #include "scene/world/core/systems/recruit_system.hpp"
 #include "scene/world/core/systems/shoot_system.hpp"
 #include "scene/world/core/events/combat_events.hpp"
@@ -37,6 +39,11 @@
 #include "scene/world/core/systems/unit_traffic_system.hpp"
 #include "scene/world/core/systems/route_system.hpp"
 #include "scene/world/core/systems/worker_system.hpp"
+#include "scene/world/core/systems/vehicle_system.hpp"
+#include "scene/world/core/components/vehicle.hpp"
+#include "scene/world/core/entities/battle_tank.hpp"
+#include "scene/world/core/entities/vehicle.hpp"
+#include "scene/world/core/events/vehicle_events.hpp"
 
 namespace scene::world {
 
@@ -60,6 +67,8 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
                                                         ::world::StartingWeapons);
         registry_.get<::world::SolidInventory>(player_)->add(::world::items::Ammo,
                                                         ::world::StartingAmmo);
+        const auto tank = factory_.spawn(registry_, ::world::BattleTankArchetype, "Battle Tank");
+        registry_.get<::world::Position>(*tank)->point = StartingTankPosition;
     }
     shot_subscription_ = event::subscribe_scoped<::world::ShotFired>(
         bus_, [this](const ::world::ShotFired& shot) {
@@ -90,6 +99,8 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
     systems_.push_back(std::make_unique<::world::PathFollowSystem>(registry_));
     systems_.push_back(std::make_unique<::world::UnitTrafficSystem>(registry_));
     systems_.push_back(std::make_unique<::world::CharacterMoveSystem>(registry_, bus_, &terrain_));
+    // After movement, so passengers (and the camera on the player) are where their vehicle went.
+    systems_.push_back(std::make_unique<::world::VehicleSystem>(registry_, bus_, terrain_));
     systems_.push_back(std::make_unique<::world::HaulSystem>(registry_, bus_, routes_));
     // After movement, so the camera is on the player's new position.
     systems_.push_back(std::make_unique<::world::CameraFollowSystem>(registry_, camera_));
@@ -99,12 +110,19 @@ WorldModel::WorldModel(event::EventBus& bus, const input::InputHandler& input,
     systems_.push_back(std::make_unique<::world::ConstructionWorkSystem>(registry_, bus_));
     systems_.push_back(std::make_unique<::world::InventoryTransferSystem>(registry_, bus_));
     systems_.push_back(std::make_unique<::world::PowerSystem>(registry_));
-    systems_.push_back(std::make_unique<::world::ProductionSystem>(registry_, terrain_));
+    systems_.push_back(std::make_unique<::world::ItemProductionSystem>(registry_, terrain_));
+    systems_.push_back(
+        std::make_unique<::world::UnitProductionSystem>(registry_, terrain_, factory_));
     systems_.push_back(std::make_unique<::world::PipeFlowSystem>(registry_, bus_));
     // The first frame is already centred on the player.
     if (const auto* position = registry_.get<::world::Position>(player_)) {
         camera_.center = position->point;
     }
+}
+
+core::EntityId WorldModel::player_shooter() const {
+    const auto* seat = registry_.get<::world::Passenger>(player_);
+    return seat != nullptr ? seat->vehicle : player_;
 }
 
 core::EntityId WorldModel::find_player() const {
@@ -213,7 +231,11 @@ void WorldModel::work_on(std::optional<::world::TileCoord> tile) {
 }
 
 void WorldModel::open_transfer(::world::TileCoord tile) {
-    const core::EntityId building = ::world::building_at(registry_, tile);
+    core::EntityId building = ::world::building_at(registry_, tile);
+    // A vehicle opens like a building: the player loads it (ammo) the same way.
+    if (building == 0) {
+        building = ::world::vehicle_at(registry_, tile);
+    }
     if (building == 0 || registry_.has<::world::ConstructionSite>(building) ||
         !registry_.has<::world::SolidInventory>(building) ||
         !::world::within_transfer_reach(registry_, player_, building)) {
@@ -275,20 +297,72 @@ void WorldModel::order_move(::world::TileCoord goal) {
     enqueue(::world::UnitsMoveRequested{std::move(units), goal});
 }
 
+void WorldModel::toggle_vehicle() {
+    if (registry_.has<::world::Passenger>(player_)) {
+        enqueue(::world::VehicleExitRequested{player_});
+        return;
+    }
+    const auto* at = registry_.get<::world::Position>(player_);
+    if (at == nullptr) {
+        return;
+    }
+    core::EntityId nearest = 0;
+    float best = ::world::BoardReach;
+    for (const core::Entity& entity : registry_.entities()) {
+        const auto* position = registry_.get<::world::Position>(entity.id);
+        if (position == nullptr || !registry_.has<::world::Vehicle>(entity.id)) {
+            continue;
+        }
+        const float distance =
+            std::hypot(position->point.x - at->point.x, position->point.y - at->point.y);
+        if (distance <= best) {
+            best = distance;
+            nearest = entity.id;
+        }
+    }
+    if (nearest == 0) {
+        return;
+    }
+    enqueue(::world::VehicleBoardRequested{player_, nearest});
+}
+
+std::vector<core::EntityId> WorldModel::unloadable_vehicles() const {
+    const auto* seat = registry_.get<::world::Passenger>(player_);
+    std::vector<core::EntityId> vehicles;
+    for (const core::Entity& entity : registry_.entities()) {
+        const auto* vehicle = registry_.get<::world::Vehicle>(entity.id);
+        const bool commanded = registry_.has<::world::Selected>(entity.id) ||
+                               (seat != nullptr && seat->vehicle == entity.id);
+        if (vehicle == nullptr || !commanded) {
+            continue;
+        }
+        const bool has_units =
+            std::any_of(vehicle->passengers.begin(), vehicle->passengers.end(),
+                        [this](core::EntityId id) { return id != player_; });
+        if (has_units) {
+            vehicles.push_back(entity.id);
+        }
+    }
+    return vehicles;
+}
+
+void WorldModel::unload_vehicles() {
+    for (const core::EntityId vehicle : unloadable_vehicles()) {
+        enqueue(::world::VehicleUnloadRequested{vehicle});
+    }
+}
+
 void WorldModel::shoot_at(::world::TileCoord tile) {
-    const core::EntityId target = ::world::shootable_at(registry_, tile, player_);
+    const core::EntityId shooter = player_shooter();
+    const core::EntityId target = ::world::shootable_at(registry_, tile, shooter);
     if (target == 0) {
         return;
     }
-    enqueue(::world::ShotRequested{player_, target});
+    enqueue(::world::ShotRequested{shooter, target});
 }
 
 void WorldModel::hold_trigger(::world::TileCoord tile) {
-    const auto* inventory = registry_.get<::world::SolidInventory>(player_);
-    if (inventory == nullptr) {
-        return;
-    }
-    const auto weapon = ::world::held_weapon(*inventory);
+    const auto weapon = ::world::weapon_of(registry_, player_shooter());
     if (!weapon || weapon->mode != ::world::FireMode::Automatic) {
         return;
     }
@@ -297,6 +371,12 @@ void WorldModel::hold_trigger(::world::TileCoord tile) {
 
 void WorldModel::order_units(::world::TileCoord tile) {
     const std::vector<core::EntityId> units = selected_units();
+    // Onto a vehicle that is not part of the selection: they get in.
+    const core::EntityId vehicle = ::world::vehicle_at(registry_, tile);
+    if (vehicle != 0 && std::find(units.begin(), units.end(), vehicle) == units.end()) {
+        enqueue(::world::UnitsBoardRequested{units, vehicle});
+        return;
+    }
     const core::EntityId supply = ::world::building_at(registry_, tile);
     if (supply != 0 && registry_.has<::world::Supply>(supply)) {
         enqueue(::world::UnitsResupplyRequested{units, supply});

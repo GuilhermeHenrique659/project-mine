@@ -9,6 +9,10 @@
 
 namespace world {
 
+// Whether the player can command the entity: a soldier on foot (not inside a vehicle), or
+// a crewed vehicle the player is not driving.
+bool takes_orders(const core::Registry& registry, core::EntityId id);
+
 // The soldiers whose position, projected on screen, lies inside the rectangle spanned by
 // the two corners `a` and `b` (in any order, edges included). Only soldiers can be selected.
 std::vector<core::EntityId> soldiers_in(const core::Registry& registry,

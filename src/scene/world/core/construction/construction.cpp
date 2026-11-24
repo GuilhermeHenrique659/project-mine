@@ -1,5 +1,7 @@
 #include "scene/world/core/construction/construction.hpp"
 
+#include "scene/world/core/entities/battle_tank.hpp"
+
 #include "scene/world/core/construction/construction_builder.hpp"
 
 #include "scene/world/core/components/building.hpp"
@@ -26,6 +28,7 @@ std::string_view building_type_key(BuildingType type) {
         case BuildingType::LiquidStorage: return "LiquidStorage";
         case BuildingType::Pipe: return "Pipe";
         case BuildingType::EngineFactory: return "EngineFactory";
+        case BuildingType::TankFactory: return "TankFactory";
         case BuildingType::Headquarters: break;
     }
     return "Headquarters";
@@ -79,6 +82,9 @@ std::optional<BuildingType> parse_building_type(std::string_view key) {
     }
     if (key == building_type_key(BuildingType::EngineFactory)) {
         return BuildingType::EngineFactory;
+    }
+    if (key == building_type_key(BuildingType::TankFactory)) {
+        return BuildingType::TankFactory;
     }
     return std::nullopt;
 }
@@ -197,6 +203,16 @@ const std::vector<ConstructionGroup>& construction_catalog() {
                  .needs_headquarters()
                  .recruits().supplies()
                  .power(200.0f)
+                 .build(),
+             ConstructionBuilder{"Tank Factory", "icon_tank_factory"}
+                 .type(BuildingType::TankFactory).size(3, 3)
+                 .cost(items::Steel, 300).cost(items::Tool, 100).cost(items::Electronics, 100)
+                 .effort(1200.0f).needs_headquarters()
+                 .consumes(items::Engine, 12).consumes(items::Weapon, 5)
+                 .consumes(items::Steel, 200).consumes(items::Electronics, 200)
+                 .consumes(items::Tool, 100)
+                 .spawns(BattleTankArchetype, "Battle Tank").crafts_per_second(1.0f / 120.0f)
+                 .storage(0).workers(50).power(400.0f)
                  .build(),
              ConstructionBuilder{"Training Target", "icon_training_target"}
                  .type(BuildingType::TrainingTarget).size(1, 1)

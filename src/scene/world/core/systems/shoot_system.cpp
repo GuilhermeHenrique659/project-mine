@@ -12,6 +12,8 @@
 #include "scene/world/core/components/mover.hpp"
 #include "scene/world/core/components/path_follower.hpp"
 #include "scene/world/core/components/position.hpp"
+#include "scene/world/core/components/vehicle.hpp"
+#include "scene/world/core/entities/vehicle.hpp"
 #include "scene/world/core/events/combat_events.hpp"
 #include "scene/world/core/events/military_events.hpp"
 #include "scene/world/core/items/item.hpp"
@@ -28,6 +30,17 @@ std::optional<WeaponStats> held_weapon(const SolidInventory& inventory) {
         }
     }
     return std::nullopt;
+}
+
+std::optional<WeaponStats> weapon_of(const core::Registry& registry, core::EntityId shooter) {
+    if (const auto* mounted = registry.get<MountedWeapon>(shooter)) {
+        return mounted->stats;
+    }
+    const auto* inventory = registry.get<SolidInventory>(shooter);
+    if (inventory == nullptr) {
+        return std::nullopt;
+    }
+    return held_weapon(*inventory);
 }
 
 HitRoll random_hit_roll() {
@@ -98,13 +111,12 @@ void ShootSystem::update(float delta_time) {
 
 std::optional<bool> ShootSystem::in_range(core::EntityId shooter_id,
                                           core::EntityId target) const {
-    const auto* inventory = registry_.get<SolidInventory>(shooter_id);
     const auto* from = registry_.get<Position>(shooter_id);
     const auto* to = registry_.get<Position>(target);
-    if (inventory == nullptr || from == nullptr || to == nullptr) {
+    if (from == nullptr || to == nullptr) {
         return std::nullopt;
     }
-    const auto weapon = held_weapon(*inventory);
+    const auto weapon = weapon_of(registry_, shooter_id);
     if (!weapon) {
         return std::nullopt;
     }
@@ -121,10 +133,15 @@ void ShootSystem::shoot(core::EntityId shooter_id, core::EntityId target) {
         shooter_id == target || shooter->cooldown > 0.0f || inventory->count(items::Ammo) == 0) {
         return;
     }
+    // Nobody fires from a seat, and an empty vehicle has nobody to fire it.
+    if (registry_.has<Passenger>(shooter_id) ||
+        (registry_.has<Vehicle>(shooter_id) && !is_crewed(registry_, shooter_id))) {
+        return;
+    }
     if (in_range(shooter_id, target) != true) {
         return;
     }
-    const auto weapon = held_weapon(*inventory);
+    const auto weapon = weapon_of(registry_, shooter_id);
     inventory->remove(items::Ammo, 1);
     shooter->cooldown = weapon->cooldown;
     const bool hit = roll_() < hit_chance(*weapon, shooter->experience);

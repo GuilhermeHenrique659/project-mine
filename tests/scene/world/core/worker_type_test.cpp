@@ -134,7 +134,8 @@ TEST(WorkerType, WorkersOfTheToolAmmoAndWeaponFactoriesAreToolmakersMunitionersA
         {world::BuildingType::ToolFactory, "Toolmaker"},
         {world::BuildingType::AmmoFactory, "Munitioner"},
         {world::BuildingType::WeaponFactory, "Gunsmith"},
-        {world::BuildingType::EngineFactory, "Mechanic"}};
+        {world::BuildingType::EngineFactory, "Mechanic"},
+        {world::BuildingType::TankFactory, "Tank Assembler"}};
     for (const auto& [building, label] : expected) {
         // Given
         Fixture f;

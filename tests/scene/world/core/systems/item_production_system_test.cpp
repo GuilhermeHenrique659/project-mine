@@ -10,7 +10,7 @@
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/components/worker.hpp"
 #include "scene/world/core/entities/building.hpp"
-#include "scene/world/core/systems/production_system.hpp"
+#include "scene/world/core/systems/item_production_system.hpp"
 
 namespace {
 
@@ -28,7 +28,7 @@ std::optional<world::TileCoord> find_tile(const world::Terrain& terrain, world::
 struct Fixture {
     core::Registry registry;
     world::Terrain terrain{7};
-    world::ProductionSystem system{registry, terrain};
+    world::ItemProductionSystem system{registry, terrain};
 
     // A finished catalog mine on the first tile of `ore`.
     core::EntityId mine_on(world::TileType ore) {
@@ -82,7 +82,7 @@ struct Fixture {
 
 } // namespace
 
-TEST(ProductionSystem, TheMineRecipeNeedsNoInputAndYieldsTheGroundAtHalfAnItemPerSecond) {
+TEST(ItemProductionSystem, TheMineRecipeNeedsNoInputAndYieldsTheGroundAtHalfAnItemPerSecond) {
     // Given / When
     const auto* producer =
         world::find_construction(world::BuildingType::Mine)->blueprint.find<world::Producer>();
@@ -95,7 +95,7 @@ TEST(ProductionSystem, TheMineRecipeNeedsNoInputAndYieldsTheGroundAtHalfAnItemPe
     EXPECT_FLOAT_EQ(recipe->rate, 4.0f);
 }
 
-TEST(ProductionSystem, AMineNeedsTenWorkersForItsFullRate) {
+TEST(ItemProductionSystem, AMineNeedsTenWorkersForItsFullRate) {
     // Given / When
     const auto* staffing =
         world::find_construction(world::BuildingType::Mine)->blueprint.find<world::Staffing>();
@@ -105,7 +105,7 @@ TEST(ProductionSystem, AMineNeedsTenWorkersForItsFullRate) {
     EXPECT_EQ(staffing->needed, 10);
 }
 
-TEST(ProductionSystem, AMineWithHalfItsWorkersProducesAtHalfTheRate) {
+TEST(ItemProductionSystem, AMineWithHalfItsWorkersProducesAtHalfTheRate) {
     // Given
     Fixture f;
     const core::EntityId mine = f.mine_on(world::TileType::IronOre);
@@ -122,7 +122,7 @@ TEST(ProductionSystem, AMineWithHalfItsWorkersProducesAtHalfTheRate) {
     EXPECT_EQ(f.status(mine).state, world::BuildingState::Working);
 }
 
-TEST(ProductionSystem, AMineWithoutWorkersIsIdleForLackOfWorkersAndProducesNothing) {
+TEST(ItemProductionSystem, AMineWithoutWorkersIsIdleForLackOfWorkersAndProducesNothing) {
     // Given
     Fixture f;
     const core::EntityId mine = f.mine_on(world::TileType::IronOre);
@@ -136,7 +136,7 @@ TEST(ProductionSystem, AMineWithoutWorkersIsIdleForLackOfWorkersAndProducesNothi
     EXPECT_EQ(f.status(mine).reason, world::IdleReason::NoWorkers);
 }
 
-TEST(ProductionSystem, WorkersStillWalkingToTheBuildingDoNotCount) {
+TEST(ItemProductionSystem, WorkersStillWalkingToTheBuildingDoNotCount) {
     // Given: assigned, but 5 tiles away (reach is 2)
     Fixture f;
     const core::EntityId mine = f.mine_on(world::TileType::IronOre);
@@ -150,7 +150,7 @@ TEST(ProductionSystem, WorkersStillWalkingToTheBuildingDoNotCount) {
     EXPECT_EQ(f.status(mine).reason, world::IdleReason::NoWorkers);
 }
 
-TEST(ProductionSystem, AMineProducesTheOreUnderItAtItsRate) {
+TEST(ItemProductionSystem, AMineProducesTheOreUnderItAtItsRate) {
     // Given
     Fixture f;
     const core::EntityId iron = f.staffed_mine_on(world::TileType::IronOre);
@@ -164,7 +164,7 @@ TEST(ProductionSystem, AMineProducesTheOreUnderItAtItsRate) {
     EXPECT_EQ(f.count(coal, world::items::Coal), 2);
 }
 
-TEST(ProductionSystem, PartialProgressCarriesOverToTheNextFrame) {
+TEST(ItemProductionSystem, PartialProgressCarriesOverToTheNextFrame) {
     // Given
     Fixture f;
     const core::EntityId mine = f.staffed_mine_on(world::TileType::CopperOre);
@@ -179,7 +179,7 @@ TEST(ProductionSystem, PartialProgressCarriesOverToTheNextFrame) {
     EXPECT_EQ(f.count(mine, world::items::CopperOre), 1);
 }
 
-TEST(ProductionSystem, AConstructionSiteProducesNothing) {
+TEST(ItemProductionSystem, AConstructionSiteProducesNothing) {
     // Given
     Fixture f;
     const core::EntityId mine = f.staffed_mine_on(world::TileType::IronOre);
@@ -192,7 +192,7 @@ TEST(ProductionSystem, AConstructionSiteProducesNothing) {
     EXPECT_EQ(f.count(mine, world::items::IronOre), 0);
 }
 
-TEST(ProductionSystem, AFullInventoryWaitsWithAtMostOneItemOfProgress) {
+TEST(ItemProductionSystem, AFullInventoryWaitsWithAtMostOneItemOfProgress) {
     // Given: one slot, already full of iron ore
     Fixture f;
     const core::EntityId id = f.producer({{}, world::items::IronOre, 1.0f}, 1);
@@ -207,7 +207,7 @@ TEST(ProductionSystem, AFullInventoryWaitsWithAtMostOneItemOfProgress) {
     EXPECT_EQ(f.count(id, world::items::IronOre), 91);
 }
 
-TEST(ProductionSystem, AnInputIsConsumedForEachOutputAndItsLackStopsProduction) {
+TEST(ItemProductionSystem, AnInputIsConsumedForEachOutputAndItsLackStopsProduction) {
     // Given: 2 iron ore -> 1 coal, with iron for one output only
     Fixture f;
     const core::EntityId id =
@@ -222,7 +222,7 @@ TEST(ProductionSystem, AnInputIsConsumedForEachOutputAndItsLackStopsProduction) 
     EXPECT_EQ(f.count(id, world::items::IronOre), 1);
 }
 
-TEST(ProductionSystem, AnUnpoweredBuildingIsIdleForLackOfPowerAndProducesNothing) {
+TEST(ItemProductionSystem, AnUnpoweredBuildingIsIdleForLackOfPowerAndProducesNothing) {
     // Given
     Fixture f;
     const core::EntityId mine = f.staffed_mine_on(world::TileType::IronOre);
@@ -237,7 +237,7 @@ TEST(ProductionSystem, AnUnpoweredBuildingIsIdleForLackOfPowerAndProducesNothing
     EXPECT_EQ(f.status(mine).reason, world::IdleReason::NoPower);
 }
 
-TEST(ProductionSystem, APoweredProducingBuildingIsWorking) {
+TEST(ItemProductionSystem, APoweredProducingBuildingIsWorking) {
     // Given: a mine idle last frame for lack of power, powered again
     Fixture f;
     const core::EntityId mine = f.staffed_mine_on(world::TileType::IronOre);
@@ -253,7 +253,7 @@ TEST(ProductionSystem, APoweredProducingBuildingIsWorking) {
     EXPECT_EQ(f.status(mine).reason, world::IdleReason::None);
 }
 
-TEST(ProductionSystem, ABuildingWithoutItsInputIsIdleForMissingInput) {
+TEST(ItemProductionSystem, ABuildingWithoutItsInputIsIdleForMissingInput) {
     // Given: 2 iron ore -> 1 coal, with no iron
     Fixture f;
     const core::EntityId id =
@@ -267,7 +267,7 @@ TEST(ProductionSystem, ABuildingWithoutItsInputIsIdleForMissingInput) {
     EXPECT_EQ(f.status(id).reason, world::IdleReason::MissingInput);
 }
 
-TEST(ProductionSystem, ABuildingWhoseOutputDoesNotFitIsIdleForFullOutput) {
+TEST(ItemProductionSystem, ABuildingWhoseOutputDoesNotFitIsIdleForFullOutput) {
     // Given: one slot, already full of iron ore
     Fixture f;
     const core::EntityId id = f.producer({{}, world::items::IronOre, 1.0f}, 1);
@@ -281,7 +281,7 @@ TEST(ProductionSystem, ABuildingWhoseOutputDoesNotFitIsIdleForFullOutput) {
     EXPECT_EQ(f.status(id).reason, world::IdleReason::OutputFull);
 }
 
-TEST(ProductionSystem, AMineOffOreIsIdleForLackOfResource) {
+TEST(ItemProductionSystem, AMineOffOreIsIdleForLackOfResource) {
     // Given: a catalog mine on grass
     Fixture f;
     const core::EntityId mine = f.registry.create("Mine");
@@ -297,7 +297,7 @@ TEST(ProductionSystem, AMineOffOreIsIdleForLackOfResource) {
     EXPECT_EQ(f.status(mine).reason, world::IdleReason::NoResource);
 }
 
-TEST(ProductionSystem, ARecipeWithSeveralInputsNeedsAllOfThemForEachOutput) {
+TEST(ItemProductionSystem, ARecipeWithSeveralInputsNeedsAllOfThemForEachOutput) {
     // Given: 2 iron ore + 2 coal -> 1 copper ore, with coal for one output only
     Fixture f;
     const core::EntityId id = f.producer(
@@ -318,7 +318,7 @@ TEST(ProductionSystem, ARecipeWithSeveralInputsNeedsAllOfThemForEachOutput) {
     EXPECT_EQ(f.status(id).reason, world::IdleReason::MissingInput);
 }
 
-TEST(ProductionSystem, AStaffedSteelworksTurnsTwoCoalAndTwoIronOreIntoSteelTwicePerSecond) {
+TEST(ItemProductionSystem, AStaffedSteelworksTurnsTwoCoalAndTwoIronOreIntoSteelTwicePerSecond) {
     // Given
     Fixture f;
     const world::Construction* steelworks =
@@ -340,7 +340,7 @@ TEST(ProductionSystem, AStaffedSteelworksTurnsTwoCoalAndTwoIronOreIntoSteelTwice
     EXPECT_EQ(f.count(id, world::items::Coal), 6);
 }
 
-TEST(ProductionSystem, AStaffedElectronicFactoryTurnsCopperAndIronOreIntoElectronicsTwicePerSecond) {
+TEST(ItemProductionSystem, AStaffedElectronicFactoryTurnsCopperAndIronOreIntoElectronicsTwicePerSecond) {
     // Given
     Fixture f;
     const world::Construction* factory =
@@ -362,7 +362,7 @@ TEST(ProductionSystem, AStaffedElectronicFactoryTurnsCopperAndIronOreIntoElectro
     EXPECT_EQ(f.count(id, world::items::IronOre), 6);
 }
 
-TEST(ProductionSystem, AStaffedAmmoFactoryMakesFourAmmoPerSecondFromTwoOfEachInput) {
+TEST(ItemProductionSystem, AStaffedAmmoFactoryMakesFourAmmoPerSecondFromTwoOfEachInput) {
     // Given
     Fixture f;
     const world::Construction* factory = world::find_construction(world::BuildingType::AmmoFactory);
@@ -385,7 +385,7 @@ TEST(ProductionSystem, AStaffedAmmoFactoryMakesFourAmmoPerSecondFromTwoOfEachInp
     EXPECT_EQ(f.count(id, world::items::CopperOre), 8);
 }
 
-TEST(ProductionSystem, AStaffedWeaponFactoryTurnsSteelAndToolsIntoTwoWeaponsPerSecond) {
+TEST(ItemProductionSystem, AStaffedWeaponFactoryTurnsSteelAndToolsIntoTwoWeaponsPerSecond) {
     // Given
     Fixture f;
     const world::Construction* factory =
@@ -407,7 +407,7 @@ TEST(ProductionSystem, AStaffedWeaponFactoryTurnsSteelAndToolsIntoTwoWeaponsPerS
     EXPECT_EQ(f.count(id, world::items::Tool), 8);
 }
 
-TEST(ProductionSystem, AStaffedEngineFactoryMakesOneEngineFromSteelAndToolsPerMinute) {
+TEST(ItemProductionSystem, AStaffedEngineFactoryMakesOneEngineFromSteelAndToolsPerMinute) {
     // Given
     Fixture f;
     const world::Construction* factory =
@@ -451,7 +451,7 @@ core::EntityId oil_pump(Fixture& f) {
 
 } // namespace
 
-TEST(ProductionSystem, AnOilPumpOnCrudeOilPumpsTenOilPerSecondIntoItsTankWithoutWorkers) {
+TEST(ItemProductionSystem, AnOilPumpOnCrudeOilPumpsTenOilPerSecondIntoItsTankWithoutWorkers) {
     // Given
     Fixture f;
     const core::EntityId pump = oil_pump(f);
@@ -466,7 +466,7 @@ TEST(ProductionSystem, AnOilPumpOnCrudeOilPumpsTenOilPerSecondIntoItsTankWithout
     EXPECT_EQ(f.status(pump).state, world::BuildingState::Working);
 }
 
-TEST(ProductionSystem, AnOilPumpWithAFullTankIsIdleForAFullOutput) {
+TEST(ItemProductionSystem, AnOilPumpWithAFullTankIsIdleForAFullOutput) {
     // Given
     Fixture f;
     const core::EntityId pump = oil_pump(f);

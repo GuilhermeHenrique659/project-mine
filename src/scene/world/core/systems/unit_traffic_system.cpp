@@ -9,6 +9,7 @@
 #include "scene/world/core/components/mover.hpp"
 #include "scene/world/core/components/position.hpp"
 #include "scene/world/core/components/unit.hpp"
+#include "scene/world/core/components/vehicle.hpp"
 
 namespace world {
 
@@ -55,6 +56,10 @@ void UnitTrafficSystem::update(float delta_time) {
     std::vector<Walker> bodies;
     registry_.each<Unit, Position, Mover>(
         [&](core::EntityId id, Unit&, Position& position, Mover& mover) {
+            // Passengers sit inside their vehicle: no body in traffic.
+            if (registry_.has<Passenger>(id)) {
+                return;
+            }
             const float length = std::hypot(mover.direction.x, mover.direction.y);
             if (!registry_.has<UnitTraffic>(id)) {
                 registry_.add(id, UnitTraffic{});

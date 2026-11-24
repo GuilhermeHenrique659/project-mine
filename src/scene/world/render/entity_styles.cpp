@@ -2,6 +2,7 @@
 
 #include "scene/world/core/components/character.hpp"
 #include "scene/world/core/components/facing.hpp"
+#include "scene/world/core/components/vehicle.hpp"
 #include "scene/world/core/components/worker.hpp"
 #include "scene/world/core/worker_report.hpp"
 #include "scene/world/core/worker_type.hpp"
@@ -16,6 +17,10 @@ const ui::Color BuildingFront{70, 110, 170, 255};
 const ui::Color BuildingTop{120, 160, 220, 255};
 const ui::Color SiteFront{120, 120, 120, 255};
 const ui::Color SiteTop{170, 170, 170, 255};
+const ui::Color VehicleFront{70, 90, 55, 255};
+const ui::Color VehicleTop{110, 135, 85, 255};
+// A vehicle fills most of its tile.
+constexpr float VehicleCubeSize = 0.8f * BuildingCubeSize;
 
 // Anything without a style of its own: a small cube with its label.
 class PlainStyle : public EntityStyle {
@@ -76,9 +81,34 @@ public:
                 std::nullopt};
     }
 
+    // A passenger is inside its vehicle.
+    bool visible(const core::Registry& registry, core::EntityId id) const override {
+        return !registry.has<::world::Passenger>(id);
+    }
+
     std::string label(const core::Registry& registry, const core::Entity& entity) const override {
         return entity.label + " (" +
                ::world::to_string(registry.get<::world::Character>(entity.id)->state) + ")";
+    }
+};
+
+// A vehicle: an olive box, labelled with how many seats are taken ("Battle Tank (2/6)").
+class VehicleStyle : public EntityStyle {
+public:
+    bool applies_to(const core::Registry& registry, core::EntityId id) const override {
+        return registry.has<::world::Vehicle>(id);
+    }
+
+    EntityLook look(const core::Registry&, core::EntityId,
+                    const LookContext& context) const override {
+        return {Cube(VehicleCubeSize * context.scale, VehicleFront, VehicleTop), std::nullopt,
+                std::nullopt};
+    }
+
+    std::string label(const core::Registry& registry, const core::Entity& entity) const override {
+        const auto& vehicle = *registry.get<::world::Vehicle>(entity.id);
+        return entity.label + " (" + std::to_string(vehicle.passengers.size()) + "/" +
+               std::to_string(vehicle.seats) + ")";
     }
 };
 
@@ -91,7 +121,7 @@ public:
     }
 
     bool visible(const core::Registry& registry, core::EntityId id) const override {
-        return !::world::is_at_work(registry, id);
+        return !::world::is_at_work(registry, id) && CharacterStyle::visible(registry, id);
     }
 
     std::string label(const core::Registry& registry, const core::Entity& entity) const override {
@@ -119,8 +149,9 @@ const EntityStyle& EntityStyles::style_for(const core::Registry& registry,
 const EntityStyles& EntityStyles::standard() {
     static const EntityStyles styles = [] {
         std::vector<std::unique_ptr<EntityStyle>> list;
-        // Most specific first: a worker is also a character.
+        // Most specific first: a worker and a vehicle are also characters.
         list.push_back(std::make_unique<BuildingStyle>());
+        list.push_back(std::make_unique<VehicleStyle>());
         list.push_back(std::make_unique<WorkerStyle>());
         list.push_back(std::make_unique<CharacterStyle>());
         return EntityStyles(std::move(list));

@@ -13,6 +13,8 @@
 #include "scene/world/core/components/path_follower.hpp"
 #include "scene/world/core/entities/character.hpp"
 #include "scene/world/core/items/item.hpp"
+#include "scene/world/core/components/vehicle.hpp"
+#include "scene/world/core/entities/battle_tank.hpp"
 
 #include <optional>
 #include <string>
@@ -190,7 +192,7 @@ TEST(WorldModel, SaveGameHoldsThePlayerCurrentPositionAndIdle) {
     EXPECT_EQ(saved.name, "Alpha");
 }
 
-TEST(WorldModel, SaveWithoutEntitiesStillSpawnsThePlayerAtTheOrigin) {
+TEST(WorldModel, SaveWithoutEntitiesStillSpawnsThePlayerAtTheOriginWithATank) {
     // Given
     event::EventBus bus;
     FakeInput input;
@@ -202,7 +204,10 @@ TEST(WorldModel, SaveWithoutEntitiesStillSpawnsThePlayerAtTheOrigin) {
     // Then
     EXPECT_EQ(model.registry().find(model.player_id())->label, "Player");
     EXPECT_FLOAT_EQ(player_position(model).x, 0.0f);
-    EXPECT_EQ(model.save_game().entities.size(), 1u);
+    // The player and the starting Battle Tank.
+    const auto entities = model.save_game().entities;
+    ASSERT_EQ(entities.size(), 2u);
+    EXPECT_EQ(entities[1].archetype, ::world::BattleTankArchetype);
 }
 
 TEST(WorldModel, SaveWithoutAPlayerRecordGetsADefaultPlayer) {
@@ -818,4 +823,206 @@ TEST(WorldModel, OrderingSelectedSoldiersOntoABarracksResuppliesThem) {
     const auto* carried = model.registry().get<::world::SolidInventory>(soldier);
     EXPECT_EQ(carried->count(::world::items::Weapon), 1);
     EXPECT_EQ(carried->count(::world::items::Ammo), 100);
+}
+
+namespace {
+
+core::EntityId first_tank(const scene::world::WorldModel& model) {
+    for (const core::Entity& entity : model.registry().entities()) {
+        if (model.registry().has<::world::BattleTank>(entity.id)) {
+            return entity.id;
+        }
+    }
+    return 0;
+}
+
+bool is_inside(const scene::world::WorldModel& model, core::EntityId id, core::EntityId vehicle) {
+    const auto* passenger = model.registry().get<::world::Passenger>(id);
+    return passenger != nullptr && passenger->vehicle == vehicle;
+}
+
+} // namespace
+
+TEST(WorldModel, TogglingTheVehicleBesideTheStartingTankGetsThePlayerIn) {
+    // Given: a new game parks a tank within reach of the player
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
+    const core::EntityId tank = first_tank(model);
+    ASSERT_NE(tank, 0u);
+
+    // When
+    model.toggle_vehicle();
+    model.update(scene::world::SimulationTick);
+
+    // Then
+    EXPECT_TRUE(is_inside(model, model.player_id(), tank));
+}
+
+TEST(WorldModel, TogglingTheVehicleAgainGetsThePlayerOut) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
+    model.toggle_vehicle();
+    model.update(scene::world::SimulationTick);
+
+    // When
+    model.toggle_vehicle();
+    model.update(scene::world::SimulationTick);
+
+    // Then
+    EXPECT_FALSE(model.registry().has<::world::Passenger>(model.player_id()));
+}
+
+TEST(WorldModel, ThePlayerDrivesTheTankAndTheCameraFollows) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
+    const core::EntityId tank = first_tank(model);
+    const float start_x = model.registry().get<::world::Position>(tank)->point.x;
+    model.toggle_vehicle();
+    model.update(scene::world::SimulationTick);
+    input.keyboard.down = {input::Key::S, input::Key::D}; // screen down-right = world +x
+
+    // When
+    model.update(0.5f);
+
+    // Then
+    const ::world::WorldPoint at = model.registry().get<::world::Position>(tank)->point;
+    EXPECT_GT(at.x, start_x);
+    EXPECT_FLOAT_EQ(player_position(model).x, at.x);
+    EXPECT_FLOAT_EQ(model.camera().center.x, at.x);
+}
+
+TEST(WorldModel, RightClickingTheTankSendsTheSelectedSoldiersIn) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, save_with_soldier_at("1.5", "1.5"), AlwaysHit);
+    const core::EntityId tank = first_tank(model);
+    const core::EntityId soldier = first_soldier(model);
+    const ::world::IsoProjection projection = model.camera().projection(800.0f, 600.0f);
+    const ::world::ScreenPoint at = projection.world_to_screen({1.5f, 1.5f});
+    model.select_units(projection, {at.x - 5.0f, at.y - 5.0f}, {at.x + 5.0f, at.y + 5.0f});
+    ASSERT_EQ(model.selected_units(), std::vector<core::EntityId>{soldier});
+    const ::world::TileCoord tank_tile =
+        ::world::tile_containing(model.registry().get<::world::Position>(tank)->point);
+
+    // When
+    model.order_units(tank_tile);
+    model.update(scene::world::SimulationTick);
+    model.update(scene::world::SimulationTick);
+
+    // Then
+    EXPECT_TRUE(is_inside(model, soldier, tank));
+}
+
+TEST(WorldModel, ShootingFromInsideTheTankFiresItsCannonWithItsAmmo) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, save_with_soldier_at("4.5", "4.5"), AlwaysHit);
+    const core::EntityId tank = first_tank(model);
+    const core::EntityId soldier = first_soldier(model);
+    model.toggle_vehicle();
+    model.update(scene::world::SimulationTick);
+    model.request_transfer(model.player_id(), tank, ::world::items::Ammo, 10);
+    model.update(scene::world::SimulationTick);
+    ASSERT_EQ(model.registry().get<::world::SolidInventory>(tank)->count(::world::items::Ammo), 10);
+
+    // When
+    model.shoot_at({4, 4});
+    model.update(scene::world::SimulationTick);
+
+    // Then
+    EXPECT_EQ(model.registry().get<::world::Health>(soldier)->current,
+              ::world::MaxHealth - ::world::TankCannon.damage);
+    EXPECT_EQ(model.registry().get<::world::SolidInventory>(tank)->count(::world::items::Ammo), 9);
+    EXPECT_EQ(player_ammo(model), ::world::StartingAmmo - 10);
+}
+
+namespace {
+
+// Puts the save's soldier (on (1.5, 1.5), beside the starting tank) into the tank.
+void board_the_soldier(scene::world::WorldModel& model) {
+    const ::world::IsoProjection projection = model.camera().projection(800.0f, 600.0f);
+    const ::world::ScreenPoint at = projection.world_to_screen({1.5f, 1.5f});
+    model.select_units(projection, {at.x - 5.0f, at.y - 5.0f}, {at.x + 5.0f, at.y + 5.0f});
+    model.order_units({1, 0});
+    model.update(scene::world::SimulationTick);
+    model.update(scene::world::SimulationTick);
+}
+
+void select_the_tank(scene::world::WorldModel& model) {
+    const ::world::IsoProjection projection = model.camera().projection(800.0f, 600.0f);
+    const ::world::ScreenPoint at = projection.world_to_screen(scene::world::StartingTankPosition);
+    model.select_units(projection, {at.x - 5.0f, at.y - 5.0f}, {at.x + 5.0f, at.y + 5.0f});
+}
+
+} // namespace
+
+TEST(WorldModel, ASelectedTankWithUnitsInsideCanBeUnloaded) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, save_with_soldier_at("1.5", "1.5"), AlwaysHit);
+    board_the_soldier(model);
+    ASSERT_TRUE(model.registry().has<::world::Passenger>(first_soldier(model)));
+
+    // When
+    select_the_tank(model);
+
+    // Then
+    EXPECT_EQ(model.unloadable_vehicles(), std::vector<core::EntityId>{first_tank(model)});
+}
+
+TEST(WorldModel, AnEmptyTankHasNothingToUnload) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, game::SaveGame{"Alpha", {}}, AlwaysHit);
+
+    // When
+    select_the_tank(model);
+
+    // Then
+    ASSERT_FALSE(model.selected_units().empty());
+    EXPECT_TRUE(model.unloadable_vehicles().empty());
+}
+
+TEST(WorldModel, TheTankThePlayerSitsInCanBeUnloadedWithoutSelectingIt) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, save_with_soldier_at("1.5", "1.5"), AlwaysHit);
+    board_the_soldier(model);
+    model.clear_selection();
+
+    // When
+    model.toggle_vehicle();
+    model.update(scene::world::SimulationTick);
+
+    // Then: the player alone would not count, the soldier does
+    EXPECT_EQ(model.unloadable_vehicles(), std::vector<core::EntityId>{first_tank(model)});
+}
+
+TEST(WorldModel, UnloadingLetsTheUnitsOutAndKeepsThePlayerDriving) {
+    // Given
+    event::EventBus bus;
+    FakeInput input;
+    scene::world::WorldModel model(bus, input.handler, save_with_soldier_at("1.5", "1.5"), AlwaysHit);
+    board_the_soldier(model);
+    model.toggle_vehicle();
+    model.update(scene::world::SimulationTick);
+
+    // When
+    model.unload_vehicles();
+    model.update(scene::world::SimulationTick);
+
+    // Then
+    EXPECT_FALSE(model.registry().has<::world::Passenger>(first_soldier(model)));
+    EXPECT_TRUE(is_inside(model, model.player_id(), first_tank(model)));
+    EXPECT_TRUE(model.unloadable_vehicles().empty());
 }

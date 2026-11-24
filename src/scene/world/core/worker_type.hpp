@@ -7,7 +7,7 @@ namespace world {
 // The kind of work a worker does, from its current job: Builder on a construction site,
 // Miner at a mine, Hauler on a logistic route, None while idle. Derived every time it is
 // asked (never stored), so it always follows the job and needs nothing in saves.
-enum class WorkerType { None, Builder, Miner, Hauler, Steelworker, Technician, Toolmaker, Munitioner, Gunsmith, Mechanic };
+enum class WorkerType { None, Builder, Miner, Hauler, Steelworker, Technician, Toolmaker, Munitioner, Gunsmith, Mechanic, TankAssembler };
 
 // The worker's type; None for an entity that is not a working worker.
 WorkerType worker_type(const core::Registry& registry, core::EntityId worker);
@@ -23,6 +23,7 @@ constexpr const char* to_string(WorkerType type) {
         case WorkerType::Munitioner: return "Munitioner";
         case WorkerType::Gunsmith: return "Gunsmith";
         case WorkerType::Mechanic: return "Mechanic";
+        case WorkerType::TankAssembler: return "Tank Assembler";
         case WorkerType::None: break;
     }
     return "Idle";

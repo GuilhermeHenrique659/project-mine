@@ -673,3 +673,78 @@ TEST(BuildingType, EngineFactoryRoundTripsThroughItsSaveKey) {
     EXPECT_EQ(key, "EngineFactory");
     EXPECT_EQ(parsed, world::BuildingType::EngineFactory);
 }
+
+TEST(ConstructionCatalog, TankFactoryCosts300Steel100ToolsAnd100ElectronicsTakes1200WorkNeeds50WorkersOn400Kw) {
+    // Given / When
+    const world::Construction* factory = world::find_construction(world::BuildingType::TankFactory);
+
+    // Then
+    ASSERT_NE(factory, nullptr);
+    EXPECT_EQ(factory->name, "Tank Factory");
+    ASSERT_EQ(factory->cost.size(), 3u);
+    EXPECT_EQ(factory->cost[0].item, world::items::Steel);
+    EXPECT_EQ(factory->cost[0].count, 300);
+    EXPECT_EQ(factory->cost[1].item, world::items::Tool);
+    EXPECT_EQ(factory->cost[1].count, 100);
+    EXPECT_EQ(factory->cost[2].item, world::items::Electronics);
+    EXPECT_EQ(factory->cost[2].count, 100);
+    EXPECT_FLOAT_EQ(factory->effort, 1200.0f);
+    EXPECT_EQ(factory->size.width, 3);
+    EXPECT_EQ(factory->size.height, 3);
+    ASSERT_NE(factory->blueprint.find<world::Staffing>(), nullptr);
+    EXPECT_EQ(factory->blueprint.find<world::Staffing>()->needed, 50);
+    ASSERT_NE(factory->blueprint.find<world::PowerConsumer>(), nullptr);
+    EXPECT_FLOAT_EQ(factory->blueprint.find<world::PowerConsumer>()->demand_kw, 400.0f);
+}
+
+TEST(ConstructionCatalog, TankFactoryMakesOneBattleTankFromItsPartsEveryTwoMinutes) {
+    // Given / When
+    const world::Recipe* recipe = recipe_of(world::BuildingType::TankFactory);
+
+    // Then
+    ASSERT_NE(recipe, nullptr);
+    EXPECT_FALSE(recipe->output.has_value());
+    ASSERT_TRUE(recipe->spawns.has_value());
+    EXPECT_EQ(recipe->spawns->archetype, "battle_tank");
+    EXPECT_EQ(recipe->spawns->label, "Battle Tank");
+    EXPECT_FLOAT_EQ(recipe->rate, 1.0f / 120.0f);
+    const std::vector<world::ItemStack> expected{{world::items::Engine, 12},
+                                                 {world::items::Weapon, 5},
+                                                 {world::items::Steel, 200},
+                                                 {world::items::Electronics, 200},
+                                                 {world::items::Tool, 100}};
+    ASSERT_EQ(recipe->inputs.size(), expected.size());
+    for (std::size_t i = 0; i < expected.size(); ++i) {
+        EXPECT_EQ(recipe->inputs[i].item, expected[i].item);
+        EXPECT_EQ(recipe->inputs[i].count, expected[i].count);
+    }
+}
+
+TEST(ConstructionCatalog, TankFactoryHoldsOnlyItsPartsWithRoomForFiveWeapons) {
+    // Given
+    const world::Construction* factory = world::find_construction(world::BuildingType::TankFactory);
+    ASSERT_NE(factory, nullptr);
+    world::SolidInventory inventory = *factory->blueprint.find<world::SolidInventory>();
+
+    // When
+    const int weapons_left = inventory.add(world::items::Weapon, 6);
+    const int engines_left = inventory.add(world::items::Engine, 1000);
+    const int ammo_left = inventory.add(world::items::Ammo, 10);
+
+    // Then: 5 filtered slots per part and no general slot
+    EXPECT_EQ(weapons_left, 1);
+    EXPECT_EQ(engines_left, 500);
+    EXPECT_EQ(ammo_left, 10);
+}
+
+TEST(BuildingType, TankFactoryRoundTripsThroughItsSaveKey) {
+    // Given
+    const std::string_view key = world::building_type_key(world::BuildingType::TankFactory);
+
+    // When
+    const auto parsed = world::parse_building_type(key);
+
+    // Then
+    EXPECT_EQ(key, "TankFactory");
+    EXPECT_EQ(parsed, world::BuildingType::TankFactory);
+}

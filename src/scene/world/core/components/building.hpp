@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <string>
 #include <vector>
 
 #include "scene/world/core/construction/building_type.hpp"
@@ -34,11 +35,20 @@ struct ConstructionSite {
 // What a building produces: every 1 / `rate` seconds it consumes all of `inputs` (empty =
 // needs nothing, like a mine) from its inventory and adds one `output` to it. An empty `output`
 // means the resource on the ground under the building (the ore under a mine).
+// An entity a recipe makes instead of an item: spawned through the entity factory as
+// `archetype` labelled `label`, on the nearest free tile around the building (see
+// UnitProductionSystem).
+struct UnitOutput {
+    std::string archetype;
+    std::string label;
+};
+
 struct Recipe {
     std::vector<ItemStack> inputs{};
     std::optional<Item> output = std::nullopt;
     float rate = 0.0f;     // crafts per second
     int output_count = 1;  // outputs made by one craft
+    std::optional<UnitOutput> spawns = std::nullopt; // set = makes this entity, not an item
 };
 
 enum class BuildingState { Working, Idle };

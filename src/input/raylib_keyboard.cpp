@@ -24,6 +24,7 @@ int to_raylib(Key key) {
         case Key::RightShift: return KEY_RIGHT_SHIFT;
         case Key::Tab: return KEY_TAB;
         case Key::B: return KEY_B;
+        case Key::F: return KEY_F;
     }
     return KEY_NULL;
 }

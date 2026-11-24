@@ -18,6 +18,8 @@
 #include "scene/world/core/events/military_events.hpp"
 #include "scene/world/core/items/item.hpp"
 #include "scene/world/core/systems/shoot_system.hpp"
+#include "scene/world/core/entities/battle_tank.hpp"
+#include "scene/world/core/entities/vehicle.hpp"
 
 namespace {
 
@@ -456,4 +458,75 @@ TEST(ShootSystem, ATargetThatMovesToAnotherTileIsApproachedAgain) {
     // Then
     ASSERT_EQ(goals.size(), 2u);
     EXPECT_FALSE(goals[0] == goals[1]);
+}
+
+namespace {
+
+// A tank on the origin with `ammo` shells and, when `crewed`, a soldier inside.
+core::EntityId tank_with(Fixture& f, int ammo, bool crewed) {
+    const core::EntityId tank = world::spawn_battle_tank(f.registry, "Tank", {0.0f, 0.0f});
+    f.registry.get<world::SolidInventory>(tank)->add(world::items::Ammo, ammo);
+    if (crewed) {
+        world::board(f.registry, tank, world::spawn_soldier(f.registry, "Crew", {0.0f, 0.0f}));
+    }
+    return tank;
+}
+
+} // namespace
+
+TEST(ShootSystem, ACrewedTankFiresItsCannonWithTheAmmoInItsInventory) {
+    // Given: no weapon item anywhere, only the mounted cannon
+    Fixture f;
+    const auto tank = tank_with(f, 3, true);
+    const auto target = f.target(world::TankCannon.range);
+
+    // When
+    f.shoot(tank, target);
+
+    // Then
+    EXPECT_EQ(f.ammo(tank), 2);
+    EXPECT_EQ(f.health(target), world::MaxHealth - world::TankCannon.damage);
+}
+
+TEST(ShootSystem, AnEmptyTankDoesNotFire) {
+    // Given
+    Fixture f;
+    const auto tank = tank_with(f, 3, false);
+    const auto target = f.target(1.0f);
+
+    // When
+    f.shoot(tank, target);
+
+    // Then
+    EXPECT_EQ(f.ammo(tank), 3);
+    EXPECT_EQ(f.health(target), world::MaxHealth);
+}
+
+TEST(ShootSystem, ATankWithoutAmmoDoesNotFire) {
+    // Given
+    Fixture f;
+    const auto tank = tank_with(f, 0, true);
+    const auto target = f.target(1.0f);
+
+    // When
+    f.shoot(tank, target);
+
+    // Then
+    EXPECT_EQ(f.health(target), world::MaxHealth);
+}
+
+TEST(ShootSystem, APassengerCannotShootFromInsideAVehicle) {
+    // Given
+    Fixture f;
+    const auto shooter = f.shooter(1, 5);
+    const core::EntityId tank = world::spawn_battle_tank(f.registry, "Tank", {0.0f, 0.0f});
+    world::board(f.registry, tank, shooter);
+    const auto target = f.target(1.0f);
+
+    // When
+    f.shoot(shooter, target);
+
+    // Then
+    EXPECT_EQ(f.ammo(shooter), 5);
+    EXPECT_EQ(f.health(target), world::MaxHealth);
 }

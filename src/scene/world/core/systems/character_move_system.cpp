@@ -9,6 +9,7 @@
 #include "scene/world/core/components/player_controlled.hpp"
 #include "scene/world/core/components/route_follower.hpp"
 #include "scene/world/core/components/unit.hpp"
+#include "scene/world/core/components/vehicle.hpp"
 #include "scene/world/core/events/character_state_changed.hpp"
 #include "scene/world/core/occupancy.hpp"
 
@@ -140,6 +141,10 @@ void CharacterMoveSystem::update(float delta_time) {
     registry_.each<Character, Position, Mover>(
         [this, delta_time, &changed](core::EntityId id, Character& character,
                                      Position& position, Mover& mover) {
+            // A passenger rides along (see VehicleSystem): it neither walks nor is pushed.
+            if (registry_.has<Passenger>(id)) {
+                return;
+            }
             const float length = std::hypot(mover.direction.x, mover.direction.y);
             const bool moving = length > 0.0f;
             if (moving) {

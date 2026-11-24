@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include "scene/world/core/components/military.hpp"
+
 #include "support/always_hit.hpp"
 
 #include <memory>
@@ -28,7 +30,7 @@ class UnitCommand : public testing::Test {
 protected:
     UnitCommand() : model(bus, input.handler, save_with_soldier(), AlwaysHit), command(model, pointer) {
         for (const core::Entity& entity : model.registry().entities()) {
-            if (entity.id != model.player_id()) {
+            if (model.registry().has<::world::Soldier>(entity.id)) {
                 soldier = entity.id;
             }
         }

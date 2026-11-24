@@ -14,6 +14,10 @@ namespace world {
 // The stats of the first weapon in the inventory; empty when it holds none.
 std::optional<WeaponStats> held_weapon(const SolidInventory& inventory);
 
+// What `shooter` fires: its MountedWeapon when it has one (a tank's cannon), else the
+// first weapon in its inventory; empty when it has neither.
+std::optional<WeaponStats> weapon_of(const core::Registry& registry, core::EntityId shooter);
+
 // A dice roll for a shot: a uniform number in [0, 1). The shot hits when it is below the
 // hit chance.
 using HitRoll = std::function<float()>;

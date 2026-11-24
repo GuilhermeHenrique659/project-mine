@@ -261,3 +261,14 @@ TEST(InputHandler, WorldDefaultsToggleTheBuildMenuWithB) {
     // Then
     EXPECT_EQ(action, Action::ToggleBuildMenu);
 }
+
+TEST(InputHandler, WorldDefaultsGetInAndOutOfVehiclesWithF) {
+    // Given
+    const InputMap map = InputMap::world_defaults();
+
+    // When
+    const auto action = map.action_for(Key::F);
+
+    // Then
+    EXPECT_EQ(action, Action::ToggleVehicle);
+}

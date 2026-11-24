@@ -11,6 +11,10 @@
 #include "scene/world/core/events/military_events.hpp"
 #include "scene/world/core/occupancy.hpp"
 #include "scene/world/core/systems/move_order_system.hpp"
+#include "scene/world/core/components/player_controlled.hpp"
+#include "scene/world/core/entities/battle_tank.hpp"
+#include "scene/world/core/entities/character.hpp"
+#include "scene/world/core/entities/vehicle.hpp"
 #include "scene/world/core/terrain/terrain.hpp"
 
 namespace {
@@ -118,4 +122,59 @@ TEST(MoveOrderSystem, AnApproachGivesTheSoldierAPathTowardsTheGoal) {
     // Then
     ASSERT_NE(f.path(soldier), nullptr);
     EXPECT_EQ(f.path(soldier)->tiles.back(), (world::TileCoord{4, 0}));
+}
+
+TEST(MoveOrderSystem, ACrewedTankIsOrderedLikeASoldier) {
+    // Given
+    Fixture f;
+    const core::EntityId tank = world::spawn_battle_tank(f.registry, "Tank", {0.5f, 0.5f});
+    world::board(f.registry, tank, world::spawn_soldier(f.registry, "Crew", {0.5f, 0.5f}));
+
+    // When
+    f.bus.publish(world::UnitsMoveRequested{{tank}, {4, 0}});
+
+    // Then
+    ASSERT_NE(f.path(tank), nullptr);
+    EXPECT_EQ(f.path(tank)->tiles.back(), (world::TileCoord{4, 0}));
+}
+
+TEST(MoveOrderSystem, AnEmptyTankIgnoresOrders) {
+    // Given
+    Fixture f;
+    const core::EntityId tank = world::spawn_battle_tank(f.registry, "Tank", {0.5f, 0.5f});
+
+    // When
+    f.bus.publish(world::UnitsMoveRequested{{tank}, {4, 0}});
+
+    // Then
+    EXPECT_EQ(f.path(tank), nullptr);
+}
+
+TEST(MoveOrderSystem, ATankThePlayerDrivesIgnoresOrders) {
+    // Given
+    Fixture f;
+    const core::EntityId tank = world::spawn_battle_tank(f.registry, "Tank", {0.5f, 0.5f});
+    const core::EntityId player = world::spawn_character(f.registry, "Player", {0.5f, 0.5f});
+    f.registry.add(player, world::PlayerControlled{});
+    world::board(f.registry, tank, player);
+
+    // When
+    f.bus.publish(world::UnitsMoveRequested{{tank}, {4, 0}});
+
+    // Then
+    EXPECT_EQ(f.path(tank), nullptr);
+}
+
+TEST(MoveOrderSystem, ASoldierInsideAVehicleDoesNotWalkAway) {
+    // Given
+    Fixture f;
+    const core::EntityId tank = world::spawn_battle_tank(f.registry, "Tank", {0.5f, 0.5f});
+    const core::EntityId soldier = world::spawn_soldier(f.registry, "Soldier", {0.5f, 0.5f});
+    world::board(f.registry, tank, soldier);
+
+    // When
+    f.bus.publish(world::UnitsMoveRequested{{soldier}, {4, 0}});
+
+    // Then
+    EXPECT_EQ(f.path(soldier), nullptr);
 }

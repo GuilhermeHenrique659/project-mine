@@ -104,7 +104,8 @@ TEST(WorldMenu, SaveCapturesThePlayerPositionAtClickTime) {
 
     // Then
     ASSERT_TRUE(recorder.saved.has_value());
-    ASSERT_EQ(recorder.saved->entities.size(), 1u);
+    // The player, then the starting tank.
+    ASSERT_EQ(recorder.saved->entities.size(), 2u);
     EXPECT_GT(std::stof(recorder.saved->entities[0].fields.at("position.x")), 0.0f);
 }
 
