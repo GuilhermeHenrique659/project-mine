@@ -33,6 +33,7 @@ int tile_variant(::world::TileCoord tile, int variants) {
 constexpr const char* IdleClip = "idle";
 constexpr const char* WalkClip = "walk";
 constexpr const char* RunClip = "run";
+constexpr const char* DriveClip = "drive";
 
 } // namespace
 
@@ -65,6 +66,13 @@ GameSprites::GameSprites(SpriteLibrary library) : library_(std::move(library)) {
     }
     for (std::size_t type = 0; type < TileTypes; ++type) {
         tiles_[type] = idle_of(tile_sprite_name(static_cast<::world::TileType>(type)));
+    }
+
+    if (const auto tank = library_.find(BattleTankSpriteName)) {
+        tank_idle_ = library_.clip(*tank, IdleClip);
+        // Without a drive clip it glides parked.
+        tank_drive_ = library_.has_clip(*tank, DriveClip) ? library_.clip(*tank, DriveClip)
+                                                          : *tank_idle_;
     }
 
     const auto character = library_.find(CharacterSpriteName);
@@ -108,6 +116,16 @@ std::optional<SpriteFrame> GameSprites::character(::world::Direction facing,
                                                   ::world::CharacterState state,
                                                   float seconds) const {
     const auto& clip = character_[static_cast<std::size_t>(state)];
+    if (!clip) {
+        return std::nullopt;
+    }
+    return library_.frame(*clip, static_cast<int>(facing), seconds);
+}
+
+std::optional<SpriteFrame> GameSprites::battle_tank(::world::Direction facing,
+                                                    ::world::CharacterState state,
+                                                    float seconds) const {
+    const auto& clip = state == ::world::CharacterState::Idle ? tank_idle_ : tank_drive_;
     if (!clip) {
         return std::nullopt;
     }

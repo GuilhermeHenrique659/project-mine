@@ -22,6 +22,8 @@ namespace graphics {
 //                                            variant, picked per tile
 //   units/character                          one row per world::Direction (enum order),
 //                                            clips "idle", "walk", "run"
+//   units/battle_tank                        one row per world::Direction, clips "idle"
+//                                            (parked) and "drive" (while moving)
 //
 // Names are resolved once, in the constructor; the lookups below only index arrays.
 class GameSprites {
@@ -42,9 +44,13 @@ public:
     std::optional<SpriteFrame> character(::world::Direction facing,
                                          ::world::CharacterState state, float seconds) const;
 
+    // None without a battle tank sprite (it keeps its box). Moving or running = "drive".
+    std::optional<SpriteFrame> battle_tank(::world::Direction facing,
+                                           ::world::CharacterState state, float seconds) const;
+
 private:
     static constexpr std::size_t BuildingTypes =
-        static_cast<std::size_t>(::world::BuildingType::Pipe) + 1;
+        static_cast<std::size_t>(::world::BuildingType::TankFactory) + 1; // the last type
     static constexpr std::size_t TileTypes = static_cast<std::size_t>(::world::TileType::CrudeOil) + 1;
     static constexpr std::size_t CharacterStates =
         static_cast<std::size_t>(::world::CharacterState::Running) + 1;
@@ -53,11 +59,14 @@ private:
     std::array<std::optional<ClipHandle>, BuildingTypes> buildings_;
     std::array<std::optional<ClipHandle>, TileTypes> tiles_;
     std::array<std::optional<ClipHandle>, CharacterStates> character_;
+    std::optional<ClipHandle> tank_idle_;
+    std::optional<ClipHandle> tank_drive_;
 };
 
 // The sprite names GameSprites looks for: "buildings/electronic_factory", "environment/iron_ore".
 std::string building_sprite_name(::world::BuildingType type);
 std::string tile_sprite_name(::world::TileType type);
 inline constexpr const char* CharacterSpriteName = "units/character";
+inline constexpr const char* BattleTankSpriteName = "units/battle_tank";
 
 } // namespace graphics

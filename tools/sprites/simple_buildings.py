@@ -198,6 +198,8 @@ BUILDINGS = {
     "tool_factory": factory((96, 90, 70), (200, 160, 60), seed=83),
     "ammo_factory": factory((80, 86, 60), RED, seed=84, tank=(110, 100, 60)),
     "weapon_factory": factory((60, 60, 72), MAGENTA, stacks=2, seed=85),
+    "engine_factory": factory((96, 64, 56), AMBER, stacks=1, seed=86, tank=(70, 70, 78)),
+    "tank_factory": factory((70, 80, 52), HAZARD, stacks=2, seed=87, tank=(90, 100, 64)),
     "house": house, "mine": mine, "coal_generator": coal_generator, "barracks": barracks,
     "training_target": training_target, "pipe": pipe,
 }

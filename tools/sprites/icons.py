@@ -170,6 +170,26 @@ def turret():
     return union(circle(16, 20, 8), rect(16, 9, 29, 14), rect(6, 26, 26, 29))
 
 
+def engine():
+    """An engine block from the side: cooling fins on top, body, front pulley, exhaust, sump."""
+    fins = lambda x, y: 9 <= x < 25 and 4 <= y < 10 and int(x - 9) % 4 < 2
+    head = rect(8, 10, 26, 13)
+    body = rect(7, 13, 27, 24)
+    pulley = minus(circle(6, 18, 4.5), circle(6, 18, 1.5))
+    exhaust = rect(27, 15, 31, 18)
+    sump = rect(10, 24, 24, 28)
+    return union(fins, head, body, pulley, exhaust, sump)
+
+
+def battle_tank():
+    """A tank from the side: treads, hull, turret and a long barrel."""
+    treads = union(rect(4, 21, 28, 27), circle(4, 24, 3), circle(28, 24, 3))
+    hull = polygon([(5, 21), (8, 16), (25, 16), (28, 21)])
+    turret_ = union(rect(11, 10, 21, 16), circle(16, 11, 4))
+    barrel = rect(20, 11, 31, 13)
+    return union(treads, hull, turret_, barrel)
+
+
 # --- catalogue ---------------------------------------------------------------
 
 ICONS = {
@@ -187,6 +207,8 @@ ICONS = {
     "icon_tool_factory": (factory(), "c08a3a"),
     "icon_ammo_factory": (factory(), "b05050"),
     "icon_weapon_factory": (factory(), "6a5a8a"),
+    "icon_engine_factory": (factory(), "8a4a3c"),
+    "icon_tank_factory": (battle_tank(), "5a6a3c"),
     "icon_smelter": (factory(), "d06a30"),
     "icon_assembler": (gear(), "6a8ab0"),
     "icon_barracks": (house(), "5a7a40"),
@@ -209,6 +231,7 @@ ICONS = {
     "item_weapon": (rifle(), "5a5048"),
     "item_oil": (droplet(), "2a2a30"),
     "item_diesel": (droplet(), "d8b030"),
+    "item_engine": (engine(), "8c463c"),
     # title menu buttons
     "menu_new_game": (triangle_play(), "50c060"),
     "menu_load_game": (folder(), "d0a840"),

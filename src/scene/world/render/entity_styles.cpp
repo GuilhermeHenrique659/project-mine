@@ -99,9 +99,19 @@ public:
         return registry.has<::world::Vehicle>(id);
     }
 
-    EntityLook look(const core::Registry&, core::EntityId,
+    // Its sprite turned to its facing (treads rolling while it moves); the box without one.
+    EntityLook look(const core::Registry& registry, core::EntityId id,
                     const LookContext& context) const override {
-        return {Cube(VehicleCubeSize * context.scale, VehicleFront, VehicleTop), std::nullopt,
+        const Cube box(VehicleCubeSize * context.scale, VehicleFront, VehicleTop);
+        const auto* character = registry.get<::world::Character>(id);
+        if (!registry.has<::world::BattleTank>(id) || character == nullptr) {
+            return {box, std::nullopt, std::nullopt};
+        }
+        const auto* facing = registry.get<::world::Facing>(id);
+        return {box,
+                context.sprites.battle_tank(
+                    facing != nullptr ? facing->direction : ::world::Facing{}.direction,
+                    character->state, context.seconds),
                 std::nullopt};
     }
 

@@ -33,6 +33,12 @@ SpriteDefinition character() {
              SpriteClip{"run", 1, 6, 16.0f, true}}};
 }
 
+// 8 rows (facings) of 5 columns: parked, then a 4-frame drive cycle (moving treads).
+SpriteDefinition battle_tank() {
+    return {"battle_tank.png", 80, 64, 5, 8, {40.0f, 40.0f},
+            {SpriteClip{"idle", 0, 1, 0.0f, true}, SpriteClip{"drive", 1, 4, 8.0f, true}}};
+}
+
 SpriteDefinition tile(int rows, int columns, float fps) {
     return {"tile.png", 64, 32, columns, rows, {}, {SpriteClip{"idle", 0, columns, fps, true}}};
 }
@@ -177,4 +183,57 @@ TEST(GameSprites, EachTileTypeHasItsOwnSpriteName) {
     ASSERT_TRUE(sprites.tile(TileType::CopperOre, {0, 0}, 0.0f));
     EXPECT_EQ(sprites.tile(TileType::CopperOre, {0, 0}, 0.0f)->texture, graphics::TextureId{7});
     EXPECT_FALSE(sprites.tile(TileType::Coal, {0, 0}, 0.0f));
+}
+
+TEST(GameSprites, TheLastBuildingTypesFindTheirSpritesToo) {
+    // Given
+    SpriteLibrary library;
+    library.add("buildings/engine_factory", headquarters(), graphics::TextureId{});
+    library.add("buildings/tank_factory", headquarters(), graphics::TextureId{});
+
+    // When
+    const GameSprites sprites(std::move(library));
+
+    // Then
+    EXPECT_TRUE(sprites.building(BuildingType::EngineFactory, 0.0f));
+    EXPECT_TRUE(sprites.building(BuildingType::TankFactory, 0.0f));
+}
+
+TEST(GameSprites, AParkedBattleTankUsesTheRowOfItsFacing) {
+    // Given
+    SpriteLibrary library;
+    library.add(graphics::BattleTankSpriteName, battle_tank(), graphics::TextureId{});
+    const GameSprites sprites(std::move(library));
+
+    // When
+    const auto east = sprites.battle_tank(Direction::East, CharacterState::Idle, 3.0f);
+
+    // Then: row 2, the parked column
+    ASSERT_TRUE(east);
+    EXPECT_EQ(cell_of(*east), std::make_pair(0, 2));
+}
+
+TEST(GameSprites, AMovingBattleTankPlaysTheDriveCycle) {
+    // Given
+    SpriteLibrary library;
+    library.add(graphics::BattleTankSpriteName, battle_tank(), graphics::TextureId{});
+    const GameSprites sprites(std::move(library));
+
+    // When: 0.25 s at 8 fps is the third drive frame
+    const auto driving = sprites.battle_tank(Direction::South, CharacterState::Moving, 0.25f);
+
+    // Then: the cycle starts at column 1
+    ASSERT_TRUE(driving);
+    EXPECT_EQ(cell_of(*driving), std::make_pair(1 + 2, 4));
+}
+
+TEST(GameSprites, NoBattleTankSheetKeepsItsBox) {
+    // Given
+    const GameSprites sprites{SpriteLibrary{}};
+
+    // When
+    const auto frame = sprites.battle_tank(Direction::North, CharacterState::Idle, 0.0f);
+
+    // Then
+    EXPECT_FALSE(frame);
 }
